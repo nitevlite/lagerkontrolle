@@ -69,6 +69,17 @@ ion-content.shell::part(scroll) {
   top: 0.4rem;
   z-index: 5;
   padding: 0.55rem;
+  transform: translateY(0);
+  opacity: 1;
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease;
+}
+
+.surface--nav-hidden {
+  transform: translateY(calc(-100% - 0.75rem));
+  opacity: 0;
+  pointer-events: none;
 }
 
 .surface--loading {

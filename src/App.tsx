@@ -84,6 +84,7 @@ function getBarcodeDetector() {
 
 function App() {
   const [activeView, setActiveView] = useState<ViewKey>("locations");
+  const [navVisible, setNavVisible] = useState(true);
   const [selectedLocationId, setSelectedLocationId] = useState("");
   const [expiryFilterDays, setExpiryFilterDays] = useState<number>(10);
   const [warningDaysDraft, setWarningDaysDraft] = useState("10");
@@ -1317,6 +1318,18 @@ function App() {
     setItemDetailId(itemId);
   }
 
+  function handleContentScroll(event: CustomEvent<{ scrollTop: number }>) {
+    const scrollTop = event.detail.scrollTop ?? 0;
+    if (scrollTop <= 72) {
+      setNavVisible(true);
+      return;
+    }
+
+    if (scrollTop >= 120) {
+      setNavVisible(false);
+    }
+  }
+
   return (
     <IonApp>
       <IonPage>
@@ -1344,13 +1357,13 @@ function App() {
             }
           ]}
         />
-        <IonContent fullscreen className="shell">
+        <IonContent fullscreen className="shell" scrollEvents onIonScroll={handleContentScroll}>
           <div className="shell__inner">
             {isLoading || !viewModel ? (
               <section className="surface surface--loading">Daten werden geladen …</section>
             ) : (
               <>
-                <section className="surface surface--nav">
+                <section className={navVisible ? "surface surface--nav" : "surface surface--nav surface--nav-hidden"}>
                   <div className="view-switcher">
                     {viewMeta.map((view) => (
                       <button
