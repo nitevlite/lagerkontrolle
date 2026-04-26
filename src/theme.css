@@ -100,6 +100,13 @@ ion-content.shell::part(scroll) {
   box-shadow: 0 10px 24px rgba(28, 40, 53, 0.06);
 }
 
+.surface--nav {
+  position: sticky;
+  top: 0.4rem;
+  z-index: 5;
+  padding: 0.55rem;
+}
+
 .surface--loading {
   display: grid;
   place-items: center;
@@ -188,6 +195,34 @@ ion-content.shell::part(scroll) {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 
+.view-switcher {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.view-switcher__button {
+  display: grid;
+  place-items: center;
+  gap: 0.25rem;
+  padding: 0.7rem 0.35rem;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.view-switcher__button span {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.view-switcher__button--active {
+  background: #16212b;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(22, 33, 43, 0.14);
+}
+
 .compact-field {
   --background: #ffffff;
   --border-radius: 14px;
@@ -204,6 +239,12 @@ ion-content.shell::part(scroll) {
   overflow-x: auto;
   padding-bottom: 0.1rem;
   margin-bottom: 0.9rem;
+}
+
+.location-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.7rem;
 }
 
 .pill,
@@ -290,28 +331,64 @@ ion-content.shell::part(scroll) {
   color: var(--success);
 }
 
-.location-chip {
+.location-card {
   display: grid;
-  gap: 0.15rem;
-  min-width: 132px;
-  padding: 0.85rem 0.9rem;
+  gap: 0.3rem;
+  padding: 0.95rem;
   border-radius: 16px;
   border: 1px solid var(--border);
   background: #fbfcfd;
   text-align: left;
 }
 
-.location-chip strong {
-  font-size: 0.95rem;
+.location-card__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.location-chip small {
+.location-card strong {
+  font-size: 0.98rem;
+}
+
+.location-card span,
+.location-card small {
   color: var(--muted);
 }
 
-.location-chip--active {
+.location-card--active {
   border-color: rgba(31, 111, 95, 0.2);
   background: rgba(31, 111, 95, 0.08);
+}
+
+.stock-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.7rem;
+}
+
+.stock-card {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.95rem;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: #fbfcfd;
+}
+
+.stock-card__top,
+.stock-card__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stock-card__top span,
+.stock-card__meta span {
+  color: var(--muted);
+  font-size: 0.86rem;
 }
 
 .action-grid {
@@ -403,6 +480,10 @@ ion-content.shell::part(scroll) {
     max-width: 520px;
     margin: 0 auto;
   }
+
+  .view-switcher {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 767px) {
@@ -419,5 +500,31 @@ ion-content.shell::part(scroll) {
   .list-row,
   .booking-preview__row {
     align-items: flex-start;
+  }
+
+  .view-switcher {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .surface--nav {
+    top: 0.25rem;
+  }
+
+  .location-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .stock-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 420px) {
+  .view-switcher {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .location-grid {
+    grid-template-columns: 1fr;
   }
 }

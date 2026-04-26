@@ -231,6 +231,26 @@ function App() {
               <section className="surface surface--loading">Daten werden geladen …</section>
             ) : (
               <>
+                <section className="surface surface--nav">
+                  <div className="view-switcher">
+                    {viewMeta.map((view) => (
+                      <button
+                        key={view.key}
+                        type="button"
+                        className={
+                          view.key === activeView
+                            ? "view-switcher__button view-switcher__button--active"
+                            : "view-switcher__button"
+                        }
+                        onClick={() => setActiveView(view.key)}
+                      >
+                        <IonIcon icon={view.icon} />
+                        <span>{view.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
                 {activeView === "dashboard" ? (
                   <div className="stack">
                     <section className="surface">
@@ -408,20 +428,24 @@ function App() {
                           <span>{viewModel.locations.length} aktiv</span>
                         </div>
                       </header>
-                      <div className="location-switcher">
+                      <div className="location-grid">
                         {viewModel.locations.map((location) => (
                           <button
                             key={location.id}
                             type="button"
                             className={
                               location.id === currentLocation?.id
-                                ? "location-chip location-chip--active"
-                                : "location-chip"
+                                ? "location-card location-card--active"
+                                : "location-card"
                             }
                             onClick={() => setSelectedLocationId(location.id)}
                           >
-                            <strong>{location.name}</strong>
-                            <small>{location.slotCount} Slots</small>
+                            <div className="location-card__top">
+                              <strong>{location.name}</strong>
+                              <IonBadge color="light">{location.occupancyPercent}%</IonBadge>
+                            </div>
+                            <span>{location.slotCount} Slots</span>
+                            <small>{location.itemCount} Artikel</small>
                           </button>
                         ))}
                       </div>
@@ -479,30 +503,33 @@ function App() {
                           <header className="section-header">
                             <div>
                               <h2>{currentLocation.name}</h2>
-                            <span>
-                              {currentLocation.itemCount} Artikel · {currentLocation.lastMovementLabel}
-                            </span>
-                          </div>
-                          <IonBadge color="light">{currentLocation.occupancyPercent}% belegt</IonBadge>
-                        </header>
-                          <div className="list">
+                              <span>
+                                {currentLocation.itemCount} Artikel · {currentLocation.lastMovementLabel}
+                              </span>
+                            </div>
+                            <IonBadge color="light">{currentLocation.occupancyPercent}% belegt</IonBadge>
+                          </header>
+                          <div className="stock-grid">
                             {visibleStocks.map((line) => (
-                              <article key={line.id} className="list-row">
-                              <div className="list-row__main">
-                                <strong>
-                                  {line.slotName} · {line.itemName}
-                                </strong>
-                                <span>Verfall {line.expiryDate}</span>
-                              </div>
-                              <div className="list-row__meta">
-                                <b>
-                                  {line.quantity} {line.unitShortCode}
-                                </b>
-                                <small className={`status-text ${toneClass(line.status === "ok" ? "good" : line.status)}`}>
-                                  {line.status === "critical" ? "kritisch" : line.status === "warning" ? "bald" : "ok"}
-                                </small>
-                              </div>
-                            </article>
+                              <article key={line.id} className="stock-card">
+                                <div className="stock-card__top">
+                                  <span>{line.slotName}</span>
+                                  <small className={`status-text ${toneClass(line.status === "ok" ? "good" : line.status)}`}>
+                                    {line.status === "critical"
+                                      ? "kritisch"
+                                      : line.status === "warning"
+                                        ? "bald"
+                                        : "ok"}
+                                  </small>
+                                </div>
+                                <strong>{line.itemName}</strong>
+                                <div className="stock-card__meta">
+                                  <b>
+                                    {line.quantity} {line.unitShortCode}
+                                  </b>
+                                  <span>Verfall {line.expiryDate}</span>
+                                </div>
+                              </article>
                             ))}
                           </div>
                         </section>
