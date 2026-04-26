@@ -89,6 +89,47 @@ export async function addStorageSlot(input: {
   });
 }
 
+export async function renameLocation(input: { id: string; name: string }) {
+  const name = input.name.trim();
+  if (!name) {
+    return;
+  }
+
+  const existing = await db.locations
+    .filter(
+      (location) =>
+        location.id !== input.id && location.name.toLocaleLowerCase() === name.toLocaleLowerCase()
+    )
+    .first();
+
+  if (existing) {
+    throw new Error("Ort existiert bereits.");
+  }
+
+  await db.locations.update(input.id, { name });
+}
+
+export async function deleteLocation(locationId: string) {
+  const slotCount = await db.slots.where("locationId").equals(locationId).count();
+  if (slotCount > 0) {
+    throw new Error("Ort kann erst geloescht werden, wenn alle Regale und Laden entfernt sind.");
+  }
+
+  await db.locations.delete(locationId);
+}
+
+export async function deleteStorageSlot(slotId: string) {
+  const movement = await db.movements
+    .filter((entry) => entry.fromSlotId === slotId || entry.toSlotId === slotId)
+    .first();
+
+  if (movement) {
+    throw new Error("Slot kann nicht geloescht werden, weil bereits Bewegungen darauf gebucht wurden.");
+  }
+
+  await db.slots.delete(slotId);
+}
+
 export async function updateSettings(patch: Partial<Omit<AppSettings, "id">>) {
   const current =
     (await db.settings.get("default")) ??

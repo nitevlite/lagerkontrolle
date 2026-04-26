@@ -156,7 +156,7 @@ ion-content.shell::part(scroll) {
   padding: 0.95rem;
   border-radius: 16px;
   border: 1px solid var(--border);
-  background: var(--surface-subtle);
+  background: #f5f7fa;
 }
 
 .metric-card span,
@@ -175,20 +175,24 @@ ion-content.shell::part(scroll) {
 .tone-critical {
   border-color: rgba(193, 50, 60, 0.32);
   color: var(--critical);
+  background: linear-gradient(180deg, rgba(193, 50, 60, 0.14), rgba(255, 255, 255, 0.98));
 }
 
 .tone-warning {
   border-color: rgba(168, 100, 8, 0.32);
   color: var(--warning);
+  background: linear-gradient(180deg, rgba(168, 100, 8, 0.14), rgba(255, 255, 255, 0.98));
 }
 
 .tone-good {
   border-color: rgba(22, 121, 77, 0.32);
   color: var(--success);
+  background: linear-gradient(180deg, rgba(22, 121, 77, 0.14), rgba(255, 255, 255, 0.98));
 }
 
 .tone-neutral {
   color: var(--text);
+  background: linear-gradient(180deg, rgba(15, 98, 254, 0.08), rgba(255, 255, 255, 0.98));
 }
 
 .settings-row,
@@ -299,11 +303,13 @@ ion-content.shell::part(scroll) {
 }
 
 .list-row--alert.tone-critical {
-  background: rgba(187, 62, 69, 0.06);
+  border-color: rgba(193, 50, 60, 0.34);
+  background: linear-gradient(90deg, rgba(193, 50, 60, 0.18), rgba(255, 255, 255, 0.98));
 }
 
 .list-row--alert.tone-warning {
-  background: rgba(183, 121, 31, 0.08);
+  border-color: rgba(168, 100, 8, 0.34);
+  background: linear-gradient(90deg, rgba(168, 100, 8, 0.18), rgba(255, 255, 255, 0.98));
 }
 
 .list-row__main {
@@ -445,6 +451,11 @@ ion-content.shell::part(scroll) {
   --background-hover: #0b53d5;
   --color: #ffffff;
   font-weight: 700;
+}
+
+.danger-button {
+  --color: #c1323c;
+  --border-color: rgba(193, 50, 60, 0.28);
 }
 
 .bottom-nav {

@@ -26,7 +26,16 @@ import {
   warningOutline
 } from "ionicons/icons";
 import { ensureSeedData, resetSeedData } from "./data/bootstrap";
-import { addLocation, addStorageSlot, addUnitType, loadSnapshot, updateSettings } from "./data/repositories";
+import {
+  addLocation,
+  addStorageSlot,
+  addUnitType,
+  deleteLocation,
+  deleteStorageSlot,
+  loadSnapshot,
+  renameLocation,
+  updateSettings
+} from "./data/repositories";
 import { seedSnapshot } from "./domain/seed";
 import { buildViewModel, type ViewKey } from "./domain/selectors";
 import "./theme.css";
@@ -52,6 +61,7 @@ function App() {
   const [warningDaysDraft, setWarningDaysDraft] = useState("10");
   const [reminderDaysDraft, setReminderDaysDraft] = useState("3");
   const [locationName, setLocationName] = useState("");
+  const [locationEditName, setLocationEditName] = useState("");
   const [slotKind, setSlotKind] = useState<"shelf" | "drawer">("shelf");
   const [slotNumber, setSlotNumber] = useState("1");
   const [unitName, setUnitName] = useState("");
@@ -110,6 +120,10 @@ function App() {
   const currentLocation =
     viewModel?.locations.find((location) => location.id === selectedLocationId) ?? viewModel?.locations[0];
 
+  useEffect(() => {
+    setLocationEditName(currentLocation?.name ?? "");
+  }, [currentLocation?.id, currentLocation?.name]);
+
   const visibleAlerts = useMemo(
     () =>
       viewModel?.expiryAlerts.filter((alert) => alert.daysUntilExpiry <= expiryFilterDays) ?? [],
@@ -122,6 +136,14 @@ function App() {
         currentLocation ? line.locationId === currentLocation.id : true
       ) ?? [],
     [currentLocation, viewModel]
+  );
+
+  const currentSlots = useMemo(
+    () =>
+      snapshotState?.slots
+        .filter((slot) => (currentLocation ? slot.locationId === currentLocation.id : true))
+        .sort((left, right) => left.sortOrder - right.sortOrder) ?? [],
+    [currentLocation, snapshotState]
   );
 
   const analyticsRiskList = useMemo(
@@ -199,6 +221,42 @@ function App() {
       reminderRepeatDays: reminderDays
     });
     setRefreshToken((current) => current + 1);
+  }
+
+  async function handleRenameLocation() {
+    if (!currentLocation) {
+      return;
+    }
+
+    try {
+      await renameLocation({ id: currentLocation.id, name: locationEditName });
+      setRefreshToken((current) => current + 1);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Ort konnte nicht aktualisiert werden.");
+    }
+  }
+
+  async function handleDeleteLocation() {
+    if (!currentLocation) {
+      return;
+    }
+
+    try {
+      await deleteLocation(currentLocation.id);
+      setSelectedLocationId("");
+      setRefreshToken((current) => current + 1);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Ort konnte nicht geloescht werden.");
+    }
+  }
+
+  async function handleDeleteSlot(slotId: string) {
+    try {
+      await deleteStorageSlot(slotId);
+      setRefreshToken((current) => current + 1);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Slot konnte nicht geloescht werden.");
+    }
   }
 
   return (
@@ -477,6 +535,30 @@ function App() {
                         <section className="surface">
                           <header className="section-header">
                             <div>
+                              <h2>Ort verwalten</h2>
+                              <span>{currentLocation.name}</span>
+                            </div>
+                          </header>
+                          <div className="unit-form">
+                            <IonItem className="compact-field">
+                              <IonLabel position="stacked">Name</IonLabel>
+                              <IonInput
+                                value={locationEditName}
+                                onIonInput={(event) => setLocationEditName(String(event.detail.value ?? ""))}
+                              />
+                            </IonItem>
+                            <IonButton className="primary-button" onClick={handleRenameLocation}>
+                              Ort aktualisieren
+                            </IonButton>
+                            <IonButton className="danger-button" fill="outline" onClick={handleDeleteLocation}>
+                              Ort loeschen
+                            </IonButton>
+                          </div>
+                        </section>
+
+                        <section className="surface">
+                          <header className="section-header">
+                            <div>
                               <h2>Slot anlegen</h2>
                               <span>{currentLocation.name}</span>
                             </div>
@@ -517,6 +599,35 @@ function App() {
                             >
                               Lade
                             </button>
+                          </div>
+                        </section>
+
+                        <section className="surface">
+                          <header className="section-header">
+                            <div>
+                              <h2>Regale und Laden</h2>
+                              <span>{currentSlots.length} angelegt</span>
+                            </div>
+                          </header>
+                          <div className="list">
+                            {currentSlots.map((slot) => (
+                              <article key={slot.id} className="list-row">
+                                <div className="list-row__main">
+                                  <strong>{slot.label}</strong>
+                                  <span>{slot.kind === "shelf" ? "Regal" : "Lade"}</span>
+                                </div>
+                                <div className="list-row__meta">
+                                  <IonButton
+                                    size="small"
+                                    fill="clear"
+                                    className="danger-button"
+                                    onClick={() => void handleDeleteSlot(slot.id)}
+                                  >
+                                    Loeschen
+                                  </IonButton>
+                                </div>
+                              </article>
+                            ))}
                           </div>
                         </section>
 
