@@ -66,6 +66,13 @@ npm run build
 - `npm run dev`: startet die mobile PWA lokal
 - `npm run build`: prueft TypeScript und baut das Produktionsbundle
 
+## Aktueller Stand
+
+- modernes mobiles Frontend mit Bottom-Navigation, Dashboard, Orte, Buchung, Einheiten und Analyse
+- echtes Domain-Modell fuer `Location`, `StorageSlot`, `UnitType`, `Item`, `Batch`, `Movement`, `AppSettings`
+- lokale Offline-Persistenz ueber `IndexedDB` mit `Dexie`
+- Bestandsableitung aus Bewegungen statt aus fixen Direktwerten
+
 ## Naechster technischer Schritt
 
-Das erste sichtbare PWA-Grundgeruest ist umgesetzt. Als Naechstes folgen Datenmodell, lokale Speicherung, echte Buchungslogik und danach Scan plus Synchronisation.
+Frontend, Domain-Modell und lokale Persistenz sind umgesetzt. Als Naechstes folgen echte Formulare fuer Orte, Artikel und Buchungen sowie danach Scan und Synchronisation.

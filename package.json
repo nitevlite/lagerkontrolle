@@ -9,6 +9,7 @@
     "preview": "vite preview --host"
   },
   "dependencies": {
+    "dexie": "^4.0.11",
     "@ionic/pwa-elements": "^3.3.0",
     "@ionic/react": "^8.7.0",
     "ionicons": "^7.4.0",

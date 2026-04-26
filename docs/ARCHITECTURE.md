@@ -2,15 +2,16 @@
 
 ## Empfehlung
 
-Fuer das MVP empfehle ich eine installierbare PWA mit lokalem Offline-Speicher und self-hosted Synchronisation.
+Die aktuelle Implementierung ist eine installierbare PWA mit lokalem Offline-Speicher und vorbereiteter Repository-Schicht fuer spaetere Synchronisation.
 
 Empfohlener Open-Source-Stack:
 
 - `React` + `TypeScript`
 - `Vite`
 - `Ionic` fuer mobile, schnelle UI-Bausteine
-- `PouchDB` im Geraet fuer lokale Daten und Replikation
-- `Apache CouchDB` self-hosted fuer Mehrgeraete-Sync
+- `Dexie` auf `IndexedDB` fuer lokale Offline-Daten
+- Repository-Schicht als Trennung zwischen UI und Speicherung
+- spaeterer Sync-Adapter fuer Mehrgeraete-Synchronisation
 - `ZXing` oder `BarcodeDetector` fuer Barcode- und QR-Scan
 - `Workbox` fuer Offline-Caching
 - `Vitest` + `Testing Library`
@@ -20,19 +21,26 @@ Empfohlener Open-Source-Stack:
 - kostenlos und Open Source
 - direkt auf Handy und Tablet installierbar
 - sehr schnelle Iteration
-- offline mit spaeterer automatischer Replikation
+- offline schon heute ohne Zusatzinfrastruktur
+- klarer Migrationspfad zu spaeterem Sync durch getrennte Repository-Schicht
 - spaeter per `Capacitor` als native Android-App verpackbar
 - Scan ist im Web-Stack realistisch umsetzbar
 
 ## Alternative Optionen
 
-### Option A: PWA mit CouchDB-Sync
+### Aktueller Stand
 
-Beste Wahl fuer diesen Anwendungsfall. Daten liegen lokal auf dem Geraet und werden bei Verbindung mit einem self-hosted Server abgeglichen.
+Die App speichert derzeit lokal in `IndexedDB`. Der aktuelle Fokus liegt bewusst auf Bedienung, Datenmodell und robuster Offline-Nutzung. Synchronisation ist weiter geplant, aber noch nicht implementiert.
 
-### Option B: PWA nur lokal ohne Sync
+### Naechste Architekturentscheidung
 
-Fuer Einzelnutzung waere das einfacher, passt aber nicht mehr zu den aktuellen Anforderungen.
+Vor Ticket `#8` muss entschieden werden, ob der Sync ueber:
+
+- einen eigenen API-Dienst
+- `CouchDB`-kompatible Replikation
+- oder einen anderen self-hosted Sync-Ansatz
+
+laufen soll.
 
 ### Option C: Flutter
 
@@ -43,14 +51,14 @@ Technisch stark, aber fuer den schnellen Open-Source-Start schwerer und langsame
 - `Location`: Ort wie `Teelager`
 - `StorageSlot`: Regal oder Lade mit Nummer innerhalb eines Orts
 - `Item`: Produkt, Gebinde oder Material
-- `StockEntry`: aktuelle Menge eines Artikels an einem Slot
+- `UnitType`: frei definierbare Einheit
 - `Batch`: Charge und Ablaufdatum
 - `Movement`: Zugang, Abgang, Umbuchung, Korrektur
-- `UserDevice`: Nutzer oder Geraet fuer Sync-Nachvollziehbarkeit
+- `AppSettings`: Warnfenster und Wiedervorlage
 
 ## Wichtige Architekturentscheidung
 
-Bestand sollte aus Bewegungen ableitbar sein und nicht nur als direkter Gesamtwert gepflegt werden. Das ist fuer Audit, Konfliktbehandlung, Inventur und Mehrgeraete-Sync deutlich robuster.
+Bestand wird aus Bewegungen abgeleitet und nicht als direkter Gesamtwert gepflegt. Das ist fuer Audit, spaetere Konfliktbehandlung, Inventur und Mehrgeraete-Sync deutlich robuster.
 
 ## UX-Prinzipien
 

@@ -9,6 +9,7 @@
 - `Batch`: Charge mit Ablaufdatum
 - `Movement`: Zugang, Abgang, Umbuchung oder Korrektur
 - `StockSnapshot`: abgeleiteter aktueller Bestand je Slot, Artikel und Charge
+- `AppSettings`: globale Warnfenster und Wiedervorlage
 
 ## Wichtige Regeln
 
@@ -18,6 +19,7 @@
 - Ablaufdatum und Charge sind fuer fast alle Artikel relevant
 - Bestand wird bevorzugt aus `Movement` berechnet
 - Umbuchung ist fachlich zwei Bewegungen mit gemeinsamer Referenz
+- Warnungen vor Ablauf nutzen ein globales Standardfenster und eine globale Wiedervorlage
 
 ## Beispiel
 

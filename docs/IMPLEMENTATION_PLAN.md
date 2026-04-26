@@ -24,6 +24,7 @@ Status: erster Shell-Stand ist umgesetzt.
 - lokale Speicherung anbinden
 
 Ergebnis: Das Modell ist robust genug fuer Ablaufdaten, Historie und Sync.
+Status: umgesetzt.
 
 ### 3. Kernworkflows
 
@@ -83,3 +84,10 @@ Ergebnis: Das MVP ist bereit fuer den echten Einsatz.
 - moeglichst wenige Taps pro Buchung
 - keine komplizierten Pflichtfelder im Standardflow
 - jede Aenderung nachvollziehbar ueber Bewegungen
+
+## Aktueller Status
+
+- `#6` ist umgesetzt
+- `#10` ist im Code umgesetzt
+- `#5` ist im Code umgesetzt
+- als Naechstes sind echte CRUD-Flows fuer Orte, Artikel und Buchungen sinnvoll

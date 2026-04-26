@@ -3,7 +3,7 @@
 ## P0
 
 - Projektgeruest fuer PWA aufsetzen
-- klickbares mobiles Frontend mit Demo-Daten
+- klickbares mobiles Frontend auf echte lokale Daten umstellen
 - Datenmodell fuer Ort, Regal oder Lade, Artikel, Bestand und Bewegung anlegen
 - Einheitentypen anlegen und verwalten
 - Ort anlegen und bearbeiten
