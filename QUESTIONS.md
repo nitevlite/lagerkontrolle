@@ -1,24 +1,21 @@
 # Offene Fragen
 
-Diese Punkte muessen wir als Naechstes gemeinsam festziehen:
+Die Grundrichtung ist geklaert. Diese Detailfragen bleiben noch offen:
 
-1. Wie tief ist deine Lagerstruktur: nur Orte oder auch Bereich, Regal, Fach?
-2. Arbeiten mehrere Personen gleichzeitig mit denselben Daten?
-3. Muss die App spaeter zwischen mehreren Geraeten synchronisieren?
-4. Brauchst du Barcode- oder QR-Scanning von Anfang an?
-5. Sind Ablaufdaten nur fuer manche Artikel relevant oder fast fuer alle?
-6. Sollen Mengen immer ganzzahlig sein oder auch mit Dezimalwerten?
-7. Brauchst du Fotos pro Ort oder Artikel?
-8. Soll es nur eine schnelle Bestandsfuehrung sein oder auch Bestellvorschlaege, Mindestbestaende und Inventuren?
-9. Gibt es bestehende Listen in Excel, die wir spaeter importieren muessen?
-10. Soll die App nur intern laufen oder spaeter auch im Browser am PC nutzbar sein?
+1. Sollen Mengen nur ganzzahlig sein oder auch Dezimalwerte wie `1,5` erlauben?
+2. Brauchst du Fotos fuer Artikel oder Orte schon im MVP?
+3. Soll die App im MVP auch bequem am PC im Browser nutzbar sein?
+4. Sind Mindestbestaende schon im MVP wichtig oder erst spaeter?
+5. Brauchst du einen Inventurmodus im MVP oder reicht normale Bestandsbuchung?
+6. Sollen mehrere Nutzer nur synchronisieren oder auch eigene Rollen und Rechte bekommen?
+7. Wie soll ein Artikel identifiziert werden, wenn kein Barcode vorhanden ist?
 
-## Aktuelle Arbeitshypothese
+## Bereits entschieden
 
-Bis zu deiner Rueckmeldung plane ich mit:
-
-- mobile-first PWA
-- offline-first
-- ein Unternehmen, mehrere Orte
-- manuelle Erfassung zuerst
-- spaetere optionale Synchronisation
+- Struktur: `Ort -> Regal oder Lade`
+- eine Person zuerst, spaeter mehrere
+- Synchronisation direkt im MVP
+- Barcode- oder QR-Scan direkt im MVP
+- Ablaufdaten fuer fast alle Artikel wichtig
+- Excel-Import spaeter vorgesehen
+- mobile-first PWA mit frueh sichtbarem Frontend

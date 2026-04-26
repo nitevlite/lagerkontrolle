@@ -3,26 +3,30 @@
 ## P0
 
 - Projektgeruest fuer PWA aufsetzen
-- Datenmodell fuer Ort, Artikel, Bestand und Bewegung anlegen
+- klickbares mobiles Frontend mit Demo-Daten
+- Datenmodell fuer Ort, Regal oder Lade, Artikel, Bestand und Bewegung anlegen
 - Ort anlegen und bearbeiten
+- Regal oder Lade pro Ort anlegen und nummerieren
 - Artikel anlegen und bearbeiten
 - Bestandsbewegung `+` und `-`
 - Umbuchung zwischen Orten
+- Synchronisation zwischen mehreren Geraeten
+- Barcode- oder QR-Scan
+- Ablaufdaten und Chargen
 - Suche und Filter
 - Offline-Speicherung
 
 ## P1
 
-- Chargen und Ablaufdaten
 - Favoriten und letzte Eingaben
 - Warnliste fuer kritische Ablaufdaten
 - CSV-Export
 - Startbildschirm mit wichtigsten Orten
+- Konfliktanzeige oder Konfliktloesung fuer Sync
 
 ## P2
 
-- Barcode- oder QR-Scan
 - einfache Benutzerverwaltung
-- Synchronisation zwischen Geraeten
 - Inventurmodus
 - Mindestbestand und Warnungen
+- Excel-Import

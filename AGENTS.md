@@ -47,7 +47,7 @@ Pull requests should include a short summary, testing notes, linked issue if ava
 
 ## Documentation Maintenance
 
-All Markdown documentation must stay current with the code and product decisions. This includes `README.md`, `PLAN.md`, `QUESTIONS.md`, everything under `docs/`, and `.github/pull_request_template.md`. When Codex changes scope, architecture, workflows, setup, or backlog status, it must update the affected Markdown files in the same work stream.
+All Markdown documentation must stay current with the code and product decisions. This includes `README.md`, `PLAN.md`, `QUESTIONS.md`, everything under `docs/`, and `.github/pull_request_template.md`. When Codex changes scope, architecture, workflows, setup, backlog status, or GitHub ticket planning, it must update the affected Markdown files in the same work stream.
 
 ## Configuration Notes
 

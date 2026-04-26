@@ -2,41 +2,55 @@
 
 ## Zielbild
 
-Wir bauen zuerst ein extrem schnelles MVP fuer mobile Erfassung. Prioritaet haben Bediengeschwindigkeit, Offline-Faehigkeit, klare Lagerorte und einfache Mengenbuchungen.
+Wir bauen zuerst ein extrem schnelles MVP fuer mobile Erfassung. Prioritaet haben Bediengeschwindigkeit, Offline-Faehigkeit, klare Lagerorte mit Regalen oder Laden, Scan-Unterstuetzung, Ablaufdaten und direkte Synchronisation zwischen mehreren Geraeten.
 
-## Phase 1: Fachliches Modell festziehen
+## Phase 1: Sichtbares Frontend und Grundnavigation
 
-- Lagerstruktur definieren: Standort, Bereich, Regal, Fach
-- Artikeltypen klaeren: Produkt, Gebinde, Leergut, Material
-- Pflichtfelder fuer Ablaufdatum, Charge, Einheit und Mindestbestand festlegen
-- Kernworkflows mit dir validieren
+- PWA-Grundgeruest mit mobiler UI aufsetzen
+- Startseite, Ortsliste und Artikelliste klickbar machen
+- Demo-Daten anzeigen, damit du frueh am Handy testen kannst
+- Installierbarkeit und Offline-Start pruefen
 
-## Phase 2: MVP bauen
+## Phase 2: Fachliches Modell und lokale Daten
 
-- installierbare PWA aufsetzen
-- lokale Offline-Datenbank anbinden
-- Orte und Artikel anlegen
-- Bestandsbewegungen buchen
-- Chargen und Ablaufdaten anzeigen
-- Suche, Filter und Favoriten einbauen
+- Datenmodell fuer Ort, Regal oder Lade, Artikel, Charge und Bewegung festziehen
+- lokale Datenbank anbinden
+- Orte, Regale oder Laden und Artikel anlegen
+- Bestandsbewegungen als Historie statt nur als Direktwert speichern
 
-## Phase 3: Praxistest im Betrieb
+## Phase 3: Kernworkflows
 
-- echte Lagerorte importieren
+- schnelle Buchung fuer Zugang, Abgang und Umbuchung
+- Ablaufdaten und Chargen erfassen
+- Suche, Filter, Favoriten und letzte Aktionen einbauen
+- Scan-Flow fuer Barcode oder QR integrieren
+
+## Phase 4: Synchronisation im MVP
+
+- self-hosted Sync-Schicht anbinden
+- Nutzerkennung und Konfliktstrategie definieren
+- Datenaustausch zwischen zwei Geraeten pruefen
+- Offline-Aenderungen spaeter sauber zusammenfuehren
+
+## Phase 5: Praxistest im Betrieb
+
+- echte Lagerorte erfassen
+- erste echte Artikelstammdaten uebernehmen
 - 3 bis 5 typische Arbeitsablaeufe testen
-- Eingabeschritte kuerzen
-- Fehlerquellen und fehlende Felder beseitigen
+- Eingabeschritte kuerzen und Fehlerquellen beseitigen
 
-## Phase 4: Erweiterungen
+## Phase 6: Erweiterungen
 
-- Barcode- oder QR-Scan
-- Mehrbenutzer-Sync
-- Rollen und Rechte
-- Export, Inventurmodus, Warnungen
+- Excel-Import
+- Warnungen fuer Mindestbestand und Ablaufdatum
+- Inventurmodus
+- Export und Auswertungen
 
 ## Erfolgsmetriken
 
 - Standardbuchung in unter 10 Sekunden
 - Neue Position in unter 20 Sekunden anlegbar
 - volle Nutzbarkeit ohne Internet
+- Scan zu Treffer in wenigen Sekunden
+- Aenderungen zwischen mehreren Geraeten synchronisiert
 - klare Sicht auf kritische Ablaufdaten und Fehlbestaende
