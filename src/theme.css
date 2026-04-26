@@ -483,6 +483,10 @@ ion-content.shell::part(scroll) {
   padding: 0.1rem 0 0.15rem;
 }
 
+.booking-inline-actions {
+  margin-top: 0;
+}
+
 .booking-form-stack .unit-form,
 .booking-form-stack .compact-field,
 .booking-form-stack .empty-state {

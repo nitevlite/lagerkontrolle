@@ -125,7 +125,7 @@ function App() {
   const [bookingNewBatchCodeDraft, setBookingNewBatchCodeDraft] = useState("");
   const [bookingNewBatchExpiryDraft, setBookingNewBatchExpiryDraft] = useState("");
   const [bookingAdjustmentDirection, setBookingAdjustmentDirection] = useState<"increase" | "decrease">("increase");
-  const [scanMode, setScanMode] = useState<"booking-item" | "item-barcode" | null>(null);
+  const [scanMode, setScanMode] = useState<"booking-item" | "item-barcode" | "booking-new-item-barcode" | null>(null);
   const [scanMessage, setScanMessage] = useState<string | null>(null);
   const [scanInputDraft, setScanInputDraft] = useState("");
   const [unitName, setUnitName] = useState("");
@@ -933,6 +933,12 @@ function App() {
       return;
     }
 
+    if (scanMode === "booking-new-item-barcode") {
+      setBookingNewItemBarcodeDraft(rawValue);
+      closeScan();
+      return;
+    }
+
     if (scanMode === "booking-item") {
       const matchedItem = itemSummaries.find((item) => item.barcode === rawValue);
       if (matchedItem) {
@@ -946,7 +952,7 @@ function App() {
     }
   }
 
-  function openScan(mode: "booking-item" | "item-barcode") {
+  function openScan(mode: "booking-item" | "item-barcode" | "booking-new-item-barcode") {
     setScanMode(mode);
     setScanInputDraft("");
     setScanMessage(null);
@@ -2114,6 +2120,15 @@ function App() {
                                 onIonInput={(event) => setBookingNewItemBarcodeDraft(String(event.detail.value ?? ""))}
                               />
                             </IonItem>
+                            <div className="form-actions booking-inline-actions">
+                              <IonButton
+                                fill="outline"
+                                className="primary-button"
+                                onClick={() => openScan("booking-new-item-barcode")}
+                              >
+                                Barcode scannen
+                              </IonButton>
+                            </div>
                             <IonItem className="compact-field">
                               <IonLabel position="stacked">Niedriger Bestand ab</IonLabel>
                               <IonInput
