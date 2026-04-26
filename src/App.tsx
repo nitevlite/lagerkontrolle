@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  IonAlert,
   IonApp,
   IonBadge,
   IonButton,
@@ -25,7 +26,8 @@ import {
   warningOutline
 } from "ionicons/icons";
 import { ensureSeedData, resetSeedData } from "./data/bootstrap";
-import { addUnitType, loadSnapshot, updateSettings } from "./data/repositories";
+import { addLocation, addStorageSlot, addUnitType, loadSnapshot, updateSettings } from "./data/repositories";
+import { seedSnapshot } from "./domain/seed";
 import { buildViewModel, type ViewKey } from "./domain/selectors";
 import "./theme.css";
 
@@ -49,28 +51,47 @@ function App() {
   const [expiryFilterDays, setExpiryFilterDays] = useState<number>(10);
   const [warningDaysDraft, setWarningDaysDraft] = useState("10");
   const [reminderDaysDraft, setReminderDaysDraft] = useState("3");
+  const [locationName, setLocationName] = useState("");
+  const [slotKind, setSlotKind] = useState<"shelf" | "drawer">("shelf");
+  const [slotNumber, setSlotNumber] = useState("1");
   const [unitName, setUnitName] = useState("");
   const [unitShortCode, setUnitShortCode] = useState("");
   const [unitDescription, setUnitDescription] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [refreshToken, setRefreshToken] = useState(0);
   const [snapshotState, setSnapshotState] = useState<Awaited<ReturnType<typeof loadSnapshot>> | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     async function run() {
-      setIsLoading(true);
-      await ensureSeedData();
-      const snapshot = await loadSnapshot();
-      if (cancelled) {
-        return;
+      try {
+        setIsLoading(true);
+        setLoadError(null);
+        await ensureSeedData();
+        const snapshot = await loadSnapshot();
+        if (cancelled) {
+          return;
+        }
+        setSnapshotState(snapshot);
+        setWarningDaysDraft(String(snapshot.settings.expiryWarningDays));
+        setReminderDaysDraft(String(snapshot.settings.reminderRepeatDays));
+        setSelectedLocationId((current) => current || snapshot.locations[0]?.id || "");
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+        setSnapshotState(seedSnapshot);
+        setWarningDaysDraft(String(seedSnapshot.settings.expiryWarningDays));
+        setReminderDaysDraft(String(seedSnapshot.settings.reminderRepeatDays));
+        setSelectedLocationId((current) => current || seedSnapshot.locations[0]?.id || "");
+        setLoadError(error instanceof Error ? error.message : "Lokale Daten konnten nicht geladen werden.");
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
-      setSnapshotState(snapshot);
-      setWarningDaysDraft(String(snapshot.settings.expiryWarningDays));
-      setReminderDaysDraft(String(snapshot.settings.reminderRepeatDays));
-      setSelectedLocationId((current) => current || snapshot.locations[0]?.id || "");
-      setIsLoading(false);
     }
 
     void run();
@@ -117,6 +138,31 @@ function App() {
     setRefreshToken((current) => current + 1);
   }
 
+  async function handleSaveLocation() {
+    const trimmed = locationName.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    await addLocation({ name: trimmed });
+    setLocationName("");
+    setRefreshToken((current) => current + 1);
+  }
+
+  async function handleSaveSlot() {
+    if (!currentLocation) {
+      return;
+    }
+
+    await addStorageSlot({
+      locationId: currentLocation.id,
+      kind: slotKind,
+      number: Math.max(1, Number(slotNumber || "1"))
+    });
+    setSlotNumber("1");
+    setRefreshToken((current) => current + 1);
+  }
+
   async function handleSaveUnit() {
     const trimmedName = unitName.trim();
     const trimmedCode = unitShortCode.trim();
@@ -149,6 +195,18 @@ function App() {
   return (
     <IonApp>
       <IonPage>
+        <IonAlert
+          isOpen={Boolean(loadError)}
+          header="Lokaler Speicher"
+          message={`${loadError ?? ""} Die App zeigt vorerst Seed-Daten an.`}
+          buttons={[
+            {
+              text: "OK",
+              role: "cancel",
+              handler: () => setLoadError(null)
+            }
+          ]}
+        />
         <IonHeader translucent>
           <IonToolbar className="topbar">
             <div className="topbar__main">
@@ -295,6 +353,27 @@ function App() {
                     <section className="surface">
                       <header className="section-header">
                         <div>
+                          <h2>Neu anlegen</h2>
+                        </div>
+                      </header>
+                      <div className="unit-form">
+                        <IonItem className="compact-field">
+                          <IonLabel position="stacked">Neuer Ort</IonLabel>
+                          <IonInput
+                            value={locationName}
+                            placeholder="z. B. Kuehllager"
+                            onIonInput={(event) => setLocationName(String(event.detail.value ?? ""))}
+                          />
+                        </IonItem>
+                        <IonButton className="primary-button" onClick={handleSaveLocation}>
+                          Ort speichern
+                        </IonButton>
+                      </div>
+                    </section>
+
+                    <section className="surface">
+                      <header className="section-header">
+                        <div>
                           <h1>Orte</h1>
                           <span>{viewModel.locations.length} aktiv</span>
                         </div>
@@ -319,19 +398,66 @@ function App() {
                     </section>
 
                     {currentLocation ? (
-                      <section className="surface">
-                        <header className="section-header">
-                          <div>
-                            <h2>{currentLocation.name}</h2>
+                      <>
+                        <section className="surface">
+                          <header className="section-header">
+                            <div>
+                              <h2>Slot anlegen</h2>
+                              <span>{currentLocation.name}</span>
+                            </div>
+                          </header>
+                          <div className="unit-form">
+                            <IonItem className="compact-field">
+                              <IonLabel position="stacked">Typ</IonLabel>
+                              <IonInput
+                                value={slotKind === "shelf" ? "Regal" : "Lade"}
+                                readonly
+                                onClick={() => setSlotKind((current) => (current === "shelf" ? "drawer" : "shelf"))}
+                              />
+                            </IonItem>
+                            <IonItem className="compact-field">
+                              <IonLabel position="stacked">Nummer</IonLabel>
+                              <IonInput
+                                type="number"
+                                value={slotNumber}
+                                onIonInput={(event) => setSlotNumber(String(event.detail.value ?? ""))}
+                              />
+                            </IonItem>
+                            <IonButton className="primary-button" onClick={handleSaveSlot}>
+                              {slotKind === "shelf" ? "Regal speichern" : "Lade speichern"}
+                            </IonButton>
+                          </div>
+                          <div className="filter-pills">
+                            <button
+                              type="button"
+                              className={slotKind === "shelf" ? "pill pill--active" : "pill"}
+                              onClick={() => setSlotKind("shelf")}
+                            >
+                              Regal
+                            </button>
+                            <button
+                              type="button"
+                              className={slotKind === "drawer" ? "pill pill--active" : "pill"}
+                              onClick={() => setSlotKind("drawer")}
+                            >
+                              Lade
+                            </button>
+                          </div>
+                        </section>
+
+                        <section className="surface">
+                          <header className="section-header">
+                            <div>
+                              <h2>{currentLocation.name}</h2>
                             <span>
                               {currentLocation.itemCount} Artikel · {currentLocation.lastMovementLabel}
                             </span>
                           </div>
                           <IonBadge color="light">{currentLocation.occupancyPercent}% belegt</IonBadge>
                         </header>
-                        <div className="list">
-                          {visibleStocks.map((line) => (
-                            <article key={line.id} className="list-row">
+                          <div className="list">
+                            {visibleStocks.map((line) => (
+                              <article key={line.id} className="list-row">
                               <div className="list-row__main">
                                 <strong>
                                   {line.slotName} · {line.itemName}
@@ -347,9 +473,10 @@ function App() {
                                 </small>
                               </div>
                             </article>
-                          ))}
-                        </div>
-                      </section>
+                            ))}
+                          </div>
+                        </section>
+                      </>
                     ) : null}
                   </div>
                 ) : null}

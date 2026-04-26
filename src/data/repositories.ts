@@ -40,6 +40,37 @@ export async function addUnitType(input: {
   });
 }
 
+export async function addLocation(input: { name: string }) {
+  const name = input.name.trim();
+  if (!name) {
+    return;
+  }
+
+  await db.locations.add({
+    id: `loc-${crypto.randomUUID()}`,
+    name
+  });
+}
+
+export async function addStorageSlot(input: {
+  locationId: string;
+  kind: "shelf" | "drawer";
+  number: number;
+}) {
+  const number = Math.max(1, input.number);
+  const label = input.kind === "shelf" ? `Regal ${number}` : `Lade ${number}`;
+  const existingCount = await db.slots.where("locationId").equals(input.locationId).count();
+
+  await db.slots.add({
+    id: `slot-${crypto.randomUUID()}`,
+    locationId: input.locationId,
+    kind: input.kind,
+    number,
+    label,
+    sortOrder: existingCount + 1
+  });
+}
+
 export async function updateSettings(patch: Partial<Omit<AppSettings, "id">>) {
   const current =
     (await db.settings.get("default")) ??

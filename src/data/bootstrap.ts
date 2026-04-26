@@ -7,29 +7,23 @@ export async function ensureSeedData() {
     return;
   }
 
-  const tables = [db.locations, db.slots, db.unitTypes, db.items, db.batches, db.movements, db.settings];
-  await db.transaction("rw", tables, async () => {
-    await db.locations.bulkAdd(seedSnapshot.locations);
-    await db.slots.bulkAdd(seedSnapshot.slots);
-    await db.unitTypes.bulkAdd(seedSnapshot.unitTypes);
-    await db.items.bulkAdd(seedSnapshot.items);
-    await db.batches.bulkAdd(seedSnapshot.batches);
-    await db.movements.bulkAdd(seedSnapshot.movements);
-    await db.settings.put(seedSnapshot.settings);
-  });
+  await db.locations.bulkPut(seedSnapshot.locations);
+  await db.slots.bulkPut(seedSnapshot.slots);
+  await db.unitTypes.bulkPut(seedSnapshot.unitTypes);
+  await db.items.bulkPut(seedSnapshot.items);
+  await db.batches.bulkPut(seedSnapshot.batches);
+  await db.movements.bulkPut(seedSnapshot.movements);
+  await db.settings.put(seedSnapshot.settings);
 }
 
 export async function resetSeedData() {
-  const tables = [db.locations, db.slots, db.unitTypes, db.items, db.batches, db.movements, db.settings];
-  await db.transaction("rw", tables, async () => {
-    await db.locations.clear();
-    await db.slots.clear();
-    await db.unitTypes.clear();
-    await db.items.clear();
-    await db.batches.clear();
-    await db.movements.clear();
-    await db.settings.clear();
-  });
+  await db.locations.clear();
+  await db.slots.clear();
+  await db.unitTypes.clear();
+  await db.items.clear();
+  await db.batches.clear();
+  await db.movements.clear();
+  await db.settings.clear();
 
   await ensureSeedData();
 }
