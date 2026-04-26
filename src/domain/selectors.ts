@@ -46,6 +46,15 @@ export type ExpiryAlert = {
   reminderDueInDays: number;
 };
 
+export type LowStockAlert = {
+  id: string;
+  itemName: string;
+  quantity: number;
+  minimumQuantity: number;
+  unitShortCode: string;
+  locationName: string;
+};
+
 export type MovementSummary = {
   id: string;
   direction: "in" | "out" | "transfer";
@@ -70,6 +79,7 @@ export type AppViewModel = {
   locations: LocationSummary[];
   stockLines: StockLine[];
   expiryAlerts: ExpiryAlert[];
+  lowStockAlerts: LowStockAlert[];
   recentMovements: MovementSummary[];
   dashboardStats: DashboardStat[];
   analyticsMetrics: AnalyticsMetric[];
@@ -197,6 +207,38 @@ export function buildViewModel(snapshot: DomainSnapshot): AppViewModel {
     })
     .sort((left, right) => left.daysUntilExpiry - right.daysUntilExpiry);
 
+  const lowStockAlerts: LowStockAlert[] = snapshot.items
+    .map((item) => {
+      const relatedBatches = snapshot.batches.filter((batch) => batch.itemId === item.id);
+      const totalQuantity = relatedBatches.reduce((sum, batch) => {
+        const quantity = stockLines
+          .filter((line) => line.id.endsWith(`:${batch.id}`))
+          .reduce((lineSum, line) => lineSum + line.quantity, 0);
+        return sum + quantity;
+      }, 0);
+
+      if (item.lowStockThreshold <= 0 || totalQuantity > item.lowStockThreshold) {
+        return null;
+      }
+
+      const locationName =
+        locationById.get(item.preferredLocationId ?? "")?.name ??
+        stockLines.find((line) => line.itemName === item.name)?.locationName ??
+        "kein Ort";
+      const unitShortCode = unitById.get(item.unitTypeId)?.shortCode ?? "?";
+
+      return {
+        id: item.id,
+        itemName: item.name,
+        quantity: totalQuantity,
+        minimumQuantity: item.lowStockThreshold,
+        unitShortCode,
+        locationName
+      };
+    })
+    .filter((item): item is LowStockAlert => Boolean(item))
+    .sort((left, right) => left.quantity - right.quantity);
+
   const locations: LocationSummary[] = snapshot.locations.map((location) => {
     const locationSlots = snapshot.slots.filter((slot) => slot.locationId === location.id);
     const activeLines = stockLines.filter((line) => line.locationId === location.id);
@@ -246,8 +288,7 @@ export function buildViewModel(snapshot: DomainSnapshot): AppViewModel {
 
   const criticalCount = expiryAlerts.filter((alert) => alert.daysUntilExpiry <= 5).length;
   const warningCount = expiryAlerts.filter((alert) => alert.daysUntilExpiry <= snapshot.settings.expiryWarningDays).length;
-  const lowStockCount = stockLines.filter((line) => line.quantity <= 5).length;
-  const highOccupancy = locations.filter((location) => location.occupancyPercent >= 80).length;
+  const lowStockCount = lowStockAlerts.length;
 
   const dashboardStats: DashboardStat[] = [
     {
@@ -268,7 +309,7 @@ export function buildViewModel(snapshot: DomainSnapshot): AppViewModel {
       id: "low-stock",
       label: "Niedrige Bestände",
       value: String(lowStockCount),
-      detail: "<= 5 Einheiten",
+      detail: "unter Artikelgrenze",
       tone: "neutral"
     },
     {
@@ -284,13 +325,6 @@ export function buildViewModel(snapshot: DomainSnapshot): AppViewModel {
       value: "24",
       detail: "heute",
       tone: "neutral"
-    },
-    {
-      id: "occupancy",
-      label: "Volle Orte",
-      value: String(highOccupancy),
-      detail: ">= 80% belegt",
-      tone: "warning"
     }
   ];
 
@@ -317,6 +351,7 @@ export function buildViewModel(snapshot: DomainSnapshot): AppViewModel {
     locations,
     stockLines,
     expiryAlerts,
+    lowStockAlerts,
     recentMovements,
     dashboardStats,
     analyticsMetrics

@@ -28,6 +28,7 @@ export type Item = {
   barcode?: string;
   trackExpiry: boolean;
   preferredLocationId?: EntityId;
+  lowStockThreshold: number;
 };
 
 export type Batch = {

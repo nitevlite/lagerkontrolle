@@ -23,13 +23,13 @@ const unitTypes: UnitType[] = [
 ];
 
 const items: Item[] = [
-  { id: "item-camomile", name: "Kamillentee 20er", unitTypeId: "unit-pack", barcode: "900001", trackExpiry: true, preferredLocationId: "loc-tea" },
-  { id: "item-peppermint", name: "Pfefferminztee 20er", unitTypeId: "unit-pack", barcode: "900002", trackExpiry: true, preferredLocationId: "loc-tea" },
-  { id: "item-green", name: "Grüntee Bio", unitTypeId: "unit-pack", barcode: "900003", trackExpiry: true, preferredLocationId: "loc-tea" },
-  { id: "item-honey", name: "Honigportionen", unitTypeId: "unit-box", barcode: "900004", trackExpiry: true, preferredLocationId: "loc-tea" },
-  { id: "item-ginger", name: "Ingwersirup", unitTypeId: "unit-bottle", barcode: "900005", trackExpiry: true, preferredLocationId: "loc-syrup" },
-  { id: "item-raspberry", name: "Himbeersirup", unitTypeId: "unit-bottle", barcode: "900006", trackExpiry: true, preferredLocationId: "loc-syrup" },
-  { id: "item-napkins", name: "Serviettenpaket", unitTypeId: "unit-pack", barcode: "900007", trackExpiry: false, preferredLocationId: "loc-service" }
+  { id: "item-camomile", name: "Kamillentee 20er", unitTypeId: "unit-pack", barcode: "900001", trackExpiry: true, preferredLocationId: "loc-tea", lowStockThreshold: 10 },
+  { id: "item-peppermint", name: "Pfefferminztee 20er", unitTypeId: "unit-pack", barcode: "900002", trackExpiry: true, preferredLocationId: "loc-tea", lowStockThreshold: 8 },
+  { id: "item-green", name: "Grüntee Bio", unitTypeId: "unit-pack", barcode: "900003", trackExpiry: true, preferredLocationId: "loc-tea", lowStockThreshold: 8 },
+  { id: "item-honey", name: "Honigportionen", unitTypeId: "unit-box", barcode: "900004", trackExpiry: true, preferredLocationId: "loc-tea", lowStockThreshold: 6 },
+  { id: "item-ginger", name: "Ingwersirup", unitTypeId: "unit-bottle", barcode: "900005", trackExpiry: true, preferredLocationId: "loc-syrup", lowStockThreshold: 3 },
+  { id: "item-raspberry", name: "Himbeersirup", unitTypeId: "unit-bottle", barcode: "900006", trackExpiry: true, preferredLocationId: "loc-syrup", lowStockThreshold: 3 },
+  { id: "item-napkins", name: "Serviettenpaket", unitTypeId: "unit-pack", barcode: "900007", trackExpiry: false, preferredLocationId: "loc-service", lowStockThreshold: 4 }
 ];
 
 const batches: Batch[] = [

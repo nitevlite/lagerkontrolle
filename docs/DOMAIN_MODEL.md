@@ -7,6 +7,7 @@
 - `StorageSlot.kind`: frei definierbarer Slot-Typ wie `Regal`, `Lade`, `Kiste`
 - `Item`: ein Artikel, Gebinde, Gefaess oder Verbrauchsmaterial
 - `Item.preferredLocationId`: bevorzugter Standard-Ort fuer schnellere Buchung
+- `Item.lowStockThreshold`: Schwellwert, ab dem der Bestand als niedrig gilt
 - `UnitType`: frei definierbare Einheit wie `Stk`, `Kiste`, `Flasche`
 - `Batch`: Charge mit Ablaufdatum
 - `Movement`: Zugang, Abgang, Umbuchung oder Korrektur
@@ -20,6 +21,7 @@
 - Ein `Item` kann an mehreren Slots liegen
 - Jedes `Item` referenziert genau einen `UnitType`
 - Ein `Item` kann einen bevorzugten Ort fuer schnellere Auswahl im Buchungsflow haben
+- Ein `Item` kann einen eigenen Mindestbestand fuer Warnungen haben
 - Ablaufdatum und Charge sind fuer fast alle Artikel relevant
 - Bestand wird bevorzugt aus `Movement` berechnet
 - Umbuchung ist fachlich zwei Bewegungen mit gemeinsamer Referenz

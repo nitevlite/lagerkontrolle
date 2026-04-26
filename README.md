@@ -33,6 +33,7 @@ Warum das sinnvoll ist:
 - Regale oder Laden pro Ort nummerieren, z. B. `Regal 1`, `Lade 4`
 - Artikel, Behaelter, Gebinde und Verbrauchsmaterial erfassen
 - freie Einheitentypen wie `Stk`, `Packung`, `Kiste`, `Flasche` anlegen
+- pro Artikel einen Mindestbestand definieren
 - Mengen schnell buchen: `+`, `-`, Umbuchung
 - Ablaufdaten und Chargen fuer fast alle Artikel verwalten
 - Vorwarnungen vor Ablauf anzeigen, Standard `10 Tage vorher`
@@ -75,11 +76,12 @@ npm run build
 - Artikel mit Einheit, Barcode, Ablaufpflicht und bevorzugtem Ort koennen angelegt und bearbeitet werden
 - Chargen mit Ablaufdatum koennen pro Artikel gepflegt werden
 - Buchung speichert jetzt echte lokale Bewegungen fuer Zugang, Abgang, Umbuchung und Korrektur
-- Buchung fuehrt mobil direkt ueber Buchungsdaten mit Ort-Dropdown, Slot, Charge und Menge
+- Buchung fuehrt mobil direkt ueber Buchungsdaten mit Artikel-Dropdown, Ort-Dropdown, Slot, Charge und Menge
 - Scan ist im Buchungsflow und im Artikel-Barcodefeld aktiv, mit manueller Eingabe als Fallback falls Live-Scan nicht verfuegbar ist
 - Favoriten fuer Orte und Artikel bleiben lokal gespeichert
 - Buchung und Dashboard priorisieren Favoriten und zuletzt genutzte Eintraege
 - Analyse zeigt mobile Charts fuer Bewegungen, Ablauf-Verteilung, Top-Orte und Top-Artikel plus priorisierte Risiko-Liste
+- Dashboard zeigt Ablaufwarnungen und niedrige Bestaende getrennt
 - echtes Domain-Modell fuer `Location`, `StorageSlot`, `UnitType`, `Item`, `Batch`, `Movement`, `AppSettings`
 - lokale Offline-Persistenz ueber `IndexedDB` mit `Dexie`
 - Bestandsableitung aus Bewegungen statt aus fixen Direktwerten

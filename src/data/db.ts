@@ -78,6 +78,26 @@ class LagerkontrolleDatabase extends Dexie {
           });
         }
       });
+    this.version(4)
+      .stores({
+        locations: "id, name",
+        slots: "id, locationId, sortOrder",
+        unitTypes: "id, name, shortCode",
+        items: "id, name, unitTypeId, barcode, preferredLocationId, lowStockThreshold",
+        batches: "id, itemId, expiryDate",
+        movements: "id, batchId, kind, createdAt, fromSlotId, toSlotId",
+        settings: "id"
+      })
+      .upgrade(async (tx) => {
+        const itemsTable = tx.table<Item, "id">("items");
+        const items = await itemsTable.toArray();
+        for (const item of items) {
+          await itemsTable.put({
+            ...item,
+            lowStockThreshold: item.lowStockThreshold ?? 5
+          });
+        }
+      });
   }
 }
 

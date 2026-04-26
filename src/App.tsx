@@ -103,6 +103,7 @@ function App() {
   const [itemBarcodeDraft, setItemBarcodeDraft] = useState("");
   const [itemUnitTypeId, setItemUnitTypeId] = useState("");
   const [itemPreferredLocationId, setItemPreferredLocationId] = useState("");
+  const [itemLowStockThresholdDraft, setItemLowStockThresholdDraft] = useState("5");
   const [itemTrackExpiryDraft, setItemTrackExpiryDraft] = useState(true);
   const [batchCodeDraft, setBatchCodeDraft] = useState("");
   const [batchExpiryDateDraft, setBatchExpiryDateDraft] = useState("");
@@ -118,7 +119,6 @@ function App() {
   const [bookingNewBatchCodeDraft, setBookingNewBatchCodeDraft] = useState("");
   const [bookingNewBatchExpiryDraft, setBookingNewBatchExpiryDraft] = useState("");
   const [bookingAdjustmentDirection, setBookingAdjustmentDirection] = useState<"increase" | "decrease">("increase");
-  const [bookingItemFilterDraft, setBookingItemFilterDraft] = useState("");
   const [scanMode, setScanMode] = useState<"booking-item" | "item-barcode" | null>(null);
   const [scanMessage, setScanMessage] = useState<string | null>(null);
   const [scanInputDraft, setScanInputDraft] = useState("");
@@ -264,6 +264,7 @@ function App() {
       setItemBarcodeDraft("");
       setItemUnitTypeId(snapshotState?.unitTypes[0]?.id ?? "");
       setItemPreferredLocationId(snapshotState?.locations[0]?.id ?? "");
+      setItemLowStockThresholdDraft("5");
       setItemTrackExpiryDraft(true);
       return;
     }
@@ -273,6 +274,7 @@ function App() {
       setItemBarcodeDraft(currentItem.barcode ?? "");
       setItemUnitTypeId(currentItem.unitTypeId);
       setItemPreferredLocationId(currentItem.preferredLocationId ?? snapshotState?.locations[0]?.id ?? "");
+      setItemLowStockThresholdDraft(String(currentItem.lowStockThreshold ?? 5));
       setItemTrackExpiryDraft(currentItem.trackExpiry);
       return;
     }
@@ -281,6 +283,7 @@ function App() {
     setItemBarcodeDraft("");
     setItemUnitTypeId(snapshotState?.unitTypes[0]?.id ?? "");
     setItemPreferredLocationId(snapshotState?.locations[0]?.id ?? "");
+    setItemLowStockThresholdDraft("5");
     setItemTrackExpiryDraft(true);
   }, [currentItem, itemDetailId, snapshotState]);
 
@@ -498,7 +501,8 @@ function App() {
             trackExpiry: item.trackExpiry,
             nextExpiry: nextExpiry ? displayDateFormatter.format(new Date(nextExpiry)) : "ohne Ablauf",
             unitLabel: unitType?.shortCode ?? "?",
-            preferredLocationName: preferredLocation?.name ?? "kein Ort"
+            preferredLocationName: preferredLocation?.name ?? "kein Ort",
+            lowStockThreshold: item.lowStockThreshold
           };
         })
         .sort((left, right) => left.name.localeCompare(right.name)),
@@ -664,18 +668,7 @@ function App() {
     );
   }, [itemFilterDraft, sortedItemSummaries]);
 
-  const bookingItems = useMemo(() => {
-    const query = bookingItemFilterDraft.trim().toLocaleLowerCase();
-    if (!query) {
-      return sortedItemSummaries;
-    }
-
-    return sortedItemSummaries.filter(
-      (item) =>
-        item.name.toLocaleLowerCase().includes(query) ||
-        item.barcode.toLocaleLowerCase().includes(query)
-    );
-  }, [bookingItemFilterDraft, sortedItemSummaries]);
+  const bookingItems = sortedItemSummaries;
 
   const bookingItem = itemSummaries.find((item) => item.id === bookingItemId) ?? null;
   const bookingLocation = viewModel?.locations.find((location) => location.id === bookingLocationId) ?? null;
@@ -907,7 +900,6 @@ function App() {
       const matchedItem = itemSummaries.find((item) => item.barcode === rawValue);
       if (matchedItem) {
         setBookingItemId(matchedItem.id);
-        setBookingItemFilterDraft(rawValue);
         closeScan();
         focusNextBookingField();
         return;
@@ -1044,7 +1036,8 @@ function App() {
           unitTypeId,
           barcode: itemBarcodeDraft,
           trackExpiry: itemTrackExpiryDraft,
-          preferredLocationId: itemPreferredLocationId || undefined
+          preferredLocationId: itemPreferredLocationId || undefined,
+          lowStockThreshold: Math.max(0, Number(itemLowStockThresholdDraft || "0"))
         });
       } else {
         const newItemId = await addItem({
@@ -1052,7 +1045,8 @@ function App() {
           unitTypeId,
           barcode: itemBarcodeDraft,
           trackExpiry: itemTrackExpiryDraft,
-          preferredLocationId: itemPreferredLocationId || undefined
+          preferredLocationId: itemPreferredLocationId || undefined,
+          lowStockThreshold: Math.max(0, Number(itemLowStockThresholdDraft || "0"))
         });
         if (newItemId) {
           setSelectedItemId(newItemId);
@@ -1230,6 +1224,7 @@ function App() {
     setItemBarcodeDraft("");
     setItemUnitTypeId(snapshotState?.unitTypes[0]?.id ?? "");
     setItemPreferredLocationId(snapshotState?.locations[0]?.id ?? "");
+    setItemLowStockThresholdDraft("5");
     setItemTrackExpiryDraft(true);
     setBatchCodeDraft("");
     setBatchExpiryDateDraft("");
@@ -1306,10 +1301,13 @@ function App() {
                           <h1>Dashboard</h1>
                           <span>Warnung standardmäßig {viewModel.settings.expiryWarningDays} Tage vorher</span>
                         </div>
+                        <IonButton className="primary-button" onClick={() => setActiveView("booking")}>
+                          Zur Buchung
+                        </IonButton>
                       </header>
                       <div className="metric-grid">
                         {viewModel.dashboardStats.map((stat) => (
-                          <article key={stat.id} className={`metric-card ${toneClass(stat.tone)}`}>
+                          <article key={stat.id} className="metric-card">
                             <span>{stat.label}</span>
                             <strong>{stat.value}</strong>
                             <small>{stat.detail}</small>
@@ -1342,16 +1340,7 @@ function App() {
 
                       <div className="list">
                         {visibleAlerts.map((alert) => (
-                          <article
-                            key={alert.id}
-                            className={`list-row list-row--alert ${toneClass(
-                              alert.daysUntilExpiry <= 5
-                                ? "critical"
-                                : alert.daysUntilExpiry <= viewModel.settings.expiryWarningDays
-                                  ? "warning"
-                                  : "neutral"
-                            )}`}
-                          >
+                          <article key={alert.id} className="list-row">
                             <div className="list-row__main">
                               <strong>{alert.itemName}</strong>
                               <span>
@@ -1359,10 +1348,44 @@ function App() {
                               </span>
                             </div>
                             <div className="list-row__meta">
-                              <b>{alert.daysUntilExpiry} T</b>
+                              <b
+                                className={`status-text ${toneClass(
+                                  alert.daysUntilExpiry <= 5
+                                    ? "critical"
+                                    : alert.daysUntilExpiry <= viewModel.settings.expiryWarningDays
+                                      ? "warning"
+                                      : "good"
+                                )}`}
+                              >
+                                {alert.daysUntilExpiry} T
+                              </b>
                               <small>
                                 {alert.quantity} {alert.unitShortCode}
                               </small>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className="surface">
+                      <header className="section-header">
+                        <div>
+                          <h2>Niedrige Bestände</h2>
+                          <span>{viewModel.lowStockAlerts.length} Treffer</span>
+                        </div>
+                      </header>
+                      <div className="list">
+                        {viewModel.lowStockAlerts.map((alert) => (
+                          <article key={alert.id} className="list-row">
+                            <div className="list-row__main">
+                              <strong>{alert.itemName}</strong>
+                              <span>{alert.locationName}</span>
+                            </div>
+                            <div className="list-row__meta">
+                              <b>
+                                {alert.quantity} / {alert.minimumQuantity} {alert.unitShortCode}
+                              </b>
                             </div>
                           </article>
                         ))}
@@ -1807,6 +1830,14 @@ function App() {
                               </select>
                             </label>
                             <IonItem className="compact-field">
+                              <IonLabel position="stacked">Niedriger Bestand ab</IonLabel>
+                              <IonInput
+                                type="number"
+                                value={itemLowStockThresholdDraft}
+                                onIonInput={(event) => setItemLowStockThresholdDraft(String(event.detail.value ?? ""))}
+                              />
+                            </IonItem>
+                            <IonItem className="compact-field">
                               <IonLabel position="stacked">Barcode</IonLabel>
                               <IonInput
                                 ref={itemBarcodeInputRef}
@@ -1961,6 +1992,20 @@ function App() {
                         </div>
                       </header>
                       <div className="booking-form-stack">
+                        <label className="form-field">
+                          <span>Artikel</span>
+                          <select
+                            className="app-select"
+                            value={bookingItemId}
+                            onChange={(event) => setBookingItemId(event.target.value)}
+                          >
+                            {bookingItems.map((item) => (
+                              <option key={item.id} value={item.id}>
+                                {item.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
                         <label className="form-field">
                           <span>Ort</span>
                           <select
@@ -2259,42 +2304,6 @@ function App() {
                         ))}
                       </div>
                     </section>
-
-                    <section className="surface">
-                      <header className="section-header">
-                        <div>
-                          <h2>Artikel wählen</h2>
-                        </div>
-                      </header>
-                      <IonItem className="compact-field compact-field--filter">
-                        <IonLabel position="stacked">Filtern</IonLabel>
-                        <IonInput
-                          value={bookingItemFilterDraft}
-                          placeholder="Name oder Barcode"
-                          onIonInput={(event) => setBookingItemFilterDraft(String(event.detail.value ?? ""))}
-                        />
-                      </IonItem>
-                      <div className="list">
-                        {bookingItems.slice(0, 8).map((item) => (
-                          <article
-                            key={item.id}
-                            className={item.id === bookingItemId ? "list-row list-row--selected" : "list-row list-row--clickable"}
-                            onClick={() => setBookingItemId(item.id)}
-                          >
-                            <div className="list-row__main">
-                              <strong>{item.name}</strong>
-                              <span>{item.barcode}</span>
-                            </div>
-                            <div className="list-row__meta">
-                              <b>
-                                {item.batchCount} Chargen · {item.totalQuantity} {item.unitLabel}
-                              </b>
-                              <small>{item.nextExpiry}</small>
-                            </div>
-                          </article>
-                        ))}
-                      </div>
-                    </section>
                   </div>
                 ) : null}
 
@@ -2360,25 +2369,7 @@ function App() {
                     <section className="surface">
                       <header className="section-header">
                         <div>
-                          <h1>Analyse</h1>
-                          <span>Kennzahlen für Alltag und Leitung</span>
-                        </div>
-                      </header>
-                      <div className="metric-grid">
-                        {viewModel.analyticsMetrics.map((metric) => (
-                          <article key={metric.id} className="metric-card tone-neutral">
-                            <span>{metric.title}</span>
-                            <strong>{metric.value}</strong>
-                            <small>{metric.detail}</small>
-                          </article>
-                        ))}
-                      </div>
-                    </section>
-
-                    <section className="surface">
-                      <header className="section-header">
-                        <div>
-                          <h2>Risiko zuerst</h2>
+                          <h1>Nächste Abläufe</h1>
                         </div>
                       </header>
                       <div className="list">

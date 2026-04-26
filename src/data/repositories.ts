@@ -61,6 +61,7 @@ export async function addItem(input: {
   barcode?: string;
   trackExpiry: boolean;
   preferredLocationId?: string;
+  lowStockThreshold: number;
 }) {
   const name = input.name.trim();
   if (!name) {
@@ -83,7 +84,8 @@ export async function addItem(input: {
     unitTypeId: input.unitTypeId,
     barcode: input.barcode?.trim() || undefined,
     trackExpiry: input.trackExpiry,
-    preferredLocationId: input.preferredLocationId
+    preferredLocationId: input.preferredLocationId,
+    lowStockThreshold: Math.max(0, Number(input.lowStockThreshold || 0))
   });
 
   return id;
@@ -96,6 +98,7 @@ export async function updateItem(input: {
   barcode?: string;
   trackExpiry: boolean;
   preferredLocationId?: string;
+  lowStockThreshold: number;
 }) {
   const name = input.name.trim();
   if (!name) {
@@ -115,7 +118,8 @@ export async function updateItem(input: {
     unitTypeId: input.unitTypeId,
     barcode: input.barcode?.trim() || undefined,
     trackExpiry: input.trackExpiry,
-    preferredLocationId: input.preferredLocationId
+    preferredLocationId: input.preferredLocationId,
+    lowStockThreshold: Math.max(0, Number(input.lowStockThreshold || 0))
   });
 }
 
