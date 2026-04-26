@@ -7,13 +7,13 @@ const locations: Location[] = [
 ];
 
 const slots: StorageSlot[] = [
-  { id: "slot-tea-r1", locationId: "loc-tea", kind: "shelf", number: 1, label: "Regal 1", sortOrder: 1 },
-  { id: "slot-tea-r3", locationId: "loc-tea", kind: "shelf", number: 3, label: "Regal 3", sortOrder: 3 },
-  { id: "slot-tea-r6", locationId: "loc-tea", kind: "shelf", number: 6, label: "Regal 6", sortOrder: 6 },
-  { id: "slot-tea-d2", locationId: "loc-tea", kind: "drawer", number: 2, label: "Lade 2", sortOrder: 12 },
-  { id: "slot-syrup-r1", locationId: "loc-syrup", kind: "shelf", number: 1, label: "Regal 1", sortOrder: 1 },
-  { id: "slot-syrup-d1", locationId: "loc-syrup", kind: "drawer", number: 1, label: "Lade 1", sortOrder: 11 },
-  { id: "slot-service-d1", locationId: "loc-service", kind: "drawer", number: 1, label: "Lade 1", sortOrder: 11 }
+  { id: "slot-tea-r1", locationId: "loc-tea", kind: "Regal", number: 1, label: "Regal 1", sortOrder: 1 },
+  { id: "slot-tea-r3", locationId: "loc-tea", kind: "Regal", number: 3, label: "Regal 3", sortOrder: 3 },
+  { id: "slot-tea-r6", locationId: "loc-tea", kind: "Regal", number: 6, label: "Regal 6", sortOrder: 6 },
+  { id: "slot-tea-d2", locationId: "loc-tea", kind: "Lade", number: 2, label: "Lade 2", sortOrder: 12 },
+  { id: "slot-syrup-r1", locationId: "loc-syrup", kind: "Regal", number: 1, label: "Regal 1", sortOrder: 1 },
+  { id: "slot-syrup-d1", locationId: "loc-syrup", kind: "Lade", number: 1, label: "Lade 1", sortOrder: 11 },
+  { id: "slot-service-d1", locationId: "loc-service", kind: "Lade", number: 1, label: "Lade 1", sortOrder: 11 }
 ];
 
 const unitTypes: UnitType[] = [
@@ -23,13 +23,13 @@ const unitTypes: UnitType[] = [
 ];
 
 const items: Item[] = [
-  { id: "item-camomile", name: "Kamillentee 20er", unitTypeId: "unit-pack", barcode: "900001", trackExpiry: true },
-  { id: "item-peppermint", name: "Pfefferminztee 20er", unitTypeId: "unit-pack", barcode: "900002", trackExpiry: true },
-  { id: "item-green", name: "Grüntee Bio", unitTypeId: "unit-pack", barcode: "900003", trackExpiry: true },
-  { id: "item-honey", name: "Honigportionen", unitTypeId: "unit-box", barcode: "900004", trackExpiry: true },
-  { id: "item-ginger", name: "Ingwersirup", unitTypeId: "unit-bottle", barcode: "900005", trackExpiry: true },
-  { id: "item-raspberry", name: "Himbeersirup", unitTypeId: "unit-bottle", barcode: "900006", trackExpiry: true },
-  { id: "item-napkins", name: "Serviettenpaket", unitTypeId: "unit-pack", barcode: "900007", trackExpiry: false }
+  { id: "item-camomile", name: "Kamillentee 20er", unitTypeId: "unit-pack", barcode: "900001", trackExpiry: true, preferredLocationId: "loc-tea" },
+  { id: "item-peppermint", name: "Pfefferminztee 20er", unitTypeId: "unit-pack", barcode: "900002", trackExpiry: true, preferredLocationId: "loc-tea" },
+  { id: "item-green", name: "Grüntee Bio", unitTypeId: "unit-pack", barcode: "900003", trackExpiry: true, preferredLocationId: "loc-tea" },
+  { id: "item-honey", name: "Honigportionen", unitTypeId: "unit-box", barcode: "900004", trackExpiry: true, preferredLocationId: "loc-tea" },
+  { id: "item-ginger", name: "Ingwersirup", unitTypeId: "unit-bottle", barcode: "900005", trackExpiry: true, preferredLocationId: "loc-syrup" },
+  { id: "item-raspberry", name: "Himbeersirup", unitTypeId: "unit-bottle", barcode: "900006", trackExpiry: true, preferredLocationId: "loc-syrup" },
+  { id: "item-napkins", name: "Serviettenpaket", unitTypeId: "unit-pack", barcode: "900007", trackExpiry: false, preferredLocationId: "loc-service" }
 ];
 
 const batches: Batch[] = [
@@ -60,7 +60,8 @@ const settings: AppSettings = {
   expiryWarningDays: 10,
   reminderRepeatDays: 3,
   favoriteLocationIds: ["loc-tea"],
-  favoriteItemIds: ["item-camomile", "item-ginger"]
+  favoriteItemIds: ["item-camomile", "item-ginger"],
+  slotTypeNames: ["Regal", "Lade"]
 };
 
 export const seedSnapshot: DomainSnapshot = {

@@ -164,6 +164,12 @@ ion-content.shell::part(scroll) {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 
+.editor-grid,
+.booking-form-stack {
+  display: grid;
+  gap: 0.75rem;
+}
+
 .settings-row {
   margin-bottom: 0.55rem;
 }
@@ -306,6 +312,13 @@ ion-content.shell::part(scroll) {
   align-items: flex-end;
   gap: 0.2rem;
   white-space: nowrap;
+}
+
+.list-row__meta--actions {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .list-row__meta small {
@@ -537,6 +550,12 @@ ion-content.shell::part(scroll) {
   font-size: 0.9rem;
 }
 
+.scan-manual {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 0.9rem;
+}
+
 .stock-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
@@ -765,6 +784,10 @@ ion-content.shell::part(scroll) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .editor-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .bottom-nav__row {
     max-width: 520px;
     margin: 0 auto;
@@ -789,6 +812,12 @@ ion-content.shell::part(scroll) {
   .list-row,
   .booking-preview__row {
     align-items: flex-start;
+  }
+
+  .list-row__meta {
+    width: 100%;
+    align-items: flex-start;
+    white-space: normal;
   }
 
   .view-switcher {

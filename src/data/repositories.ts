@@ -36,7 +36,8 @@ export async function loadSnapshot(): Promise<DomainSnapshot> {
       expiryWarningDays: 10,
       reminderRepeatDays: 3,
       favoriteLocationIds: [],
-      favoriteItemIds: []
+      favoriteItemIds: [],
+      slotTypeNames: ["Regal", "Lade"]
     }
   };
 }
@@ -59,6 +60,7 @@ export async function addItem(input: {
   unitTypeId: string;
   barcode?: string;
   trackExpiry: boolean;
+  preferredLocationId?: string;
 }) {
   const name = input.name.trim();
   if (!name) {
@@ -80,7 +82,8 @@ export async function addItem(input: {
     name,
     unitTypeId: input.unitTypeId,
     barcode: input.barcode?.trim() || undefined,
-    trackExpiry: input.trackExpiry
+    trackExpiry: input.trackExpiry,
+    preferredLocationId: input.preferredLocationId
   });
 
   return id;
@@ -92,6 +95,7 @@ export async function updateItem(input: {
   unitTypeId: string;
   barcode?: string;
   trackExpiry: boolean;
+  preferredLocationId?: string;
 }) {
   const name = input.name.trim();
   if (!name) {
@@ -110,7 +114,8 @@ export async function updateItem(input: {
     name,
     unitTypeId: input.unitTypeId,
     barcode: input.barcode?.trim() || undefined,
-    trackExpiry: input.trackExpiry
+    trackExpiry: input.trackExpiry,
+    preferredLocationId: input.preferredLocationId
   });
 }
 
@@ -170,15 +175,16 @@ export async function addLocation(input: { name: string }) {
 
 export async function addStorageSlot(input: {
   locationId: string;
-  kind: "shelf" | "drawer";
+  kind: string;
   number: number;
 }) {
   const number = Math.max(1, input.number);
-  const label = input.kind === "shelf" ? `Regal ${number}` : `Lade ${number}`;
+  const kind = input.kind.trim();
+  const label = `${kind} ${number}`;
   const duplicate = await db.slots
     .where("locationId")
     .equals(input.locationId)
-    .filter((slot) => slot.number === number)
+    .filter((slot) => slot.number === number && slot.kind.toLocaleLowerCase() === kind.toLocaleLowerCase())
     .first();
 
   if (duplicate) {
@@ -190,7 +196,7 @@ export async function addStorageSlot(input: {
   await db.slots.add({
     id: `slot-${crypto.randomUUID()}`,
     locationId: input.locationId,
-    kind: input.kind,
+    kind,
     number,
     label,
     sortOrder: existingCount + 1
@@ -246,7 +252,8 @@ export async function updateSettings(patch: Partial<Omit<AppSettings, "id">>) {
       expiryWarningDays: 10,
       reminderRepeatDays: 3,
       favoriteLocationIds: [],
-      favoriteItemIds: []
+      favoriteItemIds: [],
+      slotTypeNames: ["Regal", "Lade"]
     } satisfies AppSettings);
 
   await db.settings.put({
@@ -275,6 +282,78 @@ export async function toggleFavoriteItem(itemId: string) {
   await updateSettings({
     favoriteItemIds: nextIds
   });
+}
+
+export async function addSlotType(name: string) {
+  const current = await loadSnapshot();
+  const trimmed = name.trim();
+  if (!trimmed) {
+    return;
+  }
+  if (current.settings.slotTypeNames.some((entry) => entry.toLocaleLowerCase() === trimmed.toLocaleLowerCase())) {
+    throw new Error("Slot-Typ existiert bereits.");
+  }
+  await updateSettings({
+    slotTypeNames: [...current.settings.slotTypeNames, trimmed]
+  });
+}
+
+export async function renameSlotType(input: { previousName: string; nextName: string }) {
+  const current = await loadSnapshot();
+  const nextName = input.nextName.trim();
+  if (!nextName) {
+    return;
+  }
+  if (
+    current.settings.slotTypeNames.some(
+      (entry) =>
+        entry.toLocaleLowerCase() === nextName.toLocaleLowerCase() &&
+        entry.toLocaleLowerCase() !== input.previousName.toLocaleLowerCase()
+    )
+  ) {
+    throw new Error("Slot-Typ existiert bereits.");
+  }
+
+  await db.transaction("rw", db.settings, db.slots, async () => {
+    await updateSettings({
+      slotTypeNames: current.settings.slotTypeNames.map((entry) => (entry === input.previousName ? nextName : entry))
+    });
+
+    const affectedSlots = await db.slots
+      .filter((slot) => slot.kind.toLocaleLowerCase() === input.previousName.toLocaleLowerCase())
+      .toArray();
+
+    for (const slot of affectedSlots) {
+      await db.slots.update(slot.id, {
+        kind: nextName,
+        label: `${nextName} ${slot.number}`
+      });
+    }
+  });
+}
+
+export async function deleteSlotType(name: string) {
+  const current = await loadSnapshot();
+  if (current.settings.slotTypeNames.length <= 1) {
+    throw new Error("Mindestens ein Slot-Typ muss erhalten bleiben.");
+  }
+  const inUse = await db.slots.filter((slot) => slot.kind.toLocaleLowerCase() === name.toLocaleLowerCase()).first();
+  if (inUse) {
+    throw new Error("Slot-Typ kann erst gelöscht werden, wenn keine Slots mehr davon existieren.");
+  }
+
+  await updateSettings({
+    slotTypeNames: current.settings.slotTypeNames.filter((entry) => entry.toLocaleLowerCase() !== name.toLocaleLowerCase())
+  });
+}
+
+export async function deleteUnitType(unitTypeId: string) {
+  const itemInUse = await db.items.filter((item) => item.unitTypeId === unitTypeId).first();
+  if (itemInUse) {
+    throw new Error("Einheit kann nicht gelöscht werden, weil noch Artikel darauf verweisen.");
+  }
+
+  await db.unitTypes.delete(unitTypeId);
 }
 
 export async function createMovement(input: {

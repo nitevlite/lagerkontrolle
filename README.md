@@ -71,15 +71,15 @@ npm run build
 
 - modernes mobiles Frontend mit kompakter Navigation ohne Hero-Header
 - Orte und Artikel sind als Listen mit Filtersuche und separatem Detailscreen aufgebaut
-- Orte, Regale und Laden koennen lokal angelegt, umbenannt und leere Eintraege geloescht werden
-- Artikel mit Einheit, Barcode und Ablaufpflicht koennen angelegt und bearbeitet werden
+- Orte, Slots und freie Slot-Typen koennen lokal angelegt, umbenannt und leere Eintraege geloescht werden
+- Artikel mit Einheit, Barcode, Ablaufpflicht und bevorzugtem Ort koennen angelegt und bearbeitet werden
 - Chargen mit Ablaufdatum koennen pro Artikel gepflegt werden
 - Buchung speichert jetzt echte lokale Bewegungen fuer Zugang, Abgang, Umbuchung und Korrektur
-- Buchung fuehrt mobil durch Aktion, Artikel, Ort, Slot, Charge und Menge
-- Scan ist im Buchungsflow und im Artikel-Barcodefeld vorbereitet, mit Browser-Fallback falls Kamera-Scan nicht verfuegbar ist
+- Buchung fuehrt mobil direkt ueber Buchungsdaten mit Ort-Dropdown, Slot, Charge und Menge
+- Scan ist im Buchungsflow und im Artikel-Barcodefeld aktiv, mit manueller Eingabe als Fallback falls Live-Scan nicht verfuegbar ist
 - Favoriten fuer Orte und Artikel bleiben lokal gespeichert
 - Buchung und Dashboard priorisieren Favoriten und zuletzt genutzte Eintraege
-- Analyse zeigt jetzt echte mobile Charts fuer Bewegungen, Ablauf-Verteilung, Top-Orte und Top-Artikel
+- Analyse zeigt mobile Charts fuer Bewegungen, Ablauf-Verteilung, Top-Orte und Top-Artikel plus priorisierte Risiko-Liste
 - echtes Domain-Modell fuer `Location`, `StorageSlot`, `UnitType`, `Item`, `Batch`, `Movement`, `AppSettings`
 - lokale Offline-Persistenz ueber `IndexedDB` mit `Dexie`
 - Bestandsableitung aus Bewegungen statt aus fixen Direktwerten

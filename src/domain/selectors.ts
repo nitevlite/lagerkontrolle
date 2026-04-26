@@ -308,18 +308,6 @@ export function buildViewModel(snapshot: DomainSnapshot): AppViewModel {
       title: "Nächster Ablauf",
       value: mostCritical?.itemName ?? "-",
       detail: mostCritical ? `${mostCritical.daysUntilExpiry} Tage Restzeit` : "kein Risiko"
-    },
-    {
-      id: "high-occupancy",
-      title: "Hohe Auslastung",
-      value: locations.slice().sort((left, right) => right.occupancyPercent - left.occupancyPercent)[0]?.name ?? "-",
-      detail: `${locations.slice().sort((left, right) => right.occupancyPercent - left.occupancyPercent)[0]?.occupancyPercent ?? 0}% belegt`
-    },
-    {
-      id: "unit-count",
-      title: "Einheitentypen",
-      value: String(snapshot.unitTypes.length),
-      detail: "frei pflegbar"
     }
   ];
 

@@ -78,6 +78,10 @@ Ergebnis: Das MVP ist bereit fuer den echten Einsatz.
 9. `#8` Add multi-device sync with self-hosted CouchDB
 10. `#4` Pilot hardening, import preparation and production checklist
 11. `#11` Add charts to analytics dashboard
+12. `#12` UI 01: Dashboard and analytics cleanup
+13. `#13` UI 02: Custom slot types and unit cleanup
+14. `#14` UI 03: Item list and mobile editor refinement
+15. `#15` UI 04: Booking simplification and active scanner
 
 ## Technische Leitlinien
 
@@ -92,9 +96,11 @@ Ergebnis: Das MVP ist bereit fuer den echten Einsatz.
 - `#6` ist umgesetzt
 - `#10` ist im Code umgesetzt
 - `#5` ist im Code umgesetzt
-- `#2` ist weitgehend umgesetzt und muss nur noch gegen echte Buchungen verifiziert werden
-- `#3` ist im Frontend gestartet: Artikel bearbeiten und Chargen pflegen sind bereits drin
-- `#1` ist deutlich weiter: Aktion, Artikel, Ort, Slot, Charge und Menge sind als echter Flow sichtbar und speichern lokale Bewegungen
+- `#2` ist umgesetzt: Orte, Slots und freie Slot-Typen sind mobil pflegbar
+- `#3` ist umgesetzt: Artikel, bevorzugter Ort, Chargen und Ablaufdaten sind im mobilen Editor drin
+- `#1` ist umgesetzt: Zugang, Abgang, Umbuchung und Korrektur speichern echte lokale Bewegungen
 - der UX-Kurs ist jetzt klar: Listen mit Filter plus separater Detailscreen statt ueberladener Sammelseiten
-- `#7` ist gestartet: Favoriten sind persistent, zuletzt genutzte Elemente werden fuer Dashboard und Buchung priorisiert
-- `#11` ist im Frontend umgesetzt: mobile Charts fuer Bewegungen, Ablauf-Verteilung sowie Top-Orte und Top-Artikel
+- `#7` ist umgesetzt: Favoriten, Suche, Filter und zuletzt genutzte Elemente beschleunigen Dashboard und Buchung
+- `#9` ist umgesetzt: Scan ist aktiv, mit manueller Eingabe als Browser-Fallback
+- `#11` ist umgesetzt: mobile Charts fuer Bewegungen, Ablauf-Verteilung sowie Top-Orte und Top-Artikel
+- `#12` bis `#15` sind umgesetzt: Dashboard und Analyse wurden gestrafft, Slot-Typen und Einheiten pflegbar gemacht, Artikel-Listen verbessert und die Buchung vereinfacht

@@ -5,12 +5,10 @@ export type Location = {
   name: string;
 };
 
-export type StorageSlotKind = "shelf" | "drawer";
-
 export type StorageSlot = {
   id: EntityId;
   locationId: EntityId;
-  kind: StorageSlotKind;
+  kind: string;
   number: number;
   label: string;
   sortOrder: number;
@@ -29,6 +27,7 @@ export type Item = {
   unitTypeId: EntityId;
   barcode?: string;
   trackExpiry: boolean;
+  preferredLocationId?: EntityId;
 };
 
 export type Batch = {
@@ -56,6 +55,7 @@ export type AppSettings = {
   reminderRepeatDays: number;
   favoriteLocationIds: EntityId[];
   favoriteItemIds: EntityId[];
+  slotTypeNames: string[];
 };
 
 export type DomainSnapshot = {

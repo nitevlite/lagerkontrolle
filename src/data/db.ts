@@ -42,8 +42,41 @@ class LagerkontrolleDatabase extends Dexie {
         await settingsTable.put({
           ...current,
           favoriteLocationIds: current.favoriteLocationIds ?? [],
-          favoriteItemIds: current.favoriteItemIds ?? []
+          favoriteItemIds: current.favoriteItemIds ?? [],
+          slotTypeNames: current.slotTypeNames ?? ["Regal", "Lade"]
         });
+      });
+    this.version(3)
+      .stores({
+        locations: "id, name",
+        slots: "id, locationId, sortOrder",
+        unitTypes: "id, name, shortCode",
+        items: "id, name, unitTypeId, barcode, preferredLocationId",
+        batches: "id, itemId, expiryDate",
+        movements: "id, batchId, kind, createdAt, fromSlotId, toSlotId",
+        settings: "id"
+      })
+      .upgrade(async (tx) => {
+        const settingsTable = tx.table("settings");
+        const current = (await settingsTable.get("default")) as AppSettings | undefined;
+
+        if (current) {
+          await settingsTable.put({
+            ...current,
+            slotTypeNames: current.slotTypeNames ?? ["Regal", "Lade"],
+            favoriteLocationIds: current.favoriteLocationIds ?? [],
+            favoriteItemIds: current.favoriteItemIds ?? []
+          });
+        }
+
+        const itemsTable = tx.table<Item, "id">("items");
+        const items = await itemsTable.toArray();
+        for (const item of items) {
+          await itemsTable.put({
+            ...item,
+            preferredLocationId: item.preferredLocationId
+          });
+        }
       });
   }
 }

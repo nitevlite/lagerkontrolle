@@ -30,13 +30,17 @@ import {
   addBatch,
   addItem,
   addLocation,
+  addSlotType,
   addStorageSlot,
   addUnitType,
   createMovement,
+  deleteSlotType,
+  deleteUnitType,
   deleteLocation,
   deleteStorageSlot,
   loadSnapshot,
   renameLocation,
+  renameSlotType,
   toggleFavoriteItem,
   toggleFavoriteLocation,
   updateItem,
@@ -87,14 +91,18 @@ function App() {
   const [locationDetailId, setLocationDetailId] = useState<string | null>(null);
   const [locationFilterDraft, setLocationFilterDraft] = useState("");
   const [locationEditName, setLocationEditName] = useState("");
-  const [slotKind, setSlotKind] = useState<"shelf" | "drawer">("shelf");
+  const [slotKind, setSlotKind] = useState("Regal");
   const [slotNumber, setSlotNumber] = useState("1");
+  const [slotTypeDraft, setSlotTypeDraft] = useState("");
+  const [slotTypeEditSource, setSlotTypeEditSource] = useState("");
+  const [slotTypeEditDraft, setSlotTypeEditDraft] = useState("");
   const [itemDetailId, setItemDetailId] = useState<string | null>(null);
   const [itemFilterDraft, setItemFilterDraft] = useState("");
   const [selectedItemId, setSelectedItemId] = useState("");
   const [itemNameDraft, setItemNameDraft] = useState("");
   const [itemBarcodeDraft, setItemBarcodeDraft] = useState("");
   const [itemUnitTypeId, setItemUnitTypeId] = useState("");
+  const [itemPreferredLocationId, setItemPreferredLocationId] = useState("");
   const [itemTrackExpiryDraft, setItemTrackExpiryDraft] = useState(true);
   const [batchCodeDraft, setBatchCodeDraft] = useState("");
   const [batchExpiryDateDraft, setBatchExpiryDateDraft] = useState("");
@@ -111,9 +119,9 @@ function App() {
   const [bookingNewBatchExpiryDraft, setBookingNewBatchExpiryDraft] = useState("");
   const [bookingAdjustmentDirection, setBookingAdjustmentDirection] = useState<"increase" | "decrease">("increase");
   const [bookingItemFilterDraft, setBookingItemFilterDraft] = useState("");
-  const [bookingLocationFilterDraft, setBookingLocationFilterDraft] = useState("");
   const [scanMode, setScanMode] = useState<"booking-item" | "item-barcode" | null>(null);
   const [scanMessage, setScanMessage] = useState<string | null>(null);
+  const [scanInputDraft, setScanInputDraft] = useState("");
   const [unitName, setUnitName] = useState("");
   const [unitShortCode, setUnitShortCode] = useState("");
   const [unitDescription, setUnitDescription] = useState("");
@@ -255,6 +263,7 @@ function App() {
       setItemNameDraft("");
       setItemBarcodeDraft("");
       setItemUnitTypeId(snapshotState?.unitTypes[0]?.id ?? "");
+      setItemPreferredLocationId(snapshotState?.locations[0]?.id ?? "");
       setItemTrackExpiryDraft(true);
       return;
     }
@@ -263,6 +272,7 @@ function App() {
       setItemNameDraft(currentItem.name);
       setItemBarcodeDraft(currentItem.barcode ?? "");
       setItemUnitTypeId(currentItem.unitTypeId);
+      setItemPreferredLocationId(currentItem.preferredLocationId ?? snapshotState?.locations[0]?.id ?? "");
       setItemTrackExpiryDraft(currentItem.trackExpiry);
       return;
     }
@@ -270,6 +280,7 @@ function App() {
     setItemNameDraft("");
     setItemBarcodeDraft("");
     setItemUnitTypeId(snapshotState?.unitTypes[0]?.id ?? "");
+    setItemPreferredLocationId(snapshotState?.locations[0]?.id ?? "");
     setItemTrackExpiryDraft(true);
   }, [currentItem, itemDetailId, snapshotState]);
 
@@ -449,11 +460,6 @@ function App() {
     [viewModel]
   );
 
-  const analyticsLocationList = useMemo(
-    () => (viewModel?.locations.slice().sort((left, right) => right.occupancyPercent - left.occupancyPercent).slice(0, 4) ?? []),
-    [viewModel]
-  );
-
   const batchQuantityById = useMemo(() => {
     const quantities = new Map<string, number>();
 
@@ -481,6 +487,7 @@ function App() {
                 .sort((left, right) => left.localeCompare(right))[0]
             : null;
           const unitType = snapshotState?.unitTypes.find((unit) => unit.id === item.unitTypeId);
+          const preferredLocation = snapshotState?.locations.find((location) => location.id === item.preferredLocationId);
 
           return {
             id: item.id,
@@ -490,7 +497,8 @@ function App() {
             totalQuantity,
             trackExpiry: item.trackExpiry,
             nextExpiry: nextExpiry ? displayDateFormatter.format(new Date(nextExpiry)) : "ohne Ablauf",
-            unitLabel: unitType?.shortCode ?? "?"
+            unitLabel: unitType?.shortCode ?? "?",
+            preferredLocationName: preferredLocation?.name ?? "kein Ort"
           };
         })
         .sort((left, right) => left.name.localeCompare(right.name)),
@@ -669,17 +677,6 @@ function App() {
     );
   }, [bookingItemFilterDraft, sortedItemSummaries]);
 
-  const bookingLocations = useMemo(() => {
-    const query = bookingLocationFilterDraft.trim().toLocaleLowerCase();
-    if (!query) {
-      return sortedLocations;
-    }
-
-    return sortedLocations.filter((location) =>
-      location.name.toLocaleLowerCase().includes(query)
-    );
-  }, [bookingLocationFilterDraft, sortedLocations]);
-
   const bookingItem = itemSummaries.find((item) => item.id === bookingItemId) ?? null;
   const bookingLocation = viewModel?.locations.find((location) => location.id === bookingLocationId) ?? null;
   const scanSupported = Boolean(getBarcodeDetector() && navigator.mediaDevices?.getUserMedia);
@@ -856,8 +853,14 @@ function App() {
     const recentLocationId = recentLocationByItemId.get(bookingItemId);
     if (recentLocationId) {
       setBookingLocationId(recentLocationId);
+      return;
     }
-  }, [bookingItemId, recentLocationByItemId]);
+
+    const preferredLocationId = snapshotState?.items.find((item) => item.id === bookingItemId)?.preferredLocationId;
+    if (preferredLocationId) {
+      setBookingLocationId(preferredLocationId);
+    }
+  }, [bookingItemId, recentLocationByItemId, snapshotState]);
 
   function closeScan() {
     setScanMode(null);
@@ -886,6 +889,11 @@ function App() {
   }
 
   function applyScannedValue(rawValue: string) {
+    if (!rawValue.trim()) {
+      setScanMessage("Bitte einen Barcode eingeben oder scannen.");
+      return;
+    }
+
     if (scanMode === "item-barcode") {
       setItemBarcodeDraft(rawValue);
       closeScan();
@@ -911,6 +919,7 @@ function App() {
 
   function openScan(mode: "booking-item" | "item-barcode") {
     setScanMode(mode);
+    setScanInputDraft("");
     setScanMessage(null);
   }
 
@@ -1034,14 +1043,16 @@ function App() {
           name: itemNameDraft,
           unitTypeId,
           barcode: itemBarcodeDraft,
-          trackExpiry: itemTrackExpiryDraft
+          trackExpiry: itemTrackExpiryDraft,
+          preferredLocationId: itemPreferredLocationId || undefined
         });
       } else {
         const newItemId = await addItem({
           name: itemNameDraft,
           unitTypeId,
           barcode: itemBarcodeDraft,
-          trackExpiry: itemTrackExpiryDraft
+          trackExpiry: itemTrackExpiryDraft,
+          preferredLocationId: itemPreferredLocationId || undefined
         });
         if (newItemId) {
           setSelectedItemId(newItemId);
@@ -1157,6 +1168,43 @@ function App() {
     }
   }
 
+  async function handleSaveSlotType() {
+    try {
+      await addSlotType(slotTypeDraft);
+      setSlotTypeDraft("");
+      setRefreshToken((current) => current + 1);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Slot-Typ konnte nicht gespeichert werden.");
+    }
+  }
+
+  async function handleRenameSlotType() {
+    try {
+      await renameSlotType({
+        previousName: slotTypeEditSource,
+        nextName: slotTypeEditDraft
+      });
+      setSlotTypeEditSource("");
+      setSlotTypeEditDraft("");
+      setSlotKind((current) => (current === slotTypeEditSource ? slotTypeEditDraft : current));
+      setRefreshToken((current) => current + 1);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Slot-Typ konnte nicht umbenannt werden.");
+    }
+  }
+
+  async function handleDeleteSlotType(name: string) {
+    try {
+      await deleteSlotType(name);
+      if (slotKind === name) {
+        setSlotKind(snapshotState?.settings.slotTypeNames.find((entry) => entry !== name) ?? "Regal");
+      }
+      setRefreshToken((current) => current + 1);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Slot-Typ konnte nicht gelöscht werden.");
+    }
+  }
+
   async function handleToggleFavoriteLocation(locationId: string) {
     await toggleFavoriteLocation(locationId);
     setRefreshToken((current) => current + 1);
@@ -1167,11 +1215,21 @@ function App() {
     setRefreshToken((current) => current + 1);
   }
 
+  async function handleDeleteUnitType(unitTypeId: string) {
+    try {
+      await deleteUnitType(unitTypeId);
+      setRefreshToken((current) => current + 1);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Einheit konnte nicht gelöscht werden.");
+    }
+  }
+
   function handleNewItem() {
     setItemDetailId("");
     setItemNameDraft("");
     setItemBarcodeDraft("");
     setItemUnitTypeId(snapshotState?.unitTypes[0]?.id ?? "");
+    setItemPreferredLocationId(snapshotState?.locations[0]?.id ?? "");
     setItemTrackExpiryDraft(true);
     setBatchCodeDraft("");
     setBatchExpiryDateDraft("");
@@ -1268,27 +1326,6 @@ function App() {
                         </div>
                         <IonBadge color="light">{expiryFilterDays} Tage</IonBadge>
                       </header>
-
-                      <div className="settings-row">
-                        <IonItem className="compact-field">
-                          <IonLabel position="stacked">Warnung ab</IonLabel>
-                          <IonInput
-                            type="number"
-                            value={warningDaysDraft}
-                            onIonInput={(event) => setWarningDaysDraft(String(event.detail.value ?? ""))}
-                            onIonBlur={() => void handlePersistSettings()}
-                          />
-                        </IonItem>
-                        <IonItem className="compact-field">
-                            <IonLabel position="stacked">Erneut erinnern</IonLabel>
-                          <IonInput
-                            type="number"
-                            value={reminderDaysDraft}
-                            onIonInput={(event) => setReminderDaysDraft(String(event.detail.value ?? ""))}
-                            onIonBlur={() => void handlePersistSettings()}
-                          />
-                        </IonItem>
-                      </div>
 
                       <div className="filter-pills">
                         {expiryFilters.map((days) => (
@@ -1400,54 +1437,29 @@ function App() {
                     <section className="surface">
                       <header className="section-header">
                         <div>
-                          <h2>Orte im Ueberblick</h2>
+                          <h2>Warnungen</h2>
+                          <span>Globale Vorgaben für Ablaufhinweise</span>
                         </div>
                       </header>
-                      <div className="list">
-                        {sortedLocations.map((location) => (
-                          <article
-                            key={location.id}
-                            className="list-row list-row--clickable"
-                            onClick={() => {
-                              handleOpenLocationDetail(location.id);
-                              setActiveView("locations");
-                            }}
-                          >
-                            <div className="list-row__main">
-                              <strong>{location.name}</strong>
-                              <span>
-                                {location.slotCount} Slots · {location.itemCount} Artikel
-                              </span>
-                            </div>
-                            <div className="list-row__meta">
-                              <b>{location.occupancyPercent}%</b>
-                              {favoriteLocationSet.has(location.id) ? <small>Favorit</small> : null}
-                            </div>
-                          </article>
-                        ))}
-                      </div>
-                    </section>
-
-                    <section className="surface">
-                      <header className="section-header">
-                        <div>
-                          <h2>Letzte Bewegungen</h2>
-                        </div>
-                      </header>
-                      <div className="list">
-                        {viewModel.recentMovements.map((movement) => (
-                          <article key={movement.id} className="list-row">
-                            <div className="list-row__main">
-                              <strong>
-                                {movement.itemName} · {movement.quantity} {movement.unitShortCode}
-                              </strong>
-                              <span>{movement.toLabel ?? movement.fromLabel}</span>
-                            </div>
-                            <div className="list-row__meta">
-                              <small>{movement.timestampLabel}</small>
-                            </div>
-                          </article>
-                        ))}
+                      <div className="settings-row">
+                        <IonItem className="compact-field">
+                          <IonLabel position="stacked">Warnung ab</IonLabel>
+                          <IonInput
+                            type="number"
+                            value={warningDaysDraft}
+                            onIonInput={(event) => setWarningDaysDraft(String(event.detail.value ?? ""))}
+                            onIonBlur={() => void handlePersistSettings()}
+                          />
+                        </IonItem>
+                        <IonItem className="compact-field">
+                          <IonLabel position="stacked">Erneut erinnern</IonLabel>
+                          <IonInput
+                            type="number"
+                            value={reminderDaysDraft}
+                            onIonInput={(event) => setReminderDaysDraft(String(event.detail.value ?? ""))}
+                            onIonBlur={() => void handlePersistSettings()}
+                          />
+                        </IonItem>
                       </div>
                     </section>
                   </div>
@@ -1498,7 +1510,6 @@ function App() {
                                 >
                                   <IonIcon icon={favoriteLocationSet.has(location.id) ? star : starOutline} />
                                 </button>
-                                <b>{location.occupancyPercent}%</b>
                                 <small>{location.lastMovementLabel}</small>
                               </div>
                             </article>
@@ -1546,14 +1557,16 @@ function App() {
                                 </div>
                               </header>
                               <div className="unit-form">
-                                <IonItem className="compact-field">
-                                  <IonLabel position="stacked">Typ</IonLabel>
-                                  <IonInput
-                                    value={slotKind === "shelf" ? "Regal" : "Lade"}
-                                    readonly
-                                    onClick={() => setSlotKind((current) => (current === "shelf" ? "drawer" : "shelf"))}
-                                  />
-                                </IonItem>
+                                <label className="form-field">
+                                  <span>Typ</span>
+                                  <select className="app-select" value={slotKind} onChange={(event) => setSlotKind(event.target.value)}>
+                                    {(snapshotState?.settings.slotTypeNames ?? []).map((slotTypeName) => (
+                                      <option key={slotTypeName} value={slotTypeName}>
+                                        {slotTypeName}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
                                 <IonItem className="compact-field">
                                   <IonLabel position="stacked">Nummer</IonLabel>
                                   <IonInput
@@ -1563,31 +1576,70 @@ function App() {
                                   />
                                 </IonItem>
                                 <IonButton className="primary-button" onClick={handleSaveSlot}>
-                                  {slotKind === "shelf" ? "Regal speichern" : "Lade speichern"}
+                                  {slotKind} speichern
                                 </IonButton>
-                              </div>
-                              <div className="filter-pills">
-                                <button
-                                  type="button"
-                                  className={slotKind === "shelf" ? "pill pill--active" : "pill"}
-                                  onClick={() => setSlotKind("shelf")}
-                                >
-                                  Regal
-                                </button>
-                                <button
-                                  type="button"
-                                  className={slotKind === "drawer" ? "pill pill--active" : "pill"}
-                                  onClick={() => setSlotKind("drawer")}
-                                >
-                                  Lade
-                                </button>
                               </div>
                             </section>
 
                             <section className="surface">
                               <header className="section-header">
                                 <div>
-                                  <h2>Regale und Laden</h2>
+                                  <h2>Slot-Typen</h2>
+                                  <span>Anlegen, umbenennen, löschen</span>
+                                </div>
+                              </header>
+                              <div className="unit-form">
+                                <IonItem className="compact-field">
+                                  <IonLabel position="stacked">Neuer Typ</IonLabel>
+                                  <IonInput value={slotTypeDraft} onIonInput={(event) => setSlotTypeDraft(String(event.detail.value ?? ""))} />
+                                </IonItem>
+                                <IonButton className="primary-button" onClick={handleSaveSlotType}>
+                                  Typ speichern
+                                </IonButton>
+                              </div>
+                              <div className="list">
+                                {(snapshotState?.settings.slotTypeNames ?? []).map((slotTypeName) => (
+                                  <article key={slotTypeName} className="list-row">
+                                    <div className="list-row__main">
+                                      {slotTypeEditSource === slotTypeName ? (
+                                        <IonInput
+                                          value={slotTypeEditDraft}
+                                          onIonInput={(event) => setSlotTypeEditDraft(String(event.detail.value ?? ""))}
+                                        />
+                                      ) : (
+                                        <strong>{slotTypeName}</strong>
+                                      )}
+                                    </div>
+                                    <div className="list-row__meta list-row__meta--actions">
+                                      {slotTypeEditSource === slotTypeName ? (
+                                        <IonButton size="small" fill="clear" onClick={handleRenameSlotType}>
+                                          Speichern
+                                        </IonButton>
+                                      ) : (
+                                        <IonButton
+                                          size="small"
+                                          fill="clear"
+                                          onClick={() => {
+                                            setSlotTypeEditSource(slotTypeName);
+                                            setSlotTypeEditDraft(slotTypeName);
+                                          }}
+                                        >
+                                          Umbenennen
+                                        </IonButton>
+                                      )}
+                                      <IonButton size="small" fill="clear" className="danger-button" onClick={() => void handleDeleteSlotType(slotTypeName)}>
+                                        Löschen
+                                      </IonButton>
+                                    </div>
+                                  </article>
+                                ))}
+                              </div>
+                            </section>
+
+                            <section className="surface">
+                              <header className="section-header">
+                                <div>
+                                  <h2>Slots</h2>
                                   <span>{currentSlots.length} angelegt</span>
                                 </div>
                               </header>
@@ -1596,7 +1648,7 @@ function App() {
                                   <article key={slot.id} className="list-row">
                                     <div className="list-row__main">
                                       <strong>{slot.label}</strong>
-                                      <span>{slot.kind === "shelf" ? "Regal" : "Lade"}</span>
+                                      <span>{slot.kind}</span>
                                     </div>
                                     <div className="list-row__meta">
                                       <IonButton
@@ -1621,7 +1673,6 @@ function App() {
                                     {detailLocation.itemCount} Artikel · {detailLocation.lastMovementLabel}
                                   </span>
                                 </div>
-                                <IonBadge color="light">{detailLocation.occupancyPercent}% belegt</IonBadge>
                               </header>
                               <div className="stock-grid">
                                 {visibleStocks.map((line) => (
@@ -1684,9 +1735,7 @@ function App() {
                             >
                               <div className="list-row__main">
                                 <strong>{item.name}</strong>
-                                <span>
-                                  {item.batchCount} Chargen · {item.barcode}
-                                </span>
+                                <span>{item.preferredLocationName}</span>
                               </div>
                               <div className="list-row__meta">
                                 <button
@@ -1700,9 +1749,9 @@ function App() {
                                   <IonIcon icon={favoriteItemSet.has(item.id) ? star : starOutline} />
                                 </button>
                                 <b>
-                                  {item.totalQuantity} {item.unitLabel}
+                                  {item.batchCount} Chargen · {item.totalQuantity} {item.unitLabel}
                                 </b>
-                                <small>{item.trackExpiry ? item.nextExpiry : "ohne Ablauf"}</small>
+                                <small>Ablauf: {item.nextExpiry}</small>
                               </div>
                             </article>
                           ))}
@@ -1720,7 +1769,7 @@ function App() {
                               <span>{currentItem ? currentItem.name : "Neuer Stammdatensatz"}</span>
                             </div>
                           </header>
-                          <div className="unit-form">
+                          <div className="editor-grid">
                             <IonItem className="compact-field">
                               <IonLabel position="stacked">Name</IonLabel>
                               <IonInput
@@ -1743,6 +1792,20 @@ function App() {
                                 ))}
                               </select>
                             </label>
+                            <label className="form-field">
+                              <span>Ort</span>
+                              <select
+                                className="app-select"
+                                value={itemPreferredLocationId}
+                                onChange={(event) => setItemPreferredLocationId(event.target.value)}
+                              >
+                                {(snapshotState?.locations ?? []).map((location) => (
+                                  <option key={location.id} value={location.id}>
+                                    {location.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
                             <IonItem className="compact-field">
                               <IonLabel position="stacked">Barcode</IonLabel>
                               <IonInput
@@ -1758,7 +1821,6 @@ function App() {
                               fill="outline"
                               className="primary-button"
                               onClick={() => openScan("item-barcode")}
-                              disabled={!scanSupported}
                             >
                               Barcode scannen
                             </IonButton>
@@ -1848,14 +1910,9 @@ function App() {
                       <header className="section-header">
                         <div>
                           <h1>Schnellbuchung</h1>
-                          <span>erster geführter Buchungsfluss für Ticket #1</span>
+                          <span>wenige Taps für Zugang, Abgang und Umbuchung</span>
                         </div>
-                        <IonButton
-                          fill="solid"
-                          className="primary-button"
-                          onClick={() => openScan("booking-item")}
-                          disabled={!scanSupported}
-                        >
+                        <IonButton fill="solid" className="primary-button" onClick={() => openScan("booking-item")}>
                           <IonIcon slot="start" icon={barcodeOutline} />
                           Scannen
                         </IonButton>
@@ -1893,6 +1950,257 @@ function App() {
                           <strong>Korrektur</strong>
                           <span>Bestand anpassen</span>
                         </button>
+                      </div>
+                    </section>
+
+                    <section className="surface">
+                      <header className="section-header">
+                        <div>
+                          <h2>Buchungsdaten</h2>
+                          <span>{bookingItem?.name ?? "Artikel wählen"}</span>
+                        </div>
+                      </header>
+                      <div className="booking-form-stack">
+                        <label className="form-field">
+                          <span>Ort</span>
+                          <select
+                            className="app-select"
+                            value={bookingLocationId}
+                            onChange={(event) => setBookingLocationId(event.target.value)}
+                          >
+                            {(viewModel.locations ?? []).map((location) => (
+                              <option key={location.id} value={location.id}>
+                                {location.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        {bookingAction === "adjustment" ? (
+                          <div className="toggle-pills">
+                            <button
+                              type="button"
+                              className={bookingAdjustmentDirection === "increase" ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                              onClick={() => setBookingAdjustmentDirection("increase")}
+                            >
+                              Pluskorrektur
+                            </button>
+                            <button
+                              type="button"
+                              className={bookingAdjustmentDirection === "decrease" ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                              onClick={() => setBookingAdjustmentDirection("decrease")}
+                            >
+                              Minuskorrektur
+                            </button>
+                          </div>
+                        ) : null}
+
+                        {(bookingAction === "out" || bookingAction === "transfer" || (bookingAction === "adjustment" && bookingAdjustmentDirection === "decrease")) ? (
+                          bookingSourceSlotOptions.length > 0 ? (
+                            <label className="form-field">
+                              <span>Quellslot</span>
+                              <select
+                                ref={bookingSourceSlotRef}
+                                className="app-select"
+                                value={bookingSourceSlotId}
+                                onChange={(event) => setBookingSourceSlotId(event.target.value)}
+                              >
+                                {bookingSourceSlotOptions.map((slot) => (
+                                  <option key={slot.id} value={slot.id}>
+                                    {slot.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          ) : (
+                            <div className="empty-state">Kein Bestand für diesen Artikel im gewählten Ort.</div>
+                          )
+                        ) : null}
+
+                        {(bookingAction === "in" || (bookingAction === "adjustment" && bookingAdjustmentDirection === "increase")) ? (
+                          bookingTargetSlots.length > 0 ? (
+                            <label className="form-field">
+                              <span>Zielslot</span>
+                              <select
+                                ref={bookingTargetSlotRef}
+                                className="app-select"
+                                value={bookingTargetSlotId}
+                                onChange={(event) => setBookingTargetSlotId(event.target.value)}
+                              >
+                                {bookingTargetSlots.map((slot) => (
+                                  <option key={slot.id} value={slot.id}>
+                                    {slot.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          ) : (
+                            <div className="empty-state">Im gewählten Ort sind noch keine Slots angelegt.</div>
+                          )
+                        ) : null}
+
+                        {bookingAction === "transfer" ? (
+                          <>
+                            <label className="form-field">
+                              <span>Zielort</span>
+                              <select
+                                className="app-select"
+                                value={bookingTargetLocationId}
+                                onChange={(event) => setBookingTargetLocationId(event.target.value)}
+                              >
+                                {(viewModel.locations ?? []).map((location) => (
+                                  <option key={location.id} value={location.id}>
+                                    {location.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            {bookingTargetSlots.length > 0 ? (
+                              <label className="form-field">
+                                <span>Zielslot</span>
+                                <select
+                                  className="app-select"
+                                  value={bookingTargetSlotId}
+                                  onChange={(event) => setBookingTargetSlotId(event.target.value)}
+                                >
+                                  {bookingTargetSlots.map((slot) => (
+                                    <option key={slot.id} value={slot.id}>
+                                      {slot.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                            ) : (
+                              <div className="empty-state">Im Zielort sind noch keine Slots angelegt.</div>
+                            )}
+                          </>
+                        ) : null}
+
+                        {canCreateNewBookingBatch ? (
+                          <label className="form-field">
+                            <span>Charge</span>
+                            <div className="toggle-pills">
+                              <button
+                                type="button"
+                                className={bookingBatchMode === "existing" ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                                onClick={() => setBookingBatchMode("existing")}
+                              >
+                                Bestehend
+                              </button>
+                              <button
+                                type="button"
+                                className={bookingBatchMode === "new" ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                                onClick={() => setBookingBatchMode("new")}
+                              >
+                                Neu
+                              </button>
+                            </div>
+                          </label>
+                        ) : null}
+
+                        {bookingBatchMode === "existing" || mustUseExistingBookingBatch ? (
+                          (mustUseExistingBookingBatch ? bookingAvailableBatches : bookingAllItemBatches).length > 0 ? (
+                            <label className="form-field">
+                              <span>Bestehende Charge</span>
+                              <select
+                                ref={bookingBatchSelectRef}
+                                className="app-select"
+                                value={bookingBatchId}
+                                onChange={(event) => setBookingBatchId(event.target.value)}
+                              >
+                                {(mustUseExistingBookingBatch ? bookingAvailableBatches : bookingAllItemBatches).map((batch) => (
+                                  <option key={batch.id} value={batch.id}>
+                                    {batch.batchCode}{"quantity" in batch ? ` · ${batch.quantity}` : ""}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          ) : (
+                            <div className="empty-state">Keine passende bestehende Charge verfügbar.</div>
+                          )
+                        ) : (
+                          <div className="unit-form">
+                            <IonItem className="compact-field">
+                              <IonLabel position="stacked">Chargencode</IonLabel>
+                              <IonInput
+                                value={bookingNewBatchCodeDraft}
+                                placeholder="z. B. TEE-2026-04"
+                                onIonInput={(event) => setBookingNewBatchCodeDraft(String(event.detail.value ?? ""))}
+                                ref={(element) => {
+                                  bookingBatchCodeRef.current = element?.querySelector("input") ?? null;
+                                }}
+                              />
+                            </IonItem>
+                            <label className="form-field">
+                              <span>{bookingItem?.trackExpiry ? "Ablaufdatum" : "Datum optional"}</span>
+                              <input
+                                className="app-input"
+                                type="date"
+                                value={bookingNewBatchExpiryDraft}
+                                onChange={(event) => setBookingNewBatchExpiryDraft(event.target.value)}
+                              />
+                            </label>
+                          </div>
+                        )}
+
+                        <IonItem className="compact-field">
+                          <IonLabel position="stacked">Menge</IonLabel>
+                          <IonInput
+                            type="number"
+                            value={bookingQuantityDraft}
+                            onIonInput={(event) => setBookingQuantityDraft(String(event.detail.value ?? ""))}
+                            ref={bookingQuantityInputRef}
+                          />
+                        </IonItem>
+                      </div>
+
+                      <div className="booking-preview">
+                        <div className="booking-preview__row">
+                          <span>Aktion</span>
+                          <b>
+                            {bookingAction === "in"
+                              ? "Zugang"
+                              : bookingAction === "out"
+                                ? "Abgang"
+                                : bookingAction === "transfer"
+                                  ? "Umbuchung"
+                                  : "Korrektur"}
+                          </b>
+                        </div>
+                        <div className="booking-preview__row">
+                          <span>Artikel</span>
+                          <b>{bookingItem?.name ?? "bitte wählen"}</b>
+                        </div>
+                        <div className="booking-preview__row">
+                          <span>Ort</span>
+                          <b>{bookingLocation?.name ?? "bitte wählen"}</b>
+                        </div>
+                        {bookingAction === "transfer" ? (
+                          <div className="booking-preview__row">
+                            <span>Zielort</span>
+                            <b>
+                              {viewModel.locations.find((location) => location.id === bookingTargetLocationId)?.name ??
+                                "bitte wählen"}
+                            </b>
+                          </div>
+                        ) : null}
+                        <div className="booking-preview__row">
+                          <span>Charge</span>
+                          <b>
+                            {bookingBatchMode === "existing" || mustUseExistingBookingBatch
+                              ? (mustUseExistingBookingBatch ? bookingAvailableBatches : bookingAllItemBatches).find((batch) => batch.id === bookingBatchId)?.batchCode ?? "bitte wählen"
+                              : bookingNewBatchCodeDraft || "neu anlegen"}
+                          </b>
+                        </div>
+                        <div className="booking-preview__row">
+                          <span>Menge</span>
+                          <b>{bookingQuantityDraft || "0"}</b>
+                        </div>
+                      </div>
+                      <div className="form-actions">
+                        <IonButton className="primary-button" onClick={handleSaveBooking}>
+                          Buchung speichern
+                        </IonButton>
                       </div>
                     </section>
 
@@ -1979,279 +2287,12 @@ function App() {
                             </div>
                             <div className="list-row__meta">
                               <b>
-                                {item.totalQuantity} {item.unitLabel}
+                                {item.batchCount} Chargen · {item.totalQuantity} {item.unitLabel}
                               </b>
+                              <small>{item.nextExpiry}</small>
                             </div>
                           </article>
                         ))}
-                      </div>
-                    </section>
-
-                    <section className="surface">
-                      <header className="section-header">
-                        <div>
-                          <h2>Ort wählen</h2>
-                        </div>
-                      </header>
-                      <IonItem className="compact-field compact-field--filter">
-                        <IonLabel position="stacked">Filtern</IonLabel>
-                        <IonInput
-                          value={bookingLocationFilterDraft}
-                          placeholder="Ort suchen"
-                          onIonInput={(event) => setBookingLocationFilterDraft(String(event.detail.value ?? ""))}
-                        />
-                      </IonItem>
-                      <div className="list">
-                        {bookingLocations.slice(0, 8).map((location) => (
-                          <article
-                            key={location.id}
-                            className={location.id === bookingLocationId ? "list-row list-row--selected" : "list-row list-row--clickable"}
-                            onClick={() => setBookingLocationId(location.id)}
-                          >
-                            <div className="list-row__main">
-                              <strong>{location.name}</strong>
-                              <span>
-                                {location.slotCount} Slots · {location.itemCount} Artikel
-                              </span>
-                            </div>
-                            <div className="list-row__meta">
-                              <b>{location.occupancyPercent}%</b>
-                            </div>
-                          </article>
-                        ))}
-                      </div>
-                    </section>
-
-                    <section className="surface">
-                      <header className="section-header">
-                        <div>
-                          <h2>Buchungsdaten</h2>
-                        </div>
-                      </header>
-                      {(bookingAction === "out" || bookingAction === "transfer" || (bookingAction === "adjustment" && bookingAdjustmentDirection === "decrease")) ? (
-                        bookingSourceSlotOptions.length > 0 ? (
-                          <label className="form-field">
-                            <span>Quellslot</span>
-                            <select
-                              ref={bookingSourceSlotRef}
-                              className="app-select"
-                              value={bookingSourceSlotId}
-                              onChange={(event) => setBookingSourceSlotId(event.target.value)}
-                            >
-                              {bookingSourceSlotOptions.map((slot) => (
-                                <option key={slot.id} value={slot.id}>
-                                  {slot.label}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                        ) : (
-                          <div className="empty-state">Kein Bestand für diesen Artikel im gewählten Ort.</div>
-                        )
-                      ) : null}
-
-                      {(bookingAction === "in" || (bookingAction === "adjustment" && bookingAdjustmentDirection === "increase")) ? (
-                        bookingTargetSlots.length > 0 ? (
-                          <label className="form-field">
-                            <span>Zielslot</span>
-                            <select
-                              ref={bookingTargetSlotRef}
-                              className="app-select"
-                              value={bookingTargetSlotId}
-                              onChange={(event) => setBookingTargetSlotId(event.target.value)}
-                            >
-                              {bookingTargetSlots.map((slot) => (
-                                <option key={slot.id} value={slot.id}>
-                                  {slot.label}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                        ) : (
-                          <div className="empty-state">Im gewählten Ort sind noch keine Slots angelegt.</div>
-                        )
-                      ) : null}
-
-                      {bookingAction === "transfer" ? (
-                        <>
-                          <label className="form-field">
-                            <span>Zielort</span>
-                            <select
-                              className="app-select"
-                              value={bookingTargetLocationId}
-                              onChange={(event) => setBookingTargetLocationId(event.target.value)}
-                            >
-                              {(viewModel.locations ?? []).map((location) => (
-                                <option key={location.id} value={location.id}>
-                                  {location.name}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          {bookingTargetSlots.length > 0 ? (
-                            <label className="form-field">
-                              <span>Zielslot</span>
-                              <select
-                                className="app-select"
-                                value={bookingTargetSlotId}
-                                onChange={(event) => setBookingTargetSlotId(event.target.value)}
-                              >
-                                {bookingTargetSlots.map((slot) => (
-                                  <option key={slot.id} value={slot.id}>
-                                    {slot.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                          ) : (
-                            <div className="empty-state">Im Zielort sind noch keine Slots angelegt.</div>
-                          )}
-                        </>
-                      ) : null}
-
-                      {bookingAction === "adjustment" ? (
-                        <div className="toggle-pills">
-                          <button
-                            type="button"
-                            className={bookingAdjustmentDirection === "increase" ? "toggle-pill toggle-pill--active" : "toggle-pill"}
-                            onClick={() => setBookingAdjustmentDirection("increase")}
-                          >
-                            Pluskorrektur
-                          </button>
-                          <button
-                            type="button"
-                            className={bookingAdjustmentDirection === "decrease" ? "toggle-pill toggle-pill--active" : "toggle-pill"}
-                            onClick={() => setBookingAdjustmentDirection("decrease")}
-                          >
-                            Minuskorrektur
-                          </button>
-                        </div>
-                      ) : null}
-
-                      {canCreateNewBookingBatch ? (
-                        <label className="form-field">
-                          <span>Charge</span>
-                          <div className="toggle-pills">
-                            <button
-                              type="button"
-                              className={bookingBatchMode === "existing" ? "toggle-pill toggle-pill--active" : "toggle-pill"}
-                              onClick={() => setBookingBatchMode("existing")}
-                            >
-                              Bestehend
-                            </button>
-                            <button
-                              type="button"
-                              className={bookingBatchMode === "new" ? "toggle-pill toggle-pill--active" : "toggle-pill"}
-                              onClick={() => setBookingBatchMode("new")}
-                            >
-                              Neu
-                            </button>
-                          </div>
-                        </label>
-                      ) : null}
-
-                      {bookingBatchMode === "existing" || mustUseExistingBookingBatch ? (
-                        (mustUseExistingBookingBatch ? bookingAvailableBatches : bookingAllItemBatches).length > 0 ? (
-                          <label className="form-field">
-                            <span>Bestehende Charge</span>
-                            <select
-                              ref={bookingBatchSelectRef}
-                              className="app-select"
-                              value={bookingBatchId}
-                              onChange={(event) => setBookingBatchId(event.target.value)}
-                            >
-                              {(mustUseExistingBookingBatch ? bookingAvailableBatches : bookingAllItemBatches).map((batch) => (
-                                <option key={batch.id} value={batch.id}>
-                                  {batch.batchCode}{"quantity" in batch ? ` · ${batch.quantity}` : ""}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                        ) : (
-                          <div className="empty-state">Keine passende bestehende Charge verfügbar.</div>
-                        )
-                      ) : (
-                        <div className="unit-form">
-                          <IonItem className="compact-field">
-                            <IonLabel position="stacked">Chargencode</IonLabel>
-                            <IonInput
-                              value={bookingNewBatchCodeDraft}
-                              placeholder="z. B. TEE-2026-04"
-                              onIonInput={(event) => setBookingNewBatchCodeDraft(String(event.detail.value ?? ""))}
-                              ref={(element) => {
-                                bookingBatchCodeRef.current = element?.querySelector("input") ?? null;
-                              }}
-                            />
-                          </IonItem>
-                          <label className="form-field">
-                            <span>{bookingItem?.trackExpiry ? "Ablaufdatum" : "Datum optional"}</span>
-                            <input
-                              className="app-input"
-                              type="date"
-                              value={bookingNewBatchExpiryDraft}
-                              onChange={(event) => setBookingNewBatchExpiryDraft(event.target.value)}
-                            />
-                          </label>
-                        </div>
-                      )}
-
-                      <IonItem className="compact-field compact-field--filter">
-                        <IonLabel position="stacked">Menge</IonLabel>
-                        <IonInput
-                          type="number"
-                          value={bookingQuantityDraft}
-                          onIonInput={(event) => setBookingQuantityDraft(String(event.detail.value ?? ""))}
-                          ref={bookingQuantityInputRef}
-                        />
-                      </IonItem>
-
-                      <div className="booking-preview">
-                        <div className="booking-preview__row">
-                          <span>Aktion</span>
-                          <b>
-                            {bookingAction === "in"
-                              ? "Zugang"
-                              : bookingAction === "out"
-                                ? "Abgang"
-                                : bookingAction === "transfer"
-                                  ? "Umbuchung"
-                                  : "Korrektur"}
-                          </b>
-                        </div>
-                        <div className="booking-preview__row">
-                          <span>Artikel</span>
-                          <b>{bookingItem?.name ?? "bitte wählen"}</b>
-                        </div>
-                        <div className="booking-preview__row">
-                          <span>Ort</span>
-                          <b>{bookingLocation?.name ?? "bitte wählen"}</b>
-                        </div>
-                        {bookingAction === "transfer" ? (
-                          <div className="booking-preview__row">
-                            <span>Zielort</span>
-                            <b>
-                              {viewModel.locations.find((location) => location.id === bookingTargetLocationId)?.name ??
-                                "bitte wählen"}
-                            </b>
-                          </div>
-                        ) : null}
-                        <div className="booking-preview__row">
-                          <span>Charge</span>
-                          <b>
-                            {bookingBatchMode === "existing" || mustUseExistingBookingBatch
-                              ? (mustUseExistingBookingBatch ? bookingAvailableBatches : bookingAllItemBatches).find((batch) => batch.id === bookingBatchId)?.batchCode ?? "bitte wählen"
-                              : bookingNewBatchCodeDraft || "neu anlegen"}
-                          </b>
-                        </div>
-                        <div className="booking-preview__row">
-                          <span>Menge</span>
-                          <b>{bookingQuantityDraft || "0"}</b>
-                        </div>
-                      </div>
-                      <div className="form-actions">
-                        <IonButton className="primary-button" onClick={handleSaveBooking}>
-                          Buchung speichern
-                        </IonButton>
                       </div>
                     </section>
                   </div>
@@ -2301,8 +2342,11 @@ function App() {
                               <strong>{unitType.name}</strong>
                               <span>{unitType.description}</span>
                             </div>
-                            <div className="list-row__meta">
+                            <div className="list-row__meta list-row__meta--actions">
                               <IonBadge color="light">{unitType.shortCode}</IonBadge>
+                              <IonButton size="small" fill="clear" className="danger-button" onClick={() => void handleDeleteUnitType(unitType.id)}>
+                                Löschen
+                              </IonButton>
                             </div>
                           </article>
                         ))}
@@ -2326,6 +2370,29 @@ function App() {
                             <span>{metric.title}</span>
                             <strong>{metric.value}</strong>
                             <small>{metric.detail}</small>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className="surface">
+                      <header className="section-header">
+                        <div>
+                          <h2>Risiko zuerst</h2>
+                        </div>
+                      </header>
+                      <div className="list">
+                        {analyticsRiskList.map((alert) => (
+                          <article key={alert.id} className="list-row">
+                            <div className="list-row__main">
+                              <strong>{alert.itemName}</strong>
+                              <span>
+                                {alert.locationName} · {alert.slotName}
+                              </span>
+                            </div>
+                            <div className="list-row__meta">
+                              <b>{alert.daysUntilExpiry} T</b>
+                            </div>
                           </article>
                         ))}
                       </div>
@@ -2417,52 +2484,6 @@ function App() {
                         </div>
                       </div>
                     </section>
-
-                    <section className="surface">
-                      <header className="section-header">
-                        <div>
-                          <h2>Risiko zuerst</h2>
-                        </div>
-                      </header>
-                      <div className="list">
-                        {analyticsRiskList.map((alert) => (
-                          <article key={alert.id} className="list-row">
-                            <div className="list-row__main">
-                              <strong>{alert.itemName}</strong>
-                              <span>
-                                {alert.locationName} · {alert.slotName}
-                              </span>
-                            </div>
-                            <div className="list-row__meta">
-                              <b>{alert.daysUntilExpiry} T</b>
-                            </div>
-                          </article>
-                        ))}
-                      </div>
-                    </section>
-
-                    <section className="surface">
-                      <header className="section-header">
-                        <div>
-                          <h2>Auslastung</h2>
-                        </div>
-                      </header>
-                      <div className="list">
-                        {analyticsLocationList.map((location) => (
-                          <article key={location.id} className="list-row">
-                            <div className="list-row__main">
-                              <strong>{location.name}</strong>
-                              <span>
-                                {location.itemCount} Artikel · {location.slotCount} Slots
-                              </span>
-                            </div>
-                            <div className="list-row__meta">
-                              <b>{location.occupancyPercent}%</b>
-                            </div>
-                          </article>
-                        ))}
-                      </div>
-                    </section>
                   </div>
                 ) : null}
               </>
@@ -2501,7 +2522,18 @@ function App() {
               </div>
               <div className="scan-meta">
                 <span>{scanMessage ?? "Kamera wird vorbereitet."}</span>
-                {!scanSupported ? <small>Bitte Barcode manuell eingeben.</small> : null}
+                {!scanSupported ? <small>Live-Scan ist hier nicht verfügbar. Manuelle Eingabe geht trotzdem.</small> : null}
+              </div>
+              <div className="scan-manual">
+                <input
+                  className="app-input"
+                  value={scanInputDraft}
+                  placeholder="Barcode manuell eingeben"
+                  onChange={(event) => setScanInputDraft(event.target.value)}
+                />
+                <IonButton className="primary-button" onClick={() => applyScannedValue(scanInputDraft.trim())}>
+                  Übernehmen
+                </IonButton>
               </div>
             </div>
           </div>
