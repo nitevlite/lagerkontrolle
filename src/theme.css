@@ -40,43 +40,9 @@ ion-content.shell::part(scroll) {
     linear-gradient(180deg, #eef2f7 0%, #e3e8ee 100%);
 }
 
-.topbar,
 .bottom-nav {
   --background: rgba(249, 251, 253, 0.94);
   backdrop-filter: blur(18px);
-}
-
-.topbar {
-  padding: 0.3rem 0.75rem;
-}
-
-.topbar__main {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.topbar__sub {
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-
-.topbar__actions {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.status-dot {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.55rem 0.8rem;
-  border-radius: 999px;
-  background: rgba(15, 98, 254, 0.1);
-  color: var(--ion-color-primary);
-  font-size: 0.85rem;
-  font-weight: 600;
 }
 
 .reset-button {
@@ -107,6 +73,12 @@ ion-content.shell::part(scroll) {
   top: 0.4rem;
   z-index: 5;
   padding: 0.55rem;
+}
+
+.nav-tools {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.2rem;
 }
 
 .surface--loading {
@@ -244,6 +216,10 @@ ion-content.shell::part(scroll) {
   border: 1px solid var(--border);
 }
 
+.compact-field--filter {
+  margin-bottom: 0.85rem;
+}
+
 .filter-pills,
 .location-switcher {
   display: flex;
@@ -306,6 +282,11 @@ ion-content.shell::part(scroll) {
 
 .list-row--clickable {
   cursor: pointer;
+}
+
+.list-row--selected {
+  border-color: rgba(15, 98, 254, 0.3);
+  background: rgba(15, 98, 254, 0.08);
 }
 
 .list-row--alert.tone-critical {
@@ -466,6 +447,11 @@ ion-content.shell::part(scroll) {
   color: var(--muted);
 }
 
+.back-button {
+  --color: #16212b;
+  margin-inline-start: -0.35rem;
+}
+
 .stock-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
@@ -507,6 +493,16 @@ ion-content.shell::part(scroll) {
   background: #f4f7fb;
   border: 1px solid var(--border);
   text-align: left;
+}
+
+.action-card--active {
+  border-color: #16212b;
+  background: #16212b;
+  color: #ffffff;
+}
+
+.action-card--active span {
+  color: rgba(255, 255, 255, 0.78);
 }
 
 .action-card strong,
@@ -596,10 +592,6 @@ ion-content.shell::part(scroll) {
 }
 
 @media (max-width: 767px) {
-  .topbar__actions .status-dot {
-    display: none;
-  }
-
   .metric-grid,
   .action-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -619,10 +611,6 @@ ion-content.shell::part(scroll) {
     top: 0.25rem;
   }
 
-  .location-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
   .stock-grid {
     grid-template-columns: 1fr;
   }
@@ -631,9 +619,5 @@ ion-content.shell::part(scroll) {
 @media (max-width: 420px) {
   .view-switcher {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .location-grid {
-    grid-template-columns: 1fr;
   }
 }

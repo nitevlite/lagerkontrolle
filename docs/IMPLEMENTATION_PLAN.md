@@ -94,5 +94,6 @@ Ergebnis: Das MVP ist bereit fuer den echten Einsatz.
 - `#5` ist im Code umgesetzt
 - `#2` ist weitgehend umgesetzt und muss nur noch gegen echte Buchungen verifiziert werden
 - `#3` ist im Frontend gestartet: Artikel bearbeiten und Chargen pflegen sind bereits drin
-- als Naechstes ist `#1` fuer echte Buchungsflows der kritische Pfad
+- `#1` ist gestartet: Aktion, Artikel und Ort sind bereits als gefuehrter Auswahlfluss sichtbar
+- der UX-Kurs ist jetzt klar: Listen mit Filter plus separater Detailscreen statt ueberladener Sammelseiten
 - `#11` ist als eigenes Analyse-Ticket angelegt

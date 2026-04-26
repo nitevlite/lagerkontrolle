@@ -69,14 +69,16 @@ npm run build
 
 ## Aktueller Stand
 
-- modernes mobiles Frontend mit sichtbarer Top-Navigation, Dashboard, Orte, Artikel, Buchung, Einheiten und Analyse
+- modernes mobiles Frontend mit kompakter Navigation ohne Hero-Header
+- Orte und Artikel sind als Listen mit Filtersuche und separatem Detailscreen aufgebaut
 - Orte, Regale und Laden koennen lokal angelegt, umbenannt und leere Eintraege geloescht werden
 - Artikel mit Einheit, Barcode und Ablaufpflicht koennen angelegt und bearbeitet werden
 - Chargen mit Ablaufdatum koennen pro Artikel gepflegt werden
+- Buchung hat jetzt einen ersten gefuehrten Auswahlfluss fuer Aktion, Artikel und Ort
 - echtes Domain-Modell fuer `Location`, `StorageSlot`, `UnitType`, `Item`, `Batch`, `Movement`, `AppSettings`
 - lokale Offline-Persistenz ueber `IndexedDB` mit `Dexie`
 - Bestandsableitung aus Bewegungen statt aus fixen Direktwerten
 
 ## Naechster technischer Schritt
 
-Frontend, Domain-Modell, lokale Persistenz sowie erste Orts- und Artikel-CRUD-Flows sind umgesetzt. Als Naechstes folgen echte Buchungsflows, danach Scan und Synchronisation.
+Frontend, Domain-Modell, lokale Persistenz sowie erste Orts-, Artikel- und Buchungsfluesse sind umgesetzt. Als Naechstes folgen Menge, Charge, Slot und Speichern der echten Buchungen, danach Scan und Synchronisation.

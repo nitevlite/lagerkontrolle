@@ -144,10 +144,14 @@ export async function addLocation(input: { name: string }) {
     throw new Error("Ort existiert bereits.");
   }
 
+  const id = `loc-${crypto.randomUUID()}`;
+
   await db.locations.add({
-    id: `loc-${crypto.randomUUID()}`,
+    id,
     name
   });
+
+  return id;
 }
 
 export async function addStorageSlot(input: {

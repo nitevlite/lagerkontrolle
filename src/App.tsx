@@ -6,13 +6,11 @@ import {
   IonButton,
   IonContent,
   IonFooter,
-  IonHeader,
   IonIcon,
   IonInput,
   IonItem,
   IonLabel,
   IonPage,
-  IonTitle,
   IonToolbar
 } from "@ionic/react";
 import {
@@ -23,7 +21,6 @@ import {
   layersOutline,
   pricetagOutline,
   refreshOutline,
-  syncOutline,
   warningOutline
 } from "ionicons/icons";
 import { ensureSeedData, resetSeedData } from "./data/bootstrap";
@@ -70,10 +67,13 @@ function App() {
   const [expiryFilterDays, setExpiryFilterDays] = useState<number>(10);
   const [warningDaysDraft, setWarningDaysDraft] = useState("10");
   const [reminderDaysDraft, setReminderDaysDraft] = useState("3");
-  const [locationName, setLocationName] = useState("");
+  const [locationDetailId, setLocationDetailId] = useState<string | null>(null);
+  const [locationFilterDraft, setLocationFilterDraft] = useState("");
   const [locationEditName, setLocationEditName] = useState("");
   const [slotKind, setSlotKind] = useState<"shelf" | "drawer">("shelf");
   const [slotNumber, setSlotNumber] = useState("1");
+  const [itemDetailId, setItemDetailId] = useState<string | null>(null);
+  const [itemFilterDraft, setItemFilterDraft] = useState("");
   const [selectedItemId, setSelectedItemId] = useState("");
   const [itemNameDraft, setItemNameDraft] = useState("");
   const [itemBarcodeDraft, setItemBarcodeDraft] = useState("");
@@ -81,6 +81,11 @@ function App() {
   const [itemTrackExpiryDraft, setItemTrackExpiryDraft] = useState(true);
   const [batchCodeDraft, setBatchCodeDraft] = useState("");
   const [batchExpiryDateDraft, setBatchExpiryDateDraft] = useState("");
+  const [bookingAction, setBookingAction] = useState<"in" | "out" | "transfer" | "adjustment">("in");
+  const [bookingItemId, setBookingItemId] = useState("");
+  const [bookingLocationId, setBookingLocationId] = useState("");
+  const [bookingItemFilterDraft, setBookingItemFilterDraft] = useState("");
+  const [bookingLocationFilterDraft, setBookingLocationFilterDraft] = useState("");
   const [unitName, setUnitName] = useState("");
   const [unitShortCode, setUnitShortCode] = useState("");
   const [unitDescription, setUnitDescription] = useState("");
@@ -137,9 +142,19 @@ function App() {
   const currentLocation =
     viewModel?.locations.find((location) => location.id === selectedLocationId) ?? viewModel?.locations[0];
 
+  const detailLocation =
+    locationDetailId && locationDetailId.length > 0
+      ? viewModel?.locations.find((location) => location.id === locationDetailId) ?? null
+      : null;
+
   useEffect(() => {
-    setLocationEditName(currentLocation?.name ?? "");
-  }, [currentLocation?.id, currentLocation?.name]);
+    if (locationDetailId === "") {
+      setLocationEditName("");
+      return;
+    }
+
+    setLocationEditName(detailLocation?.name ?? "");
+  }, [detailLocation?.id, detailLocation?.name, locationDetailId]);
 
   useEffect(() => {
     if (!snapshotState?.items.length) {
@@ -154,9 +169,45 @@ function App() {
     );
   }, [snapshotState]);
 
-  const currentItem = snapshotState?.items.find((item) => item.id === selectedItemId) ?? null;
+  useEffect(() => {
+    if (!snapshotState?.items.length) {
+      setBookingItemId("");
+      return;
+    }
+
+    setBookingItemId((current) =>
+      current && snapshotState.items.some((item) => item.id === current)
+        ? current
+        : snapshotState.items[0]?.id ?? ""
+    );
+  }, [snapshotState]);
 
   useEffect(() => {
+    if (!viewModel?.locations.length) {
+      setBookingLocationId("");
+      return;
+    }
+
+    setBookingLocationId((current) =>
+      current && viewModel.locations.some((location) => location.id === current)
+        ? current
+        : viewModel.locations[0]?.id ?? ""
+    );
+  }, [viewModel]);
+
+  const currentItemId =
+    itemDetailId && itemDetailId.length > 0 ? itemDetailId : selectedItemId;
+  const currentItem = snapshotState?.items.find((item) => item.id === currentItemId) ?? null;
+
+  useEffect(() => {
+    if (itemDetailId === "") {
+      setItemNameDraft("");
+      setItemBarcodeDraft("");
+      setItemUnitTypeId(snapshotState?.unitTypes[0]?.id ?? "");
+      setItemTrackExpiryDraft(true);
+      return;
+    }
+
     if (currentItem) {
       setItemNameDraft(currentItem.name);
       setItemBarcodeDraft(currentItem.barcode ?? "");
@@ -169,7 +220,7 @@ function App() {
     setItemBarcodeDraft("");
     setItemUnitTypeId(snapshotState?.unitTypes[0]?.id ?? "");
     setItemTrackExpiryDraft(true);
-  }, [currentItem, snapshotState]);
+  }, [currentItem, itemDetailId, snapshotState]);
 
   const visibleAlerts = useMemo(
     () =>
@@ -246,6 +297,54 @@ function App() {
     [batchQuantityById, snapshotState]
   );
 
+  const filteredLocations = useMemo(() => {
+    const query = locationFilterDraft.trim().toLocaleLowerCase();
+    if (!query) {
+      return viewModel?.locations ?? [];
+    }
+
+    return (viewModel?.locations ?? []).filter((location) =>
+      location.name.toLocaleLowerCase().includes(query)
+    );
+  }, [locationFilterDraft, viewModel]);
+
+  const filteredItems = useMemo(() => {
+    const query = itemFilterDraft.trim().toLocaleLowerCase();
+    if (!query) {
+      return itemSummaries;
+    }
+
+    return itemSummaries.filter(
+      (item) =>
+        item.name.toLocaleLowerCase().includes(query) ||
+        item.barcode.toLocaleLowerCase().includes(query)
+    );
+  }, [itemFilterDraft, itemSummaries]);
+
+  const bookingItems = useMemo(() => {
+    const query = bookingItemFilterDraft.trim().toLocaleLowerCase();
+    if (!query) {
+      return itemSummaries;
+    }
+
+    return itemSummaries.filter(
+      (item) =>
+        item.name.toLocaleLowerCase().includes(query) ||
+        item.barcode.toLocaleLowerCase().includes(query)
+    );
+  }, [bookingItemFilterDraft, itemSummaries]);
+
+  const bookingLocations = useMemo(() => {
+    const query = bookingLocationFilterDraft.trim().toLocaleLowerCase();
+    if (!query) {
+      return viewModel?.locations ?? [];
+    }
+
+    return (viewModel?.locations ?? []).filter((location) =>
+      location.name.toLocaleLowerCase().includes(query)
+    );
+  }, [bookingLocationFilterDraft, viewModel]);
+
   const currentItemBatches = useMemo(() => {
     if (!currentItem || !snapshotState) {
       return [];
@@ -267,20 +366,30 @@ function App() {
       .sort((left, right) => left.expiryLabel.localeCompare(right.expiryLabel));
   }, [batchQuantityById, currentItem, snapshotState]);
 
+  const bookingItem = itemSummaries.find((item) => item.id === bookingItemId) ?? null;
+  const bookingLocation = viewModel?.locations.find((location) => location.id === bookingLocationId) ?? null;
+
   async function handleReset() {
     await resetSeedData();
     setRefreshToken((current) => current + 1);
   }
 
   async function handleSaveLocation() {
-    const trimmed = locationName.trim();
+    const trimmed = locationEditName.trim();
     if (!trimmed) {
       return;
     }
 
     try {
-      await addLocation({ name: trimmed });
-      setLocationName("");
+      if (locationDetailId === "") {
+        const newLocationId = await addLocation({ name: trimmed });
+        if (newLocationId) {
+          setSelectedLocationId(newLocationId);
+          setLocationDetailId(newLocationId);
+        }
+      } else if (detailLocation) {
+        await renameLocation({ id: detailLocation.id, name: trimmed });
+      }
       setRefreshToken((current) => current + 1);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Ort konnte nicht gespeichert werden.");
@@ -348,13 +457,14 @@ function App() {
   }
 
   async function handleDeleteLocation() {
-    if (!currentLocation) {
+    if (!detailLocation) {
       return;
     }
 
     try {
-      await deleteLocation(currentLocation.id);
+      await deleteLocation(detailLocation.id);
       setSelectedLocationId("");
+      setLocationDetailId(null);
       setRefreshToken((current) => current + 1);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Ort konnte nicht geloescht werden.");
@@ -395,6 +505,7 @@ function App() {
         });
         if (newItemId) {
           setSelectedItemId(newItemId);
+          setItemDetailId(newItemId);
         }
       }
 
@@ -430,13 +541,23 @@ function App() {
   }
 
   function handleNewItem() {
-    setSelectedItemId("");
+    setItemDetailId("");
     setItemNameDraft("");
     setItemBarcodeDraft("");
     setItemUnitTypeId(snapshotState?.unitTypes[0]?.id ?? "");
     setItemTrackExpiryDraft(true);
     setBatchCodeDraft("");
     setBatchExpiryDateDraft("");
+  }
+
+  function handleOpenLocationDetail(locationId: string) {
+    setSelectedLocationId(locationId);
+    setLocationDetailId(locationId);
+  }
+
+  function handleOpenItemDetail(itemId: string) {
+    setSelectedItemId(itemId);
+    setItemDetailId(itemId);
   }
 
   return (
@@ -466,26 +587,6 @@ function App() {
             }
           ]}
         />
-        <IonHeader translucent>
-          <IonToolbar className="topbar">
-            <div className="topbar__main">
-              <IonTitle>Lagerkontrolle</IonTitle>
-              <span className="topbar__sub">
-                {currentLocation?.name ?? "Lager"} · {viewModel?.locations.length ?? 0} Orte · offline bereit
-              </span>
-            </div>
-            <div className="topbar__actions">
-              <span className="status-dot">
-                <IonIcon icon={syncOutline} />
-                Sync ok
-              </span>
-              <IonButton fill="clear" className="reset-button" onClick={handleReset}>
-                <IonIcon slot="icon-only" icon={refreshOutline} />
-              </IonButton>
-            </div>
-          </IonToolbar>
-        </IonHeader>
-
         <IonContent fullscreen className="shell">
           <div className="shell__inner">
             {isLoading || !viewModel ? (
@@ -493,6 +594,11 @@ function App() {
             ) : (
               <>
                 <section className="surface surface--nav">
+                  <div className="nav-tools">
+                    <IonButton fill="clear" className="reset-button" onClick={handleReset}>
+                      <IonIcon slot="icon-only" icon={refreshOutline} />
+                    </IonButton>
+                  </div>
                   <div className="view-switcher">
                     {viewMeta.map((view) => (
                       <button
@@ -616,7 +722,7 @@ function App() {
                             key={location.id}
                             className="list-row list-row--clickable"
                             onClick={() => {
-                              setSelectedLocationId(location.id);
+                              handleOpenLocationDetail(location.id);
                               setActiveView("locations");
                             }}
                           >
@@ -661,64 +767,56 @@ function App() {
 
                 {activeView === "locations" ? (
                   <div className="stack">
-                    <section className="surface">
-                      <header className="section-header">
-                        <div>
-                          <h2>Neu anlegen</h2>
-                        </div>
-                      </header>
-                      <div className="unit-form">
-                        <IonItem className="compact-field">
-                          <IonLabel position="stacked">Neuer Ort</IonLabel>
+                    {locationDetailId === null ? (
+                      <section className="surface">
+                        <header className="section-header">
+                          <div>
+                            <h1>Orte</h1>
+                            <span>{viewModel.locations.length} aktiv</span>
+                          </div>
+                          <IonButton fill="outline" className="primary-button" onClick={() => setLocationDetailId("")}>
+                            Neu
+                          </IonButton>
+                        </header>
+                        <IonItem className="compact-field compact-field--filter">
+                          <IonLabel position="stacked">Filtern</IonLabel>
                           <IonInput
-                            value={locationName}
-                            placeholder="z. B. Kuehllager"
-                            onIonInput={(event) => setLocationName(String(event.detail.value ?? ""))}
+                            value={locationFilterDraft}
+                            placeholder="Ort suchen"
+                            onIonInput={(event) => setLocationFilterDraft(String(event.detail.value ?? ""))}
                           />
                         </IonItem>
-                        <IonButton className="primary-button" onClick={handleSaveLocation}>
-                          Ort speichern
-                        </IonButton>
-                      </div>
-                    </section>
-
-                    <section className="surface">
-                      <header className="section-header">
-                        <div>
-                          <h1>Orte</h1>
-                          <span>{viewModel.locations.length} aktiv</span>
+                        <div className="list">
+                          {filteredLocations.map((location) => (
+                            <article
+                              key={location.id}
+                              className="list-row list-row--clickable"
+                              onClick={() => handleOpenLocationDetail(location.id)}
+                            >
+                              <div className="list-row__main">
+                                <strong>{location.name}</strong>
+                                <span>
+                                  {location.slotCount} Slots · {location.itemCount} Artikel
+                                </span>
+                              </div>
+                              <div className="list-row__meta">
+                                <b>{location.occupancyPercent}%</b>
+                                <small>{location.lastMovementLabel}</small>
+                              </div>
+                            </article>
+                          ))}
                         </div>
-                      </header>
-                      <div className="location-grid">
-                        {viewModel.locations.map((location) => (
-                          <button
-                            key={location.id}
-                            type="button"
-                            className={
-                              location.id === currentLocation?.id
-                                ? "location-card location-card--active"
-                                : "location-card"
-                            }
-                            onClick={() => setSelectedLocationId(location.id)}
-                          >
-                            <div className="location-card__top">
-                              <strong>{location.name}</strong>
-                              <IonBadge color="light">{location.occupancyPercent}%</IonBadge>
-                            </div>
-                            <span>{location.slotCount} Slots</span>
-                            <small>{location.itemCount} Artikel</small>
-                          </button>
-                        ))}
-                      </div>
-                    </section>
-
-                    {currentLocation ? (
+                      </section>
+                    ) : (
                       <>
                         <section className="surface">
                           <header className="section-header">
+                            <IonButton fill="clear" className="back-button" onClick={() => setLocationDetailId(null)}>
+                              Zurueck
+                            </IonButton>
                             <div>
-                              <h2>Ort verwalten</h2>
-                              <span>{currentLocation.name}</span>
+                              <h2>{detailLocation ? "Ort bearbeiten" : "Ort anlegen"}</h2>
+                              <span>{detailLocation?.name ?? "Neuer Ort"}</span>
                             </div>
                           </header>
                           <div className="unit-form">
@@ -729,280 +827,299 @@ function App() {
                                 onIonInput={(event) => setLocationEditName(String(event.detail.value ?? ""))}
                               />
                             </IonItem>
-                            <IonButton className="primary-button" onClick={handleRenameLocation}>
-                              Ort aktualisieren
+                            <IonButton className="primary-button" onClick={handleSaveLocation}>
+                              {detailLocation ? "Ort aktualisieren" : "Ort speichern"}
                             </IonButton>
-                            <IonButton className="danger-button" fill="outline" onClick={handleDeleteLocation}>
-                              Ort loeschen
-                            </IonButton>
+                            {detailLocation ? (
+                              <IonButton className="danger-button" fill="outline" onClick={handleDeleteLocation}>
+                                Ort loeschen
+                              </IonButton>
+                            ) : null}
                           </div>
                         </section>
 
-                        <section className="surface">
-                          <header className="section-header">
-                            <div>
-                              <h2>Slot anlegen</h2>
-                              <span>{currentLocation.name}</span>
-                            </div>
-                          </header>
-                          <div className="unit-form">
-                            <IonItem className="compact-field">
-                              <IonLabel position="stacked">Typ</IonLabel>
-                              <IonInput
-                                value={slotKind === "shelf" ? "Regal" : "Lade"}
-                                readonly
-                                onClick={() => setSlotKind((current) => (current === "shelf" ? "drawer" : "shelf"))}
-                              />
-                            </IonItem>
-                            <IonItem className="compact-field">
-                              <IonLabel position="stacked">Nummer</IonLabel>
-                              <IonInput
-                                type="number"
-                                value={slotNumber}
-                                onIonInput={(event) => setSlotNumber(String(event.detail.value ?? ""))}
-                              />
-                            </IonItem>
-                            <IonButton className="primary-button" onClick={handleSaveSlot}>
-                              {slotKind === "shelf" ? "Regal speichern" : "Lade speichern"}
-                            </IonButton>
-                          </div>
-                          <div className="filter-pills">
-                            <button
-                              type="button"
-                              className={slotKind === "shelf" ? "pill pill--active" : "pill"}
-                              onClick={() => setSlotKind("shelf")}
-                            >
-                              Regal
-                            </button>
-                            <button
-                              type="button"
-                              className={slotKind === "drawer" ? "pill pill--active" : "pill"}
-                              onClick={() => setSlotKind("drawer")}
-                            >
-                              Lade
-                            </button>
-                          </div>
-                        </section>
+                        {detailLocation ? (
+                          <>
+                            <section className="surface">
+                              <header className="section-header">
+                                <div>
+                                  <h2>Slot anlegen</h2>
+                                  <span>{detailLocation.name}</span>
+                                </div>
+                              </header>
+                              <div className="unit-form">
+                                <IonItem className="compact-field">
+                                  <IonLabel position="stacked">Typ</IonLabel>
+                                  <IonInput
+                                    value={slotKind === "shelf" ? "Regal" : "Lade"}
+                                    readonly
+                                    onClick={() => setSlotKind((current) => (current === "shelf" ? "drawer" : "shelf"))}
+                                  />
+                                </IonItem>
+                                <IonItem className="compact-field">
+                                  <IonLabel position="stacked">Nummer</IonLabel>
+                                  <IonInput
+                                    type="number"
+                                    value={slotNumber}
+                                    onIonInput={(event) => setSlotNumber(String(event.detail.value ?? ""))}
+                                  />
+                                </IonItem>
+                                <IonButton className="primary-button" onClick={handleSaveSlot}>
+                                  {slotKind === "shelf" ? "Regal speichern" : "Lade speichern"}
+                                </IonButton>
+                              </div>
+                              <div className="filter-pills">
+                                <button
+                                  type="button"
+                                  className={slotKind === "shelf" ? "pill pill--active" : "pill"}
+                                  onClick={() => setSlotKind("shelf")}
+                                >
+                                  Regal
+                                </button>
+                                <button
+                                  type="button"
+                                  className={slotKind === "drawer" ? "pill pill--active" : "pill"}
+                                  onClick={() => setSlotKind("drawer")}
+                                >
+                                  Lade
+                                </button>
+                              </div>
+                            </section>
 
-                        <section className="surface">
-                          <header className="section-header">
-                            <div>
-                              <h2>Regale und Laden</h2>
-                              <span>{currentSlots.length} angelegt</span>
-                            </div>
-                          </header>
-                          <div className="list">
-                            {currentSlots.map((slot) => (
-                              <article key={slot.id} className="list-row">
-                                <div className="list-row__main">
-                                  <strong>{slot.label}</strong>
-                                  <span>{slot.kind === "shelf" ? "Regal" : "Lade"}</span>
+                            <section className="surface">
+                              <header className="section-header">
+                                <div>
+                                  <h2>Regale und Laden</h2>
+                                  <span>{currentSlots.length} angelegt</span>
                                 </div>
-                                <div className="list-row__meta">
-                                  <IonButton
-                                    size="small"
-                                    fill="clear"
-                                    className="danger-button"
-                                    onClick={() => void handleDeleteSlot(slot.id)}
-                                  >
-                                    Loeschen
-                                  </IonButton>
-                                </div>
-                              </article>
-                            ))}
-                          </div>
-                        </section>
+                              </header>
+                              <div className="list">
+                                {currentSlots.map((slot) => (
+                                  <article key={slot.id} className="list-row">
+                                    <div className="list-row__main">
+                                      <strong>{slot.label}</strong>
+                                      <span>{slot.kind === "shelf" ? "Regal" : "Lade"}</span>
+                                    </div>
+                                    <div className="list-row__meta">
+                                      <IonButton
+                                        size="small"
+                                        fill="clear"
+                                        className="danger-button"
+                                        onClick={() => void handleDeleteSlot(slot.id)}
+                                      >
+                                        Loeschen
+                                      </IonButton>
+                                    </div>
+                                  </article>
+                                ))}
+                              </div>
+                            </section>
 
-                        <section className="surface">
-                          <header className="section-header">
-                            <div>
-                              <h2>{currentLocation.name}</h2>
-                              <span>
-                                {currentLocation.itemCount} Artikel · {currentLocation.lastMovementLabel}
-                              </span>
-                            </div>
-                            <IonBadge color="light">{currentLocation.occupancyPercent}% belegt</IonBadge>
-                          </header>
-                          <div className="stock-grid">
-                            {visibleStocks.map((line) => (
-                              <article key={line.id} className="stock-card">
-                                <div className="stock-card__top">
-                                  <span>{line.slotName}</span>
-                                  <small className={`status-text ${toneClass(line.status === "ok" ? "good" : line.status)}`}>
-                                    {line.status === "critical"
-                                      ? "kritisch"
-                                      : line.status === "warning"
-                                        ? "bald"
-                                        : "ok"}
-                                  </small>
+                            <section className="surface">
+                              <header className="section-header">
+                                <div>
+                                  <h2>{detailLocation.name}</h2>
+                                  <span>
+                                    {detailLocation.itemCount} Artikel · {detailLocation.lastMovementLabel}
+                                  </span>
                                 </div>
-                                <strong>{line.itemName}</strong>
-                                <div className="stock-card__meta">
-                                  <b>
-                                    {line.quantity} {line.unitShortCode}
-                                  </b>
-                                  <span>Verfall {line.expiryDate}</span>
-                                </div>
-                              </article>
-                            ))}
-                          </div>
-                        </section>
+                                <IonBadge color="light">{detailLocation.occupancyPercent}% belegt</IonBadge>
+                              </header>
+                              <div className="stock-grid">
+                                {visibleStocks.map((line) => (
+                                  <article key={line.id} className="stock-card">
+                                    <div className="stock-card__top">
+                                      <span>{line.slotName}</span>
+                                      <small className={`status-text ${toneClass(line.status === "ok" ? "good" : line.status)}`}>
+                                        {line.status === "critical"
+                                          ? "kritisch"
+                                          : line.status === "warning"
+                                            ? "bald"
+                                            : "ok"}
+                                      </small>
+                                    </div>
+                                    <strong>{line.itemName}</strong>
+                                    <div className="stock-card__meta">
+                                      <b>
+                                        {line.quantity} {line.unitShortCode}
+                                      </b>
+                                      <span>Verfall {line.expiryDate}</span>
+                                    </div>
+                                  </article>
+                                ))}
+                              </div>
+                            </section>
+                          </>
+                        ) : null}
                       </>
-                    ) : null}
+                    )}
                   </div>
                 ) : null}
 
                 {activeView === "items" ? (
                   <div className="stack">
-                    <section className="surface">
-                      <header className="section-header">
-                        <div>
-                          <h1>Artikel</h1>
-                          <span>{itemSummaries.length} angelegt</span>
-                        </div>
-                        <IonButton fill="outline" className="primary-button" onClick={handleNewItem}>
-                          Neu
-                        </IonButton>
-                      </header>
-                      <div className="entity-grid">
-                        {itemSummaries.map((item) => (
-                          <button
-                            key={item.id}
-                            type="button"
-                            className={item.id === selectedItemId ? "entity-card entity-card--active" : "entity-card"}
-                            onClick={() => setSelectedItemId(item.id)}
-                          >
-                            <div className="entity-card__top">
-                              <strong>{item.name}</strong>
-                              <IonBadge color="light">{item.unitLabel}</IonBadge>
-                            </div>
-                            <span>{item.totalQuantity} im Bestand</span>
-                            <small>
-                              {item.batchCount} Chargen · {item.trackExpiry ? item.nextExpiry : "ohne Ablauf"}
-                            </small>
-                          </button>
-                        ))}
-                      </div>
-                    </section>
-
-                    <section className="surface">
-                      <header className="section-header">
-                        <div>
-                          <h2>{currentItem ? "Artikel bearbeiten" : "Artikel anlegen"}</h2>
-                          <span>{currentItem ? currentItem.name : "Neuer Stammdatensatz"}</span>
-                        </div>
-                      </header>
-                      <div className="unit-form">
-                        <IonItem className="compact-field">
-                          <IonLabel position="stacked">Name</IonLabel>
-                          <IonInput
-                            value={itemNameDraft}
-                            placeholder="z. B. Schwarztee 25er"
-                            onIonInput={(event) => setItemNameDraft(String(event.detail.value ?? ""))}
-                          />
-                        </IonItem>
-                        <label className="form-field">
-                          <span>Einheit</span>
-                          <select
-                            className="app-select"
-                            value={itemUnitTypeId}
-                            onChange={(event) => setItemUnitTypeId(event.target.value)}
-                          >
-                            {viewModel.unitTypes.map((unitType) => (
-                              <option key={unitType.id} value={unitType.id}>
-                                {unitType.name} ({unitType.shortCode})
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <IonItem className="compact-field">
-                          <IonLabel position="stacked">Barcode</IonLabel>
-                          <IonInput
-                            value={itemBarcodeDraft}
-                            placeholder="optional"
-                            onIonInput={(event) => setItemBarcodeDraft(String(event.detail.value ?? ""))}
-                          />
-                        </IonItem>
-                      </div>
-                      <div className="toggle-pills">
-                        <button
-                          type="button"
-                          className={itemTrackExpiryDraft ? "toggle-pill toggle-pill--active" : "toggle-pill"}
-                          onClick={() => setItemTrackExpiryDraft(true)}
-                        >
-                          Ablauf aktiv
-                        </button>
-                        <button
-                          type="button"
-                          className={!itemTrackExpiryDraft ? "toggle-pill toggle-pill--active" : "toggle-pill"}
-                          onClick={() => setItemTrackExpiryDraft(false)}
-                        >
-                          Ohne Ablauf
-                        </button>
-                      </div>
-                      <div className="form-actions">
-                        <IonButton className="primary-button" onClick={handleSaveItem}>
-                          {currentItem ? "Artikel aktualisieren" : "Artikel speichern"}
-                        </IonButton>
-                        {currentItem ? (
+                    {itemDetailId === null ? (
+                      <section className="surface">
+                        <header className="section-header">
+                          <div>
+                            <h1>Artikel</h1>
+                            <span>{itemSummaries.length} angelegt</span>
+                          </div>
                           <IonButton fill="outline" className="primary-button" onClick={handleNewItem}>
-                            Neuer Artikel
+                            Neu
                           </IonButton>
-                        ) : null}
-                      </div>
-                    </section>
-
-                    <section className="surface">
-                      <header className="section-header">
-                        <div>
-                          <h2>Chargen</h2>
-                          <span>{currentItem ? currentItem.name : "Bitte zuerst Artikel waehlen"}</span>
+                        </header>
+                        <IonItem className="compact-field compact-field--filter">
+                          <IonLabel position="stacked">Filtern</IonLabel>
+                          <IonInput
+                            value={itemFilterDraft}
+                            placeholder="Name oder Barcode"
+                            onIonInput={(event) => setItemFilterDraft(String(event.detail.value ?? ""))}
+                          />
+                        </IonItem>
+                        <div className="list">
+                          {filteredItems.map((item) => (
+                            <article
+                              key={item.id}
+                              className="list-row list-row--clickable"
+                              onClick={() => handleOpenItemDetail(item.id)}
+                            >
+                              <div className="list-row__main">
+                                <strong>{item.name}</strong>
+                                <span>
+                                  {item.batchCount} Chargen · {item.barcode}
+                                </span>
+                              </div>
+                              <div className="list-row__meta">
+                                <b>
+                                  {item.totalQuantity} {item.unitLabel}
+                                </b>
+                                <small>{item.trackExpiry ? item.nextExpiry : "ohne Ablauf"}</small>
+                              </div>
+                            </article>
+                          ))}
                         </div>
-                      </header>
-                      {currentItem ? (
-                        <>
+                      </section>
+                    ) : (
+                      <>
+                        <section className="surface">
+                          <header className="section-header">
+                            <IonButton fill="clear" className="back-button" onClick={() => setItemDetailId(null)}>
+                              Zurueck
+                            </IonButton>
+                            <div>
+                              <h2>{currentItem ? "Artikel bearbeiten" : "Artikel anlegen"}</h2>
+                              <span>{currentItem ? currentItem.name : "Neuer Stammdatensatz"}</span>
+                            </div>
+                          </header>
                           <div className="unit-form">
                             <IonItem className="compact-field">
-                              <IonLabel position="stacked">Chargencode</IonLabel>
+                              <IonLabel position="stacked">Name</IonLabel>
                               <IonInput
-                                value={batchCodeDraft}
-                                placeholder="z. B. ST-2026-04"
-                                onIonInput={(event) => setBatchCodeDraft(String(event.detail.value ?? ""))}
+                                value={itemNameDraft}
+                                placeholder="z. B. Schwarztee 25er"
+                                onIonInput={(event) => setItemNameDraft(String(event.detail.value ?? ""))}
                               />
                             </IonItem>
                             <label className="form-field">
-                              <span>{currentItem.trackExpiry ? "Ablaufdatum" : "Datum optional"}</span>
-                              <input
-                                className="app-input"
-                                type="date"
-                                value={batchExpiryDateDraft}
-                                onChange={(event) => setBatchExpiryDateDraft(event.target.value)}
-                              />
+                              <span>Einheit</span>
+                              <select
+                                className="app-select"
+                                value={itemUnitTypeId}
+                                onChange={(event) => setItemUnitTypeId(event.target.value)}
+                              >
+                                {viewModel.unitTypes.map((unitType) => (
+                                  <option key={unitType.id} value={unitType.id}>
+                                    {unitType.name} ({unitType.shortCode})
+                                  </option>
+                                ))}
+                              </select>
                             </label>
-                            <IonButton className="primary-button" onClick={handleSaveBatch}>
-                              Charge speichern
+                            <IonItem className="compact-field">
+                              <IonLabel position="stacked">Barcode</IonLabel>
+                              <IonInput
+                                value={itemBarcodeDraft}
+                                placeholder="optional"
+                                onIonInput={(event) => setItemBarcodeDraft(String(event.detail.value ?? ""))}
+                              />
+                            </IonItem>
+                          </div>
+                          <div className="toggle-pills">
+                            <button
+                              type="button"
+                              className={itemTrackExpiryDraft ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                              onClick={() => setItemTrackExpiryDraft(true)}
+                            >
+                              Ablauf aktiv
+                            </button>
+                            <button
+                              type="button"
+                              className={!itemTrackExpiryDraft ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                              onClick={() => setItemTrackExpiryDraft(false)}
+                            >
+                              Ohne Ablauf
+                            </button>
+                          </div>
+                          <div className="form-actions">
+                            <IonButton className="primary-button" onClick={handleSaveItem}>
+                              {currentItem ? "Artikel aktualisieren" : "Artikel speichern"}
                             </IonButton>
                           </div>
-                          <div className="list">
-                            {currentItemBatches.map((batch) => (
-                              <article key={batch.id} className="list-row">
-                                <div className="list-row__main">
-                                  <strong>{batch.batchCode}</strong>
-                                  <span>{batch.expiryLabel}</span>
-                                </div>
-                                <div className="list-row__meta">
-                                  <b>
-                                    {batch.quantity} {batch.unitShortCode}
-                                  </b>
-                                </div>
-                              </article>
-                            ))}
-                          </div>
-                        </>
-                      ) : (
-                        <div className="empty-state">Mit Neu zuerst einen Artikel anlegen oder einen bestehenden waehlen.</div>
-                      )}
-                    </section>
+                        </section>
+
+                        <section className="surface">
+                          <header className="section-header">
+                            <div>
+                              <h2>Chargen</h2>
+                              <span>{currentItem ? currentItem.name : "Nach dem Speichern verfuegbar"}</span>
+                            </div>
+                          </header>
+                          {currentItem ? (
+                            <>
+                              <div className="unit-form">
+                                <IonItem className="compact-field">
+                                  <IonLabel position="stacked">Chargencode</IonLabel>
+                                  <IonInput
+                                    value={batchCodeDraft}
+                                    placeholder="z. B. ST-2026-04"
+                                    onIonInput={(event) => setBatchCodeDraft(String(event.detail.value ?? ""))}
+                                  />
+                                </IonItem>
+                                <label className="form-field">
+                                  <span>{currentItem.trackExpiry ? "Ablaufdatum" : "Datum optional"}</span>
+                                  <input
+                                    className="app-input"
+                                    type="date"
+                                    value={batchExpiryDateDraft}
+                                    onChange={(event) => setBatchExpiryDateDraft(event.target.value)}
+                                  />
+                                </label>
+                                <IonButton className="primary-button" onClick={handleSaveBatch}>
+                                  Charge speichern
+                                </IonButton>
+                              </div>
+                              <div className="list">
+                                {currentItemBatches.map((batch) => (
+                                  <article key={batch.id} className="list-row">
+                                    <div className="list-row__main">
+                                      <strong>{batch.batchCode}</strong>
+                                      <span>{batch.expiryLabel}</span>
+                                    </div>
+                                    <div className="list-row__meta">
+                                      <b>
+                                        {batch.quantity} {batch.unitShortCode}
+                                      </b>
+                                    </div>
+                                  </article>
+                                ))}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="empty-state">Artikel zuerst speichern, danach Chargen pflegen.</div>
+                          )}
+                        </section>
+                      </>
+                    )}
                   </div>
                 ) : null}
 
@@ -1012,7 +1129,7 @@ function App() {
                       <header className="section-header">
                         <div>
                           <h1>Schnellbuchung</h1>
-                          <span>naechster Schritt: echte Buchungsmaske</span>
+                          <span>erster gefuehrter Buchungsfluss fuer Ticket #1</span>
                         </div>
                         <IonButton fill="solid" className="primary-button">
                           <IonIcon slot="start" icon={barcodeOutline} />
@@ -1020,22 +1137,108 @@ function App() {
                         </IonButton>
                       </header>
                       <div className="action-grid">
-                        <button type="button" className="action-card">
+                        <button
+                          type="button"
+                          className={bookingAction === "in" ? "action-card action-card--active" : "action-card"}
+                          onClick={() => setBookingAction("in")}
+                        >
                           <strong>Zugang</strong>
                           <span>Ware einbuchen</span>
                         </button>
-                        <button type="button" className="action-card">
+                        <button
+                          type="button"
+                          className={bookingAction === "out" ? "action-card action-card--active" : "action-card"}
+                          onClick={() => setBookingAction("out")}
+                        >
                           <strong>Abgang</strong>
                           <span>Verbrauch buchen</span>
                         </button>
-                        <button type="button" className="action-card">
+                        <button
+                          type="button"
+                          className={bookingAction === "transfer" ? "action-card action-card--active" : "action-card"}
+                          onClick={() => setBookingAction("transfer")}
+                        >
                           <strong>Umbuchung</strong>
                           <span>Regal oder Lade wechseln</span>
                         </button>
-                        <button type="button" className="action-card">
+                        <button
+                          type="button"
+                          className={bookingAction === "adjustment" ? "action-card action-card--active" : "action-card"}
+                          onClick={() => setBookingAction("adjustment")}
+                        >
                           <strong>Korrektur</strong>
                           <span>Bestand anpassen</span>
                         </button>
+                      </div>
+                    </section>
+
+                    <section className="surface">
+                      <header className="section-header">
+                        <div>
+                          <h2>Artikel waehlen</h2>
+                        </div>
+                      </header>
+                      <IonItem className="compact-field compact-field--filter">
+                        <IonLabel position="stacked">Filtern</IonLabel>
+                        <IonInput
+                          value={bookingItemFilterDraft}
+                          placeholder="Name oder Barcode"
+                          onIonInput={(event) => setBookingItemFilterDraft(String(event.detail.value ?? ""))}
+                        />
+                      </IonItem>
+                      <div className="list">
+                        {bookingItems.slice(0, 8).map((item) => (
+                          <article
+                            key={item.id}
+                            className={item.id === bookingItemId ? "list-row list-row--selected" : "list-row list-row--clickable"}
+                            onClick={() => setBookingItemId(item.id)}
+                          >
+                            <div className="list-row__main">
+                              <strong>{item.name}</strong>
+                              <span>{item.barcode}</span>
+                            </div>
+                            <div className="list-row__meta">
+                              <b>
+                                {item.totalQuantity} {item.unitLabel}
+                              </b>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className="surface">
+                      <header className="section-header">
+                        <div>
+                          <h2>Ort waehlen</h2>
+                        </div>
+                      </header>
+                      <IonItem className="compact-field compact-field--filter">
+                        <IonLabel position="stacked">Filtern</IonLabel>
+                        <IonInput
+                          value={bookingLocationFilterDraft}
+                          placeholder="Ort suchen"
+                          onIonInput={(event) => setBookingLocationFilterDraft(String(event.detail.value ?? ""))}
+                        />
+                      </IonItem>
+                      <div className="list">
+                        {bookingLocations.slice(0, 8).map((location) => (
+                          <article
+                            key={location.id}
+                            className={location.id === bookingLocationId ? "list-row list-row--selected" : "list-row list-row--clickable"}
+                            onClick={() => setBookingLocationId(location.id)}
+                          >
+                            <div className="list-row__main">
+                              <strong>{location.name}</strong>
+                              <span>
+                                {location.slotCount} Slots · {location.itemCount} Artikel
+                              </span>
+                            </div>
+                            <div className="list-row__meta">
+                              <b>{location.occupancyPercent}%</b>
+                            </div>
+                          </article>
+                        ))}
                       </div>
                     </section>
 
@@ -1047,20 +1250,28 @@ function App() {
                       </header>
                       <div className="booking-preview">
                         <div className="booking-preview__row">
+                          <span>Aktion</span>
+                          <b>
+                            {bookingAction === "in"
+                              ? "Zugang"
+                              : bookingAction === "out"
+                                ? "Abgang"
+                                : bookingAction === "transfer"
+                                  ? "Umbuchung"
+                                  : "Korrektur"}
+                          </b>
+                        </div>
+                        <div className="booking-preview__row">
+                          <span>Artikel</span>
+                          <b>{bookingItem?.name ?? "bitte waehlen"}</b>
+                        </div>
+                        <div className="booking-preview__row">
                           <span>Ort</span>
-                          <b>{currentLocation?.name ?? "Teelager"}</b>
+                          <b>{bookingLocation?.name ?? "bitte waehlen"}</b>
                         </div>
                         <div className="booking-preview__row">
-                          <span>Slot</span>
-                          <b>Regal 3</b>
-                        </div>
-                        <div className="booking-preview__row">
-                          <span>Warnung</span>
-                          <b>{viewModel.settings.expiryWarningDays} Tage vorher</b>
-                        </div>
-                        <div className="booking-preview__row">
-                          <span>Wiedervorlage</span>
-                          <b>alle {viewModel.settings.reminderRepeatDays} Tage</b>
+                          <span>Naechster Schritt</span>
+                          <b>Menge, Charge und Slot erfassen</b>
                         </div>
                       </div>
                     </section>
