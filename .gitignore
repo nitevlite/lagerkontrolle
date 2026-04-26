@@ -9,5 +9,6 @@ coverage/
 *.sqlite
 *.sqlite3
 *.log
+.local/
 .DS_Store
 Thumbs.db

@@ -10,14 +10,16 @@ Wir liefern zuerst ein testbares mobiles Frontend und bauen darauf das echte Off
 
 - PWA-Projekt aufsetzen
 - mobile Navigation und Grundlayout bauen
-- Startseite, Ortsliste, Ort-Detail und Schnellbuchung als klickbaren Flow bereitstellen
+- Startseite, Dashboard, Ortsliste, Ort-Detail und Schnellbuchung als klickbaren Flow bereitstellen
 - Demo-Daten hinterlegen
+- Screens fuer Einheitentypen und Ablaufwarnungen sichtbar vorbereiten
 
 Ergebnis: Du kannst die App sofort am Handy oeffnen und UX testen.
+Status: erster Shell-Stand ist umgesetzt.
 
 ### 2. Fachliches Datenmodell
 
-- Entitaeten fuer Ort, Regal oder Lade, Artikel, Charge und Bewegung umsetzen
+- Entitaeten fuer Ort, Regal oder Lade, Artikel, Einheitentyp, Charge und Bewegung umsetzen
 - Bestandsberechnung aus Bewegungen ableiten
 - lokale Speicherung anbinden
 
@@ -28,8 +30,10 @@ Ergebnis: Das Modell ist robust genug fuer Ablaufdaten, Historie und Sync.
 - Ort anlegen
 - Regal oder Lade nummerieren
 - Artikel anlegen
+- neue Einheitentypen anlegen
 - Zugang, Abgang und Umbuchung buchen
 - Ablaufdatum und Charge mitfuehren
+- Ablaufwarnungen im Alltag sichtbar machen
 
 Ergebnis: Der eigentliche Arbeitsalltag ist digital abbildbar.
 
@@ -55,7 +59,7 @@ Ergebnis: Mehrere Nutzer koennen denselben Bestand bearbeiten.
 - Demo-Daten durch echte Strukturen ersetzen
 - Performance, Offline-Verhalten und Scan-Zuverlaessigkeit pruefen
 - Formularschritte reduzieren
-- Importpfad fuer spaetere Excel-Dateien vorbereiten
+- Importpfad fuer spaetere Excel-Dateien vorbereiten, sobald Quelldateien vorliegen
 
 Ergebnis: Das MVP ist bereit fuer den echten Einsatz.
 

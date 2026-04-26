@@ -32,10 +32,13 @@ Warum das sinnvoll ist:
 - Orte anlegen, z. B. `Teelager`
 - Regale oder Laden pro Ort nummerieren, z. B. `Regal 1`, `Lade 4`
 - Artikel, Behaelter, Gebinde und Verbrauchsmaterial erfassen
+- freie Einheitentypen wie `Stk`, `Packung`, `Kiste`, `Flasche` anlegen
 - Mengen schnell buchen: `+`, `-`, Umbuchung
 - Ablaufdaten und Chargen fuer fast alle Artikel verwalten
+- Vorwarnungen vor Ablauf anzeigen
 - Barcode- oder QR-Scan direkt im MVP
 - Mehrgeraete-Sync direkt im MVP
+- Dashboard mit Status, Warnungen und Auswertung
 - Favoriten, letzte Eintraege und schnelle Wiederholung
 - Suche und Filter nach Ort, Artikel, Status
 
@@ -48,7 +51,19 @@ Warum das sinnvoll ist:
 - `docs/BACKLOG.md`: priorisierte MVP-Arbeit
 - `docs/IMPLEMENTATION_PLAN.md`: Umsetzungsreihenfolge
 - `docs/DOMAIN_MODEL.md`: fachliches Datenmodell
+- `docs/UX_NOTES.md`: wichtige Produkt- und Bedienprinzipien
+
+## Entwicklung
+
+```sh
+npm install
+npm run dev
+npm run build
+```
+
+- `npm run dev`: startet die mobile PWA lokal
+- `npm run build`: prueft TypeScript und baut das Produktionsbundle
 
 ## Naechster technischer Schritt
 
-Das Grundgeruest fuer die PWA wird zuerst so aufgebaut, dass moeglichst schnell ein testbares mobiles Frontend sichtbar ist. Danach folgen Datenmodell, Bewegungslogik, Scan und Synchronisation.
+Das erste sichtbare PWA-Grundgeruest ist umgesetzt. Als Naechstes folgen Datenmodell, lokale Speicherung, echte Buchungslogik und danach Scan plus Synchronisation.

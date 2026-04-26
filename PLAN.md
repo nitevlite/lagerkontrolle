@@ -14,6 +14,7 @@ Wir bauen zuerst ein extrem schnelles MVP fuer mobile Erfassung. Prioritaet habe
 ## Phase 2: Fachliches Modell und lokale Daten
 
 - Datenmodell fuer Ort, Regal oder Lade, Artikel, Charge und Bewegung festziehen
+- Einheitentypen als frei pflegbare Stammdaten modellieren
 - lokale Datenbank anbinden
 - Orte, Regale oder Laden und Artikel anlegen
 - Bestandsbewegungen als Historie statt nur als Direktwert speichern
@@ -22,8 +23,10 @@ Wir bauen zuerst ein extrem schnelles MVP fuer mobile Erfassung. Prioritaet habe
 
 - schnelle Buchung fuer Zugang, Abgang und Umbuchung
 - Ablaufdaten und Chargen erfassen
+- Vorwarnungen vor Ablauf konfigurieren und anzeigen
 - Suche, Filter, Favoriten und letzte Aktionen einbauen
 - Scan-Flow fuer Barcode oder QR integrieren
+- Dashboard mit Kennzahlen und kritischen Listen aufbauen
 
 ## Phase 4: Synchronisation im MVP
 
@@ -41,7 +44,7 @@ Wir bauen zuerst ein extrem schnelles MVP fuer mobile Erfassung. Prioritaet habe
 
 ## Phase 6: Erweiterungen
 
-- Excel-Import
+- Excel-Import, sobald echte Quelldateien vorliegen
 - Warnungen fuer Mindestbestand und Ablaufdatum
 - Inventurmodus
 - Export und Auswertungen

@@ -5,6 +5,7 @@
 - `Location`: ein Ort wie `Teelager`
 - `StorageSlot`: ein nummeriertes Regal oder eine Lade innerhalb eines Orts
 - `Item`: ein Artikel, Gebinde, Gefaess oder Verbrauchsmaterial
+- `UnitType`: frei definierbare Einheit wie `Stk`, `Kiste`, `Flasche`
 - `Batch`: Charge mit Ablaufdatum
 - `Movement`: Zugang, Abgang, Umbuchung oder Korrektur
 - `StockSnapshot`: abgeleiteter aktueller Bestand je Slot, Artikel und Charge
@@ -13,6 +14,7 @@
 
 - Ein `StorageSlot` gehoert genau zu einem `Location`
 - Ein `Item` kann an mehreren Slots liegen
+- Jedes `Item` referenziert genau einen `UnitType`
 - Ablaufdatum und Charge sind fuer fast alle Artikel relevant
 - Bestand wird bevorzugt aus `Movement` berechnet
 - Umbuchung ist fachlich zwei Bewegungen mit gemeinsamer Referenz

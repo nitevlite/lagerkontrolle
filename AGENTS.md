@@ -2,32 +2,30 @@
 
 ## Project Structure & Module Organization
 
-Keep the repository predictable and local-first. Place application code in `src/`, tests in `tests/`, static files in `assets/`, shared documentation in `docs/`, and GitHub-specific templates in `.github/`. Keep root-level files limited to project entry docs and configuration such as `README.md`, `PLAN.md`, `QUESTIONS.md`, and package manifests.
+Keep the repository predictable and local-first. Application code lives in `src/`, PWA static assets in `public/`, shared documentation in `docs/`, and GitHub-specific templates in `.github/`. Keep root-level files limited to project entry docs and configuration such as `README.md`, `PLAN.md`, `QUESTIONS.md`, `package.json`, and `vite.config.ts`.
 
 Example layout:
 
 ```text
 src/
-tests/
-assets/
+public/
 docs/
 .github/
 ```
 
 ## Build, Test, and Development Commands
 
-Expose common tasks through standard entry points so contributors do not need to guess. Prefer `npm` scripts if the app stack is TypeScript-based.
+Expose common tasks through `npm` scripts so contributors do not need to guess.
 
 Examples:
 
 ```sh
 npm install
 npm run dev
-npm test
 npm run build
 ```
 
-Document every new command in `README.md` and keep local development commands reproducible from a clean checkout.
+`npm run dev` starts the Vite PWA locally. `npm run build` runs the TypeScript check and production build. Document every new command in `README.md`.
 
 ## Coding Style & Naming Conventions
 
@@ -37,7 +35,7 @@ Adopt an automatic formatter and linter with the first language-specific setup, 
 
 ## Testing Guidelines
 
-Place tests under `tests/` and mirror the source structure. Name test files after the unit under test, for example `tests/inventory/item-movement.test.ts` or `tests/locations/location-editor.test.tsx`. Add regression tests for every bug fix. Treat changed code as requiring tests before merge.
+Place tests under `tests/` and mirror the source structure once the test setup is added. Name test files after the unit under test, for example `tests/inventory/item-movement.test.ts` or `tests/locations/location-editor.test.tsx`. Add regression tests for every bug fix. Treat changed code as requiring tests before merge.
 
 ## Commit & Pull Request Guidelines
 

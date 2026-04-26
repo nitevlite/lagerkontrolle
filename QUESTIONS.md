@@ -9,6 +9,8 @@ Die Grundrichtung ist geklaert. Diese Detailfragen bleiben noch offen:
 5. Brauchst du einen Inventurmodus im MVP oder reicht normale Bestandsbuchung?
 6. Sollen mehrere Nutzer nur synchronisieren oder auch eigene Rollen und Rechte bekommen?
 7. Wie soll ein Artikel identifiziert werden, wenn kein Barcode vorhanden ist?
+8. Soll die Ablaufwarnung fix sein oder pro Artikel einstellbar, z. B. `30 Tage vorher`?
+9. Welche Kennzahlen willst du im Dashboard sicher sehen, z. B. Gesamtbestand, kritische Chargen, Bewegungen heute?
 
 ## Bereits entschieden
 
@@ -19,3 +21,5 @@ Die Grundrichtung ist geklaert. Diese Detailfragen bleiben noch offen:
 - Ablaufdaten fuer fast alle Artikel wichtig
 - Excel-Import spaeter vorgesehen
 - mobile-first PWA mit frueh sichtbarem Frontend
+- Einheitentypen frei anlegbar
+- Dashboard und Ablaufwarnungen Teil des Zielbilds

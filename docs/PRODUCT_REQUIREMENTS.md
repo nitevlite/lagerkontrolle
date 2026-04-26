@@ -13,6 +13,7 @@ Eine mobile App, mit der Mitarbeitende Lagerorte und Inhalte in Sekunden pflegen
 - Ort
 - Regal oder Lade
 - Artikel
+- Einheitentyp
 - Charge
 - Bestand
 - Bestandsbewegung
@@ -23,20 +24,23 @@ Eine mobile App, mit der Mitarbeitende Lagerorte und Inhalte in Sekunden pflegen
 - Orte anlegen und bearbeiten
 - Regale oder Laden je Ort nummeriert anlegen und bearbeiten
 - Artikel frei und schnell anlegen
+- neue Einheitentypen frei anlegen und verwenden
 - Mengen je Ort verwalten
 - Zu- und Abgaenge buchen
 - Umbuchungen zwischen Orten buchen
 - Ablaufdatum und Charge fuer fast alle Artikel pflegen
+- Vorwarnung vor Ablauf vor dem eigentlichen Ablaufdatum
 - Suche ueber Orte und Artikel
 - offline nutzbar
 - Barcode- oder QR-Scan
 - Synchronisation zwischen mehreren Geraeten
 - frueh testbares mobiles Frontend
+- Dashboard mit Warnungen und Auswertung
 
 ## Soll-Anforderungen
 
 - Favoriten und letzte Eingaben
-- Warnhinweise fuer kritische Ablaufdaten
+- konfigurierbare Warnhinweise fuer kritische Ablaufdaten
 - Export als CSV
 - einfache Inventuransicht
 - Excel-Import vorhandener Listen
