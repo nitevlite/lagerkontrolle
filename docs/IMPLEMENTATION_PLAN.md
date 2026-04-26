@@ -108,3 +108,4 @@ Ergebnis: Das MVP ist bereit fuer den echten Einsatz.
 - `#11` ist umgesetzt: mobile Charts fuer Bewegungen, Ablauf-Verteilung sowie Top-Orte und Top-Artikel
 - `#12` bis `#15` sind umgesetzt: Dashboard und Analyse wurden gestrafft, Slot-Typen und Einheiten pflegbar gemacht, Artikel-Listen verbessert und die Buchung vereinfacht
 - `#4` ist gestartet: mobile Oberflaechen wurden weiter verdichtet und erste Bundle-Aufteilung fuer die Pilot-Haertung ist eingebaut
+- `#4` ist jetzt fachlich vorbereitet: Installationsdoku, Datenspeicher-Doku, Import-Zielformat und Pilot-Checkliste liegen im Repo

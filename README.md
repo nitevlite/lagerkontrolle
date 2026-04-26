@@ -56,6 +56,10 @@ Warum das sinnvoll ist:
 - `docs/IMPLEMENTATION_PLAN.md`: Umsetzungsreihenfolge
 - `docs/DOMAIN_MODEL.md`: fachliches Datenmodell
 - `docs/UX_NOTES.md`: wichtige Produkt- und Bedienprinzipien
+- `docs/INSTALLATION_GUIDE.md`: Weitergabe und Installation auf anderen Geraeten
+- `docs/DATA_STORAGE.md`: wo Daten liegen und was lokal bleibt
+- `docs/PILOT_CHECKLIST.md`: Pilotfreigabe und Testbetrieb
+- `docs/IMPORT_FORMAT.md`: Zielstruktur fuer spaetere Excel-Dateien
 
 ## Entwicklung
 
@@ -67,6 +71,12 @@ npm run build
 
 - `npm run dev`: startet die mobile PWA lokal
 - `npm run build`: prueft TypeScript und baut das Produktionsbundle
+
+## Verteilung
+
+- Lokaler WLAN-Test: `http://<deine-lan-ip>:5174/`
+- HTTPS-Verteilung an andere Geraete: GitHub Pages ueber `.github/workflows/deploy-pages.yml`
+- genaue Schritte stehen in `docs/INSTALLATION_GUIDE.md`
 
 ## Aktueller Stand
 
@@ -88,6 +98,7 @@ npm run build
 - lokale Offline-Persistenz ueber `IndexedDB` mit `Dexie`
 - Bestandsableitung aus Bewegungen statt aus fixen Direktwerten
 - erste Pilot-Haertung gestartet: Build-Splitting fuer Storage und UI-Bloecke ist vorbereitet
+- GitHub-Pages-Deploy fuer HTTPS-Verteilung und PWA-Installation ist vorbereitet
 
 ## Naechster technischer Schritt
 

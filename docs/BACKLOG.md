@@ -27,6 +27,7 @@
 - Startbildschirm mit wichtigsten Orten
 - Konfliktanzeige oder Konfliktloesung fuer Sync
 - Charts fuer Analyse und Trends
+- Backup- und Restore-Flow im UI
 
 ## P2
 
