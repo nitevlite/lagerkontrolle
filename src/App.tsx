@@ -1373,7 +1373,7 @@ function App() {
                 {activeView === "dashboard" ? (
                   <div className="stack">
                     <section className="surface">
-                      <header className="section-header">
+                      <header className="section-header section-header--stack-mobile">
                         <div>
                           <h1>Dashboard</h1>
                           <span>Warnung standardmäßig {viewModel.settings.expiryWarningDays} Tage vorher</span>
@@ -1382,7 +1382,7 @@ function App() {
                           Zur Buchung
                         </IonButton>
                       </header>
-                      <div className="metric-grid">
+                      <div className="metric-grid metric-grid--dashboard">
                         {viewModel.dashboardStats.map((stat) => (
                           <article key={stat.id} className="metric-card">
                             <span>{stat.label}</span>
@@ -1402,7 +1402,7 @@ function App() {
                         <IonBadge color="light">{expiryFilterDays} Tage</IonBadge>
                       </header>
 
-                      <div className="filter-pills">
+                      <div className="filter-pills filter-pills--grid-mobile">
                         {expiryFilters.map((days) => (
                           <button
                             key={days}
@@ -1415,9 +1415,9 @@ function App() {
                         ))}
                       </div>
 
-                      <div className="list">
+                      <div className="list list--mobile-cards">
                         {visibleAlerts.map((alert) => (
-                          <article key={alert.id} className="list-row">
+                          <article key={alert.id} className="list-row list-row--mobile-card">
                             <div className="list-row__main">
                               <strong>{alert.itemName}</strong>
                               <span>
@@ -1452,9 +1452,9 @@ function App() {
                           <span>{viewModel.lowStockAlerts.length} Treffer</span>
                         </div>
                       </header>
-                      <div className="list">
+                      <div className="list list--mobile-cards">
                         {viewModel.lowStockAlerts.map((alert) => (
-                          <article key={alert.id} className="list-row">
+                          <article key={alert.id} className="list-row list-row--mobile-card">
                             <div className="list-row__main">
                               <strong>{alert.itemName}</strong>
                               <span>{alert.locationName}</span>
@@ -1697,9 +1697,9 @@ function App() {
                                   Typ speichern
                                 </IonButton>
                               </div>
-                              <div className="list">
+                              <div className="list list--slot-types">
                                 {(snapshotState?.settings.slotTypeNames ?? []).map((slotTypeName) => (
-                                  <article key={slotTypeName} className="list-row">
+                                  <article key={slotTypeName} className="list-row list-row--mobile-card">
                                     <div className="list-row__main">
                                       {slotTypeEditSource === slotTypeName ? (
                                         <IonInput
@@ -1743,9 +1743,9 @@ function App() {
                                   <span>{currentSlots.length} angelegt</span>
                                 </div>
                               </header>
-                              <div className="list">
+                              <div className="list list--slots">
                                 {currentSlots.map((slot) => (
-                                  <article key={slot.id} className="list-row">
+                                  <article key={slot.id} className="list-row list-row--mobile-card">
                                     <div className="list-row__main">
                                       <strong>{slot.label}</strong>
                                       <span>{slot.kind}</span>
@@ -1826,11 +1826,11 @@ function App() {
                             onIonInput={(event) => setItemFilterDraft(String(event.detail.value ?? ""))}
                           />
                         </IonItem>
-                        <div className="list">
+                        <div className="list list--items">
                           {filteredItems.map((item) => (
                             <article
                               key={item.id}
-                              className="list-row list-row--clickable"
+                              className="list-row list-row--clickable list-row--mobile-card"
                               onClick={() => handleOpenItemDetail(item.id)}
                             >
                               <div className="list-row__main">
@@ -2536,9 +2536,9 @@ function App() {
                           <h1>Nächste Abläufe</h1>
                         </div>
                       </header>
-                      <div className="list">
+                      <div className="list list--mobile-cards">
                         {analyticsRiskList.map((alert) => (
-                          <article key={alert.id} className="list-row">
+                          <article key={alert.id} className="list-row list-row--mobile-card">
                             <div className="list-row__main">
                               <strong>{alert.itemName}</strong>
                               <span>
@@ -2559,7 +2559,7 @@ function App() {
                           <h2>Bewegungen 7 Tage</h2>
                         </div>
                       </header>
-                      <div className="mini-chart mini-chart--columns">
+                      <div className="mini-chart mini-chart--columns mini-chart--scroll-mobile">
                         {analyticsMovementSeries.map((entry) => (
                           <div key={entry.key} className="mini-chart__column">
                             <div className="mini-chart__track">
@@ -2581,7 +2581,7 @@ function App() {
                           <h2>Ablauf-Verteilung</h2>
                         </div>
                       </header>
-                      <div className="mini-chart mini-chart--columns">
+                      <div className="mini-chart mini-chart--columns mini-chart--scroll-mobile">
                         {analyticsExpiryBuckets.map((bucket) => (
                           <div key={bucket.id} className="mini-chart__column">
                             <div className="mini-chart__track">
@@ -2603,7 +2603,7 @@ function App() {
                           <h2>Top-Orte und Top-Artikel</h2>
                         </div>
                       </header>
-                      <div className="chart-grid">
+                      <div className="chart-grid chart-grid--stack-mobile">
                         <div className="bar-list">
                           {analyticsOccupancyBars.map((entry) => (
                             <div key={entry.id} className="bar-list__row">

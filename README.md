@@ -83,9 +83,11 @@ npm run build
 - Buchung und Dashboard priorisieren Favoriten und zuletzt genutzte Eintraege
 - Analyse zeigt mobile Charts fuer Bewegungen, Ablauf-Verteilung, Top-Orte und Top-Artikel plus priorisierte Risiko-Liste
 - Dashboard zeigt Ablaufwarnungen und niedrige Bestaende getrennt
+- mobile Listen und Analysekarten sind fuer Handy dichter und lesbarer nachgezogen
 - echtes Domain-Modell fuer `Location`, `StorageSlot`, `UnitType`, `Item`, `Batch`, `Movement`, `AppSettings`
 - lokale Offline-Persistenz ueber `IndexedDB` mit `Dexie`
 - Bestandsableitung aus Bewegungen statt aus fixen Direktwerten
+- erste Pilot-Haertung gestartet: Build-Splitting fuer Storage und UI-Bloecke ist vorbereitet
 
 ## Naechster technischer Schritt
 

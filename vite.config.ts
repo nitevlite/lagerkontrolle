@@ -3,6 +3,16 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          ionic: ["@ionic/react", "@ionic/pwa-elements", "ionicons"],
+          storage: ["dexie"]
+        }
+      }
+    }
+  },
   plugins: [
     react(),
     VitePWA({
