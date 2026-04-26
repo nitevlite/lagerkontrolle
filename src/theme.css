@@ -45,10 +45,6 @@ ion-content.shell::part(scroll) {
   backdrop-filter: blur(18px);
 }
 
-.reset-button {
-  --color: var(--muted);
-}
-
 .shell__inner {
   max-width: 860px;
   margin: 0 auto;
@@ -73,12 +69,6 @@ ion-content.shell::part(scroll) {
   top: 0.4rem;
   z-index: 5;
   padding: 0.55rem;
-}
-
-.nav-tools {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 0.2rem;
 }
 
 .surface--loading {

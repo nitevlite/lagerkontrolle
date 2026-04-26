@@ -20,10 +20,9 @@ import {
   gridOutline,
   layersOutline,
   pricetagOutline,
-  refreshOutline,
   warningOutline
 } from "ionicons/icons";
-import { ensureSeedData, resetSeedData } from "./data/bootstrap";
+import { ensureSeedData } from "./data/bootstrap";
 import {
   addBatch,
   addItem,
@@ -700,11 +699,6 @@ function App() {
     setScanMessage(null);
   }
 
-  async function handleReset() {
-    await resetSeedData();
-    setRefreshToken((current) => current + 1);
-  }
-
   async function handleSaveLocation() {
     const trimmed = locationEditName.trim();
     if (!trimmed) {
@@ -1002,11 +996,6 @@ function App() {
             ) : (
               <>
                 <section className="surface surface--nav">
-                  <div className="nav-tools">
-                    <IonButton fill="clear" className="reset-button" onClick={handleReset}>
-                      <IonIcon slot="icon-only" icon={refreshOutline} />
-                    </IonButton>
-                  </div>
                   <div className="view-switcher">
                     {viewMeta.map((view) => (
                       <button
