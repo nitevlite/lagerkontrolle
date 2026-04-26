@@ -17,15 +17,15 @@ const slots: StorageSlot[] = [
 ];
 
 const unitTypes: UnitType[] = [
-  { id: "unit-pack", name: "Packung", shortCode: "Pkg", description: "Standard fuer Teeprodukte" },
-  { id: "unit-box", name: "Box", shortCode: "Box", description: "Portionsware und Kleinbehaelter" },
-  { id: "unit-bottle", name: "Flasche", shortCode: "Fl", description: "Sirupe und fluessige Produkte" }
+  { id: "unit-pack", name: "Packung", shortCode: "Pkg", description: "Standard für Teeprodukte" },
+  { id: "unit-box", name: "Box", shortCode: "Box", description: "Portionsware und Kleinbehälter" },
+  { id: "unit-bottle", name: "Flasche", shortCode: "Fl", description: "Sirupe und flüssige Produkte" }
 ];
 
 const items: Item[] = [
   { id: "item-camomile", name: "Kamillentee 20er", unitTypeId: "unit-pack", barcode: "900001", trackExpiry: true },
   { id: "item-peppermint", name: "Pfefferminztee 20er", unitTypeId: "unit-pack", barcode: "900002", trackExpiry: true },
-  { id: "item-green", name: "Gruentee Bio", unitTypeId: "unit-pack", barcode: "900003", trackExpiry: true },
+  { id: "item-green", name: "Grüntee Bio", unitTypeId: "unit-pack", barcode: "900003", trackExpiry: true },
   { id: "item-honey", name: "Honigportionen", unitTypeId: "unit-box", barcode: "900004", trackExpiry: true },
   { id: "item-ginger", name: "Ingwersirup", unitTypeId: "unit-bottle", barcode: "900005", trackExpiry: true },
   { id: "item-raspberry", name: "Himbeersirup", unitTypeId: "unit-bottle", barcode: "900006", trackExpiry: true },

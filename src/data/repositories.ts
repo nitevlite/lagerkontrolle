@@ -131,7 +131,7 @@ export async function addBatch(input: {
     .first();
 
   if (existing) {
-    throw new Error("Charge existiert fuer diesen Artikel bereits.");
+    throw new Error("Charge existiert für diesen Artikel bereits.");
   }
 
   await db.batches.add({
@@ -218,7 +218,7 @@ export async function renameLocation(input: { id: string; name: string }) {
 export async function deleteLocation(locationId: string) {
   const slotCount = await db.slots.where("locationId").equals(locationId).count();
   if (slotCount > 0) {
-    throw new Error("Ort kann erst geloescht werden, wenn alle Regale und Laden entfernt sind.");
+    throw new Error("Ort kann erst gelöscht werden, wenn alle Regale und Laden entfernt sind.");
   }
 
   await db.locations.delete(locationId);
@@ -230,7 +230,7 @@ export async function deleteStorageSlot(slotId: string) {
     .first();
 
   if (movement) {
-    throw new Error("Slot kann nicht geloescht werden, weil bereits Bewegungen darauf gebucht wurden.");
+    throw new Error("Slot kann nicht gelöscht werden, weil bereits Bewegungen darauf gebucht wurden.");
   }
 
   await db.slots.delete(slotId);
@@ -263,11 +263,11 @@ export async function createMovement(input: {
 }) {
   const quantity = Math.max(0, Number(input.quantity || 0));
   if (quantity <= 0) {
-    throw new Error("Bitte eine gueltige Menge eingeben.");
+    throw new Error("Bitte eine gültige Menge eingeben.");
   }
 
   if (!input.fromSlotId && !input.toSlotId) {
-    throw new Error("Bitte mindestens einen Slot fuer die Buchung waehlen.");
+    throw new Error("Bitte mindestens einen Slot für die Buchung wählen.");
   }
 
   if (input.kind === "transfer" && input.fromSlotId && input.toSlotId && input.fromSlotId === input.toSlotId) {
@@ -287,11 +287,11 @@ export async function createMovement(input: {
       const expiryDate = item.trackExpiry ? input.expiryDate?.trim() : input.expiryDate?.trim() || "2099-12-31";
 
       if (!batchCode) {
-        throw new Error("Bitte eine Charge waehlen oder neu anlegen.");
+        throw new Error("Bitte eine Charge wählen oder neu anlegen.");
       }
 
       if (item.trackExpiry && !expiryDate) {
-        throw new Error("Bitte ein Ablaufdatum fuer die neue Charge setzen.");
+        throw new Error("Bitte ein Ablaufdatum für die neue Charge setzen.");
       }
 
       const duplicateBatch = await db.batches
@@ -322,7 +322,7 @@ export async function createMovement(input: {
     if (input.fromSlotId) {
       const available = await getSlotBatchQuantity(batchId, input.fromSlotId);
       if (available < quantity) {
-        throw new Error("Die gebuchte Menge ist hoeher als der verfuegbare Bestand in diesem Slot.");
+        throw new Error("Die gebuchte Menge ist höher als der verfügbare Bestand in diesem Slot.");
       }
     }
 

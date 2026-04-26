@@ -266,7 +266,7 @@ export function buildViewModel(snapshot: DomainSnapshot): AppViewModel {
     },
     {
       id: "low-stock",
-      label: "Niedrige Bestaende",
+      label: "Niedrige Bestände",
       value: String(lowStockCount),
       detail: "<= 5 Einheiten",
       tone: "neutral"
@@ -305,7 +305,7 @@ export function buildViewModel(snapshot: DomainSnapshot): AppViewModel {
     },
     {
       id: "top-risk",
-      title: "Naechster Ablauf",
+      title: "Nächster Ablauf",
       value: mostCritical?.itemName ?? "-",
       detail: mostCritical ? `${mostCritical.daysUntilExpiry} Tage Restzeit` : "kein Risiko"
     },
