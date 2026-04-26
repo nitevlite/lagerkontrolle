@@ -96,4 +96,5 @@ Ergebnis: Das MVP ist bereit fuer den echten Einsatz.
 - `#3` ist im Frontend gestartet: Artikel bearbeiten und Chargen pflegen sind bereits drin
 - `#1` ist deutlich weiter: Aktion, Artikel, Ort, Slot, Charge und Menge sind als echter Flow sichtbar und speichern lokale Bewegungen
 - der UX-Kurs ist jetzt klar: Listen mit Filter plus separater Detailscreen statt ueberladener Sammelseiten
+- `#7` ist gestartet: Favoriten sind persistent, zuletzt genutzte Elemente werden fuer Dashboard und Buchung priorisiert
 - `#11` ist als eigenes Analyse-Ticket angelegt

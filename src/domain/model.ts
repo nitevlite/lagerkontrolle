@@ -54,6 +54,8 @@ export type AppSettings = {
   id: "default";
   expiryWarningDays: number;
   reminderRepeatDays: number;
+  favoriteLocationIds: EntityId[];
+  favoriteItemIds: EntityId[];
 };
 
 export type DomainSnapshot = {

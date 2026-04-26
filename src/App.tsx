@@ -20,6 +20,9 @@ import {
   gridOutline,
   layersOutline,
   pricetagOutline,
+  star,
+  starOutline,
+  timeOutline,
   warningOutline
 } from "ionicons/icons";
 import { ensureSeedData } from "./data/bootstrap";
@@ -34,6 +37,8 @@ import {
   deleteStorageSlot,
   loadSnapshot,
   renameLocation,
+  toggleFavoriteItem,
+  toggleFavoriteLocation,
   updateItem,
   updateSettings
 } from "./data/repositories";
@@ -375,6 +380,66 @@ function App() {
     [currentLocation, snapshotState]
   );
 
+  const favoriteLocationIds = snapshotState?.settings.favoriteLocationIds ?? [];
+  const favoriteItemIds = snapshotState?.settings.favoriteItemIds ?? [];
+  const favoriteLocationSet = useMemo(() => new Set(favoriteLocationIds), [favoriteLocationIds]);
+  const favoriteItemSet = useMemo(() => new Set(favoriteItemIds), [favoriteItemIds]);
+
+  const recentEntityIds = useMemo(() => {
+    const itemIds: string[] = [];
+    const locationIds: string[] = [];
+    const seenItems = new Set<string>();
+    const seenLocations = new Set<string>();
+    const itemByBatchId = new Map((snapshotState?.batches ?? []).map((batch) => [batch.id, batch.itemId]));
+    const locationBySlotId = new Map((snapshotState?.slots ?? []).map((slot) => [slot.id, slot.locationId]));
+    const sortedMovements = [...(snapshotState?.movements ?? [])].sort((left, right) =>
+      right.createdAt.localeCompare(left.createdAt)
+    );
+
+    for (const movement of sortedMovements) {
+      const itemId = itemByBatchId.get(movement.batchId);
+      if (itemId && !seenItems.has(itemId)) {
+        seenItems.add(itemId);
+        itemIds.push(itemId);
+      }
+
+      const slotIds = [movement.toSlotId, movement.fromSlotId].filter(Boolean) as string[];
+      for (const slotId of slotIds) {
+        const locationId = locationBySlotId.get(slotId);
+        if (locationId && !seenLocations.has(locationId)) {
+          seenLocations.add(locationId);
+          locationIds.push(locationId);
+        }
+      }
+    }
+
+    return {
+      itemIds,
+      locationIds
+    };
+  }, [snapshotState]);
+
+  const recentLocationByItemId = useMemo(() => {
+    const map = new Map<string, string>();
+    const itemByBatchId = new Map((snapshotState?.batches ?? []).map((batch) => [batch.id, batch.itemId]));
+    const locationBySlotId = new Map((snapshotState?.slots ?? []).map((slot) => [slot.id, slot.locationId]));
+    const sortedMovements = [...(snapshotState?.movements ?? [])].sort((left, right) =>
+      right.createdAt.localeCompare(left.createdAt)
+    );
+
+    for (const movement of sortedMovements) {
+      const itemId = itemByBatchId.get(movement.batchId);
+      const slotId = movement.toSlotId ?? movement.fromSlotId;
+      const locationId = slotId ? locationBySlotId.get(slotId) : undefined;
+
+      if (itemId && locationId && !map.has(itemId)) {
+        map.set(itemId, locationId);
+      }
+    }
+
+    return map;
+  }, [snapshotState]);
+
   const analyticsRiskList = useMemo(
     () => (viewModel?.expiryAlerts.slice(0, 4) ?? []),
     [viewModel]
@@ -428,53 +493,110 @@ function App() {
     [batchQuantityById, snapshotState]
   );
 
+  const sortedLocations = useMemo(() => {
+    const recencyRank = new Map(recentEntityIds.locationIds.map((id, index) => [id, index]));
+
+    return [...(viewModel?.locations ?? [])].sort((left, right) => {
+      const favoriteDelta = Number(favoriteLocationSet.has(right.id)) - Number(favoriteLocationSet.has(left.id));
+      if (favoriteDelta !== 0) {
+        return favoriteDelta;
+      }
+
+      const recentLeft = recencyRank.get(left.id) ?? Number.MAX_SAFE_INTEGER;
+      const recentRight = recencyRank.get(right.id) ?? Number.MAX_SAFE_INTEGER;
+      if (recentLeft !== recentRight) {
+        return recentLeft - recentRight;
+      }
+
+      return left.name.localeCompare(right.name);
+    });
+  }, [favoriteLocationSet, recentEntityIds.locationIds, viewModel]);
+
+  const sortedItemSummaries = useMemo(() => {
+    const recencyRank = new Map(recentEntityIds.itemIds.map((id, index) => [id, index]));
+
+    return [...itemSummaries].sort((left, right) => {
+      const favoriteDelta = Number(favoriteItemSet.has(right.id)) - Number(favoriteItemSet.has(left.id));
+      if (favoriteDelta !== 0) {
+        return favoriteDelta;
+      }
+
+      const recentLeft = recencyRank.get(left.id) ?? Number.MAX_SAFE_INTEGER;
+      const recentRight = recencyRank.get(right.id) ?? Number.MAX_SAFE_INTEGER;
+      if (recentLeft !== recentRight) {
+        return recentLeft - recentRight;
+      }
+
+      return left.name.localeCompare(right.name);
+    });
+  }, [favoriteItemSet, itemSummaries, recentEntityIds.itemIds]);
+
+  const favoriteLocations = useMemo(
+    () => sortedLocations.filter((location) => favoriteLocationSet.has(location.id)).slice(0, 4),
+    [favoriteLocationSet, sortedLocations]
+  );
+
+  const favoriteItems = useMemo(
+    () => sortedItemSummaries.filter((item) => favoriteItemSet.has(item.id)).slice(0, 4),
+    [favoriteItemSet, sortedItemSummaries]
+  );
+
+  const recentItems = useMemo(
+    () =>
+      recentEntityIds.itemIds
+        .map((id) => sortedItemSummaries.find((item) => item.id === id))
+        .filter((item): item is NonNullable<typeof item> => Boolean(item))
+        .slice(0, 4),
+    [recentEntityIds.itemIds, sortedItemSummaries]
+  );
+
   const filteredLocations = useMemo(() => {
     const query = locationFilterDraft.trim().toLocaleLowerCase();
     if (!query) {
-      return viewModel?.locations ?? [];
+      return sortedLocations;
     }
 
-    return (viewModel?.locations ?? []).filter((location) =>
+    return sortedLocations.filter((location) =>
       location.name.toLocaleLowerCase().includes(query)
     );
-  }, [locationFilterDraft, viewModel]);
+  }, [locationFilterDraft, sortedLocations]);
 
   const filteredItems = useMemo(() => {
     const query = itemFilterDraft.trim().toLocaleLowerCase();
     if (!query) {
-      return itemSummaries;
+      return sortedItemSummaries;
     }
 
-    return itemSummaries.filter(
+    return sortedItemSummaries.filter(
       (item) =>
         item.name.toLocaleLowerCase().includes(query) ||
         item.barcode.toLocaleLowerCase().includes(query)
     );
-  }, [itemFilterDraft, itemSummaries]);
+  }, [itemFilterDraft, sortedItemSummaries]);
 
   const bookingItems = useMemo(() => {
     const query = bookingItemFilterDraft.trim().toLocaleLowerCase();
     if (!query) {
-      return itemSummaries;
+      return sortedItemSummaries;
     }
 
-    return itemSummaries.filter(
+    return sortedItemSummaries.filter(
       (item) =>
         item.name.toLocaleLowerCase().includes(query) ||
         item.barcode.toLocaleLowerCase().includes(query)
     );
-  }, [bookingItemFilterDraft, itemSummaries]);
+  }, [bookingItemFilterDraft, sortedItemSummaries]);
 
   const bookingLocations = useMemo(() => {
     const query = bookingLocationFilterDraft.trim().toLocaleLowerCase();
     if (!query) {
-      return viewModel?.locations ?? [];
+      return sortedLocations;
     }
 
-    return (viewModel?.locations ?? []).filter((location) =>
+    return sortedLocations.filter((location) =>
       location.name.toLocaleLowerCase().includes(query)
     );
-  }, [bookingLocationFilterDraft, viewModel]);
+  }, [bookingLocationFilterDraft, sortedLocations]);
 
   const bookingItem = itemSummaries.find((item) => item.id === bookingItemId) ?? null;
   const bookingLocation = viewModel?.locations.find((location) => location.id === bookingLocationId) ?? null;
@@ -643,6 +765,17 @@ function App() {
       setBookingTargetLocationId(bookingLocationId);
     }
   }, [bookingAction, bookingLocationId]);
+
+  useEffect(() => {
+    if (!bookingItemId) {
+      return;
+    }
+
+    const recentLocationId = recentLocationByItemId.get(bookingItemId);
+    if (recentLocationId) {
+      setBookingLocationId(recentLocationId);
+    }
+  }, [bookingItemId, recentLocationByItemId]);
 
   function closeScan() {
     setScanMode(null);
@@ -942,6 +1075,16 @@ function App() {
     }
   }
 
+  async function handleToggleFavoriteLocation(locationId: string) {
+    await toggleFavoriteLocation(locationId);
+    setRefreshToken((current) => current + 1);
+  }
+
+  async function handleToggleFavoriteItem(itemId: string) {
+    await toggleFavoriteItem(itemId);
+    setRefreshToken((current) => current + 1);
+  }
+
   function handleNewItem() {
     setItemDetailId("");
     setItemNameDraft("");
@@ -1110,11 +1253,76 @@ function App() {
                     <section className="surface">
                       <header className="section-header">
                         <div>
+                          <h2>Schnellzugriffe</h2>
+                          <span>Favoriten und zuletzt genutzt</span>
+                        </div>
+                      </header>
+                      <div className="shortcut-grid">
+                        {favoriteLocations.map((location) => (
+                          <button
+                            key={`fav-loc-${location.id}`}
+                            type="button"
+                            className="shortcut-card"
+                            onClick={() => {
+                              handleOpenLocationDetail(location.id);
+                              setActiveView("locations");
+                            }}
+                          >
+                            <div className="shortcut-card__top">
+                              <IonIcon icon={star} />
+                              <span>Ort</span>
+                            </div>
+                            <strong>{location.name}</strong>
+                            <small>{location.slotCount} Slots</small>
+                          </button>
+                        ))}
+                        {favoriteItems.map((item) => (
+                          <button
+                            key={`fav-item-${item.id}`}
+                            type="button"
+                            className="shortcut-card"
+                            onClick={() => {
+                              handleOpenItemDetail(item.id);
+                              setActiveView("items");
+                            }}
+                          >
+                            <div className="shortcut-card__top">
+                              <IonIcon icon={star} />
+                              <span>Artikel</span>
+                            </div>
+                            <strong>{item.name}</strong>
+                            <small>{item.totalQuantity} {item.unitLabel}</small>
+                          </button>
+                        ))}
+                        {recentItems.map((item) => (
+                          <button
+                            key={`recent-item-${item.id}`}
+                            type="button"
+                            className="shortcut-card"
+                            onClick={() => {
+                              setBookingItemId(item.id);
+                              setActiveView("booking");
+                            }}
+                          >
+                            <div className="shortcut-card__top">
+                              <IonIcon icon={timeOutline} />
+                              <span>Zuletzt</span>
+                            </div>
+                            <strong>{item.name}</strong>
+                            <small>{item.barcode}</small>
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className="surface">
+                      <header className="section-header">
+                        <div>
                           <h2>Orte im Ueberblick</h2>
                         </div>
                       </header>
                       <div className="list">
-                        {viewModel.locations.map((location) => (
+                        {sortedLocations.map((location) => (
                           <article
                             key={location.id}
                             className="list-row list-row--clickable"
@@ -1131,6 +1339,7 @@ function App() {
                             </div>
                             <div className="list-row__meta">
                               <b>{location.occupancyPercent}%</b>
+                              {favoriteLocationSet.has(location.id) ? <small>Favorit</small> : null}
                             </div>
                           </article>
                         ))}
@@ -1197,6 +1406,16 @@ function App() {
                                 </span>
                               </div>
                               <div className="list-row__meta">
+                                <button
+                                  type="button"
+                                  className="icon-toggle"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    void handleToggleFavoriteLocation(location.id);
+                                  }}
+                                >
+                                  <IonIcon icon={favoriteLocationSet.has(location.id) ? star : starOutline} />
+                                </button>
                                 <b>{location.occupancyPercent}%</b>
                                 <small>{location.lastMovementLabel}</small>
                               </div>
@@ -1388,6 +1607,16 @@ function App() {
                                 </span>
                               </div>
                               <div className="list-row__meta">
+                                <button
+                                  type="button"
+                                  className="icon-toggle"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    void handleToggleFavoriteItem(item.id);
+                                  }}
+                                >
+                                  <IonIcon icon={favoriteItemSet.has(item.id) ? star : starOutline} />
+                                </button>
                                 <b>
                                   {item.totalQuantity} {item.unitLabel}
                                 </b>
@@ -1582,6 +1811,62 @@ function App() {
                           <strong>Korrektur</strong>
                           <span>Bestand anpassen</span>
                         </button>
+                      </div>
+                    </section>
+
+                    <section className="surface">
+                      <header className="section-header">
+                        <div>
+                          <h2>Schnellzugriffe</h2>
+                          <span>Favoriten und letzte Buchungen</span>
+                        </div>
+                      </header>
+                      <div className="shortcut-grid">
+                        {recentItems.map((item) => (
+                          <button
+                            key={`book-recent-${item.id}`}
+                            type="button"
+                            className="shortcut-card"
+                            onClick={() => setBookingItemId(item.id)}
+                          >
+                            <div className="shortcut-card__top">
+                              <IonIcon icon={timeOutline} />
+                              <span>Artikel</span>
+                            </div>
+                            <strong>{item.name}</strong>
+                            <small>{item.barcode}</small>
+                          </button>
+                        ))}
+                        {favoriteItems.map((item) => (
+                          <button
+                            key={`book-fav-item-${item.id}`}
+                            type="button"
+                            className="shortcut-card"
+                            onClick={() => setBookingItemId(item.id)}
+                          >
+                            <div className="shortcut-card__top">
+                              <IonIcon icon={star} />
+                              <span>Artikel</span>
+                            </div>
+                            <strong>{item.name}</strong>
+                            <small>{item.totalQuantity} {item.unitLabel}</small>
+                          </button>
+                        ))}
+                        {favoriteLocations.map((location) => (
+                          <button
+                            key={`book-fav-loc-${location.id}`}
+                            type="button"
+                            className="shortcut-card"
+                            onClick={() => setBookingLocationId(location.id)}
+                          >
+                            <div className="shortcut-card__top">
+                              <IonIcon icon={star} />
+                              <span>Ort</span>
+                            </div>
+                            <strong>{location.name}</strong>
+                            <small>{location.slotCount} Slots</small>
+                          </button>
+                        ))}
                       </div>
                     </section>
 

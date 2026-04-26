@@ -77,10 +77,12 @@ npm run build
 - Buchung speichert jetzt echte lokale Bewegungen fuer Zugang, Abgang, Umbuchung und Korrektur
 - Buchung fuehrt mobil durch Aktion, Artikel, Ort, Slot, Charge und Menge
 - Scan ist im Buchungsflow und im Artikel-Barcodefeld vorbereitet, mit Browser-Fallback falls Kamera-Scan nicht verfuegbar ist
+- Favoriten fuer Orte und Artikel bleiben lokal gespeichert
+- Buchung und Dashboard priorisieren Favoriten und zuletzt genutzte Eintraege
 - echtes Domain-Modell fuer `Location`, `StorageSlot`, `UnitType`, `Item`, `Batch`, `Movement`, `AppSettings`
 - lokale Offline-Persistenz ueber `IndexedDB` mit `Dexie`
 - Bestandsableitung aus Bewegungen statt aus fixen Direktwerten
 
 ## Naechster technischer Schritt
 
-Frontend, Domain-Modell, lokale Persistenz sowie erste Orts-, Artikel- und Buchungsfluesse sind umgesetzt. Als Naechstes folgen schnellere Such- und Favoritenpfade, danach Synchronisation.
+Frontend, Domain-Modell, lokale Persistenz sowie schnelle Orts-, Artikel- und Buchungsfluesse sind umgesetzt. Als Naechstes folgen Charts/Analyse-Vertiefung und danach Synchronisation.

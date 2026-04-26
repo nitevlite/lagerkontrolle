@@ -34,7 +34,9 @@ export async function loadSnapshot(): Promise<DomainSnapshot> {
     settings: settings ?? {
       id: "default",
       expiryWarningDays: 10,
-      reminderRepeatDays: 3
+      reminderRepeatDays: 3,
+      favoriteLocationIds: [],
+      favoriteItemIds: []
     }
   };
 }
@@ -242,12 +244,36 @@ export async function updateSettings(patch: Partial<Omit<AppSettings, "id">>) {
     ({
       id: "default",
       expiryWarningDays: 10,
-      reminderRepeatDays: 3
+      reminderRepeatDays: 3,
+      favoriteLocationIds: [],
+      favoriteItemIds: []
     } satisfies AppSettings);
 
   await db.settings.put({
     ...current,
     ...patch
+  });
+}
+
+export async function toggleFavoriteLocation(locationId: string) {
+  const current = await loadSnapshot();
+  const nextIds = current.settings.favoriteLocationIds.includes(locationId)
+    ? current.settings.favoriteLocationIds.filter((id) => id !== locationId)
+    : [...current.settings.favoriteLocationIds, locationId];
+
+  await updateSettings({
+    favoriteLocationIds: nextIds
+  });
+}
+
+export async function toggleFavoriteItem(itemId: string) {
+  const current = await loadSnapshot();
+  const nextIds = current.settings.favoriteItemIds.includes(itemId)
+    ? current.settings.favoriteItemIds.filter((id) => id !== itemId)
+    : [...current.settings.favoriteItemIds, itemId];
+
+  await updateSettings({
+    favoriteItemIds: nextIds
   });
 }
 

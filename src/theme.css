@@ -312,6 +312,50 @@ ion-content.shell::part(scroll) {
   color: var(--muted);
 }
 
+.icon-toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #16212b;
+}
+
+.shortcut-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.7rem;
+}
+
+.shortcut-card {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.95rem;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: #f9fbfd;
+  text-align: left;
+}
+
+.shortcut-card strong {
+  font-size: 0.96rem;
+}
+
+.shortcut-card small {
+  color: var(--muted);
+}
+
+.shortcut-card__top {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .status-text.tone-critical {
   color: var(--critical);
 }

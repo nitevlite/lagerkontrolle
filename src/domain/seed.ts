@@ -58,7 +58,9 @@ const movements: Movement[] = [
 const settings: AppSettings = {
   id: "default",
   expiryWarningDays: 10,
-  reminderRepeatDays: 3
+  reminderRepeatDays: 3,
+  favoriteLocationIds: ["loc-tea"],
+  favoriteItemIds: ["item-camomile", "item-ginger"]
 };
 
 export const seedSnapshot: DomainSnapshot = {
