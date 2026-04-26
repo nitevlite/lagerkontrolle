@@ -61,6 +61,10 @@ const displayDateFormatter = new Intl.DateTimeFormat("de-AT", {
   month: "2-digit",
   year: "numeric"
 });
+const shortDayFormatter = new Intl.DateTimeFormat("de-AT", {
+  day: "2-digit",
+  month: "2-digit"
+});
 
 function toneClass(tone: "critical" | "warning" | "neutral" | "good") {
   return `tone-${tone}`;
@@ -530,6 +534,84 @@ function App() {
       return left.name.localeCompare(right.name);
     });
   }, [favoriteItemSet, itemSummaries, recentEntityIds.itemIds]);
+
+  const analyticsOccupancyBars = useMemo(() => {
+    const topLocations = [...sortedLocations]
+      .sort((left, right) => right.occupancyPercent - left.occupancyPercent)
+      .slice(0, 5);
+
+    return topLocations.map((location) => ({
+      id: location.id,
+      label: location.name,
+      value: location.occupancyPercent,
+      detail: `${location.itemCount} Artikel`
+    }));
+  }, [sortedLocations]);
+
+  const analyticsTopItems = useMemo(() => {
+    return [...sortedItemSummaries]
+      .sort((left, right) => right.totalQuantity - left.totalQuantity)
+      .slice(0, 5)
+      .map((item) => ({
+        id: item.id,
+        label: item.name,
+        value: item.totalQuantity,
+        unit: item.unitLabel
+      }));
+  }, [sortedItemSummaries]);
+
+  const analyticsExpiryBuckets = useMemo(() => {
+    const buckets = [
+      { id: "0-7", label: "0–7", count: 0 },
+      { id: "8-14", label: "8–14", count: 0 },
+      { id: "15-30", label: "15–30", count: 0 },
+      { id: "31plus", label: "31+", count: 0 }
+    ];
+
+    for (const alert of viewModel?.expiryAlerts ?? []) {
+      if (alert.daysUntilExpiry <= 7) {
+        buckets[0].count += 1;
+      } else if (alert.daysUntilExpiry <= 14) {
+        buckets[1].count += 1;
+      } else if (alert.daysUntilExpiry <= 30) {
+        buckets[2].count += 1;
+      } else {
+        buckets[3].count += 1;
+      }
+    }
+
+    const max = Math.max(1, ...buckets.map((bucket) => bucket.count));
+    return buckets.map((bucket) => ({
+      ...bucket,
+      percent: Math.round((bucket.count / max) * 100)
+    }));
+  }, [viewModel]);
+
+  const analyticsMovementSeries = useMemo(() => {
+    const today = new Date("2026-04-26T00:00:00.000Z");
+    const dayKeys = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(today);
+      date.setUTCDate(today.getUTCDate() - (6 - index));
+      return date.toISOString().slice(0, 10);
+    });
+
+    const counts = new Map(dayKeys.map((key) => [key, 0]));
+
+    for (const movement of snapshotState?.movements ?? []) {
+      const key = movement.createdAt.slice(0, 10);
+      if (counts.has(key)) {
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+    }
+
+    const max = Math.max(1, ...Array.from(counts.values()));
+    return dayKeys.map((key) => ({
+      key,
+      label: shortDayFormatter.format(new Date(`${key}T00:00:00.000Z`)),
+      count: counts.get(key) ?? 0,
+      percent: Math.round(((counts.get(key) ?? 0) / max) * 100)
+    }));
+  }, [snapshotState]);
 
   const favoriteLocations = useMemo(
     () => sortedLocations.filter((location) => favoriteLocationSet.has(location.id)).slice(0, 4),
@@ -2246,6 +2328,93 @@ function App() {
                             <small>{metric.detail}</small>
                           </article>
                         ))}
+                      </div>
+                    </section>
+
+                    <section className="surface">
+                      <header className="section-header">
+                        <div>
+                          <h2>Bewegungen 7 Tage</h2>
+                        </div>
+                      </header>
+                      <div className="mini-chart mini-chart--columns">
+                        {analyticsMovementSeries.map((entry) => (
+                          <div key={entry.key} className="mini-chart__column">
+                            <div className="mini-chart__track">
+                              <div
+                                className="mini-chart__bar mini-chart__bar--primary"
+                                style={{ height: `${Math.max(entry.percent, entry.count > 0 ? 14 : 6)}%` }}
+                              />
+                            </div>
+                            <strong>{entry.count}</strong>
+                            <span>{entry.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className="surface">
+                      <header className="section-header">
+                        <div>
+                          <h2>Ablauf-Verteilung</h2>
+                        </div>
+                      </header>
+                      <div className="mini-chart mini-chart--columns">
+                        {analyticsExpiryBuckets.map((bucket) => (
+                          <div key={bucket.id} className="mini-chart__column">
+                            <div className="mini-chart__track">
+                              <div
+                                className="mini-chart__bar mini-chart__bar--warning"
+                                style={{ height: `${Math.max(bucket.percent, bucket.count > 0 ? 14 : 6)}%` }}
+                              />
+                            </div>
+                            <strong>{bucket.count}</strong>
+                            <span>{bucket.label} T</span>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className="surface">
+                      <header className="section-header">
+                        <div>
+                          <h2>Top-Orte und Top-Artikel</h2>
+                        </div>
+                      </header>
+                      <div className="chart-grid">
+                        <div className="bar-list">
+                          {analyticsOccupancyBars.map((entry) => (
+                            <div key={entry.id} className="bar-list__row">
+                              <div className="bar-list__head">
+                                <strong>{entry.label}</strong>
+                                <span>{entry.value}%</span>
+                              </div>
+                              <div className="bar-list__track">
+                                <div className="bar-list__fill bar-list__fill--primary" style={{ width: `${Math.max(entry.value, 6)}%` }} />
+                              </div>
+                              <small>{entry.detail}</small>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="bar-list">
+                          {analyticsTopItems.map((entry) => {
+                            const max = analyticsTopItems[0]?.value ?? 1;
+                            const width = Math.round((entry.value / Math.max(max, 1)) * 100);
+                            return (
+                              <div key={entry.id} className="bar-list__row">
+                                <div className="bar-list__head">
+                                  <strong>{entry.label}</strong>
+                                  <span>
+                                    {entry.value} {entry.unit}
+                                  </span>
+                                </div>
+                                <div className="bar-list__track">
+                                  <div className="bar-list__fill bar-list__fill--neutral" style={{ width: `${Math.max(width, 6)}%` }} />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     </section>
 
