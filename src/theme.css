@@ -243,6 +243,10 @@ ion-content.shell::part(scroll) {
   background: #fbfcfd;
 }
 
+.list-row--clickable {
+  cursor: pointer;
+}
+
 .list-row--alert.tone-critical {
   background: rgba(187, 62, 69, 0.06);
 }

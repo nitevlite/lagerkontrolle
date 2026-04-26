@@ -46,7 +46,7 @@ function toneClass(tone: "critical" | "warning" | "neutral" | "good") {
 }
 
 function App() {
-  const [activeView, setActiveView] = useState<ViewKey>("dashboard");
+  const [activeView, setActiveView] = useState<ViewKey>("locations");
   const [selectedLocationId, setSelectedLocationId] = useState("");
   const [expiryFilterDays, setExpiryFilterDays] = useState<number>(10);
   const [warningDaysDraft, setWarningDaysDraft] = useState("10");
@@ -317,6 +317,36 @@ function App() {
                               <small>
                                 {alert.quantity} {alert.unitShortCode}
                               </small>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className="surface">
+                      <header className="section-header">
+                        <div>
+                          <h2>Orte im Ueberblick</h2>
+                        </div>
+                      </header>
+                      <div className="list">
+                        {viewModel.locations.map((location) => (
+                          <article
+                            key={location.id}
+                            className="list-row list-row--clickable"
+                            onClick={() => {
+                              setSelectedLocationId(location.id);
+                              setActiveView("locations");
+                            }}
+                          >
+                            <div className="list-row__main">
+                              <strong>{location.name}</strong>
+                              <span>
+                                {location.slotCount} Slots · {location.itemCount} Artikel
+                              </span>
+                            </div>
+                            <div className="list-row__meta">
+                              <b>{location.occupancyPercent}%</b>
                             </div>
                           </article>
                         ))}
