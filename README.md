@@ -76,10 +76,11 @@ npm run build
 - Chargen mit Ablaufdatum koennen pro Artikel gepflegt werden
 - Buchung speichert jetzt echte lokale Bewegungen fuer Zugang, Abgang, Umbuchung und Korrektur
 - Buchung fuehrt mobil durch Aktion, Artikel, Ort, Slot, Charge und Menge
+- Scan ist im Buchungsflow und im Artikel-Barcodefeld vorbereitet, mit Browser-Fallback falls Kamera-Scan nicht verfuegbar ist
 - echtes Domain-Modell fuer `Location`, `StorageSlot`, `UnitType`, `Item`, `Batch`, `Movement`, `AppSettings`
 - lokale Offline-Persistenz ueber `IndexedDB` mit `Dexie`
 - Bestandsableitung aus Bewegungen statt aus fixen Direktwerten
 
 ## Naechster technischer Schritt
 
-Frontend, Domain-Modell, lokale Persistenz sowie erste Orts-, Artikel- und Buchungsfluesse sind umgesetzt. Als Naechstes folgen Scan direkt in den Buchungsflow, danach Suche/Favoriten und Synchronisation.
+Frontend, Domain-Modell, lokale Persistenz sowie erste Orts-, Artikel- und Buchungsfluesse sind umgesetzt. Als Naechstes folgen schnellere Such- und Favoritenpfade, danach Synchronisation.

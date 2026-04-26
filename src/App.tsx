@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   IonAlert,
   IonApp,
@@ -62,6 +62,14 @@ function toneClass(tone: "critical" | "warning" | "neutral" | "good") {
   return `tone-${tone}`;
 }
 
+type BarcodeDetectorCtor = new (options?: { formats?: string[] }) => {
+  detect: (source: ImageBitmapSource) => Promise<Array<{ rawValue?: string }>>;
+};
+
+function getBarcodeDetector() {
+  return (globalThis as unknown as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector;
+}
+
 function App() {
   const [activeView, setActiveView] = useState<ViewKey>("locations");
   const [selectedLocationId, setSelectedLocationId] = useState("");
@@ -96,6 +104,8 @@ function App() {
   const [bookingAdjustmentDirection, setBookingAdjustmentDirection] = useState<"increase" | "decrease">("increase");
   const [bookingItemFilterDraft, setBookingItemFilterDraft] = useState("");
   const [bookingLocationFilterDraft, setBookingLocationFilterDraft] = useState("");
+  const [scanMode, setScanMode] = useState<"booking-item" | "item-barcode" | null>(null);
+  const [scanMessage, setScanMessage] = useState<string | null>(null);
   const [unitName, setUnitName] = useState("");
   const [unitShortCode, setUnitShortCode] = useState("");
   const [unitDescription, setUnitDescription] = useState("");
@@ -104,6 +114,9 @@ function App() {
   const [snapshotState, setSnapshotState] = useState<Awaited<ReturnType<typeof loadSnapshot>> | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const scanStreamRef = useRef<MediaStream | null>(null);
+  const scanFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -246,6 +259,95 @@ function App() {
     setItemTrackExpiryDraft(true);
   }, [currentItem, itemDetailId, snapshotState]);
 
+  useEffect(() => {
+    if (!scanMode) {
+      return;
+    }
+
+    let cancelled = false;
+    const BarcodeDetectorApi = getBarcodeDetector();
+
+    async function startScan() {
+      if (!BarcodeDetectorApi || !navigator.mediaDevices?.getUserMedia) {
+        setScanMessage("Dieser Browser unterstuetzt den Kamera-Scan hier nicht.");
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: { ideal: "environment" }
+          }
+        });
+
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
+        scanStreamRef.current = stream;
+
+        const video = videoRef.current;
+        if (!video) {
+          return;
+        }
+
+        video.srcObject = stream;
+        await video.play();
+
+        const detector = new BarcodeDetectorApi({
+          formats: ["qr_code", "code_128", "ean_13", "ean_8", "upc_a", "upc_e"]
+        });
+
+        const tick = async () => {
+          if (cancelled || !videoRef.current) {
+            return;
+          }
+
+          try {
+            const results = await detector.detect(videoRef.current);
+            const value = results.find((result) => result.rawValue?.trim())?.rawValue?.trim();
+
+            if (value) {
+              applyScannedValue(value);
+              return;
+            }
+          } catch {
+            setScanMessage("Kamera ist aktiv, aber der Code wurde noch nicht erkannt.");
+          }
+
+          scanFrameRef.current = window.requestAnimationFrame(() => {
+            void tick();
+          });
+        };
+
+        setScanMessage("Code ins Kamerabild halten.");
+        await tick();
+      } catch (error) {
+        setScanMessage(error instanceof Error ? error.message : "Kamera konnte nicht gestartet werden.");
+      }
+    }
+
+    void startScan();
+
+    return () => {
+      cancelled = true;
+      if (scanFrameRef.current !== null) {
+        window.cancelAnimationFrame(scanFrameRef.current);
+        scanFrameRef.current = null;
+      }
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current.srcObject = null;
+      }
+      if (scanStreamRef.current) {
+        scanStreamRef.current.getTracks().forEach((track) => track.stop());
+        scanStreamRef.current = null;
+      }
+    };
+  }, [scanMode]);
+
   const visibleAlerts = useMemo(
     () =>
       viewModel?.expiryAlerts.filter((alert) => alert.daysUntilExpiry <= expiryFilterDays) ?? [],
@@ -371,6 +473,7 @@ function App() {
 
   const bookingItem = itemSummaries.find((item) => item.id === bookingItemId) ?? null;
   const bookingLocation = viewModel?.locations.find((location) => location.id === bookingLocationId) ?? null;
+  const scanSupported = Boolean(getBarcodeDetector() && navigator.mediaDevices?.getUserMedia);
 
   const bookingSourceSlots = useMemo(
     () =>
@@ -535,6 +638,36 @@ function App() {
       setBookingTargetLocationId(bookingLocationId);
     }
   }, [bookingAction, bookingLocationId]);
+
+  function closeScan() {
+    setScanMode(null);
+    setScanMessage(null);
+  }
+
+  function applyScannedValue(rawValue: string) {
+    if (scanMode === "item-barcode") {
+      setItemBarcodeDraft(rawValue);
+      closeScan();
+      return;
+    }
+
+    if (scanMode === "booking-item") {
+      const matchedItem = itemSummaries.find((item) => item.barcode === rawValue);
+      if (matchedItem) {
+        setBookingItemId(matchedItem.id);
+        setBookingItemFilterDraft(rawValue);
+        closeScan();
+        return;
+      }
+
+      setScanMessage(`Kein Artikel mit Code ${rawValue} gefunden.`);
+    }
+  }
+
+  function openScan(mode: "booking-item" | "item-barcode") {
+    setScanMode(mode);
+    setScanMessage(null);
+  }
 
   async function handleReset() {
     await resetSeedData();
@@ -1288,6 +1421,16 @@ function App() {
                               />
                             </IonItem>
                           </div>
+                          <div className="form-actions">
+                            <IonButton
+                              fill="outline"
+                              className="primary-button"
+                              onClick={() => openScan("item-barcode")}
+                              disabled={!scanSupported}
+                            >
+                              Barcode scannen
+                            </IonButton>
+                          </div>
                           <div className="toggle-pills">
                             <button
                               type="button"
@@ -1375,7 +1518,12 @@ function App() {
                           <h1>Schnellbuchung</h1>
                           <span>erster gefuehrter Buchungsfluss fuer Ticket #1</span>
                         </div>
-                        <IonButton fill="solid" className="primary-button">
+                        <IonButton
+                          fill="solid"
+                          className="primary-button"
+                          onClick={() => openScan("booking-item")}
+                          disabled={!scanSupported}
+                        >
                           <IonIcon slot="start" icon={barcodeOutline} />
                           Scannen
                         </IonButton>
@@ -1857,6 +2005,25 @@ function App() {
             </div>
           </IonToolbar>
         </IonFooter>
+        {scanMode ? (
+          <div className="scan-overlay">
+            <div className="scan-sheet">
+              <div className="scan-sheet__header">
+                <strong>{scanMode === "booking-item" ? "Artikel scannen" : "Barcode erfassen"}</strong>
+                <IonButton fill="clear" className="back-button" onClick={closeScan}>
+                  Schliessen
+                </IonButton>
+              </div>
+              <div className="scan-viewfinder">
+                <video ref={videoRef} className="scan-video" playsInline muted />
+              </div>
+              <div className="scan-meta">
+                <span>{scanMessage ?? "Kamera wird vorbereitet."}</span>
+                {!scanSupported ? <small>Bitte Barcode manuell eingeben.</small> : null}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </IonPage>
     </IonApp>
   );
