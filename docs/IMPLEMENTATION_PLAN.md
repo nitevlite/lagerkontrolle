@@ -37,6 +37,7 @@ Status: umgesetzt.
 - Ablaufwarnungen im Alltag sichtbar machen
 
 Ergebnis: Der eigentliche Arbeitsalltag ist digital abbildbar.
+Status: Orte, Slots, Artikel und Chargen sind als erste CRUD-Stufe sichtbar; Buchungsflow folgt als Naechstes.
 
 ### 4. Scan-Flow
 
@@ -91,5 +92,7 @@ Ergebnis: Das MVP ist bereit fuer den echten Einsatz.
 - `#6` ist umgesetzt
 - `#10` ist im Code umgesetzt
 - `#5` ist im Code umgesetzt
-- als Naechstes sind echte CRUD-Flows fuer Orte, Artikel und Buchungen sinnvoll
+- `#2` ist weitgehend umgesetzt und muss nur noch gegen echte Buchungen verifiziert werden
+- `#3` ist im Frontend gestartet: Artikel bearbeiten und Chargen pflegen sind bereits drin
+- als Naechstes ist `#1` fuer echte Buchungsflows der kritische Pfad
 - `#11` ist als eigenes Analyse-Ticket angelegt

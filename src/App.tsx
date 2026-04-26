@@ -21,12 +21,15 @@ import {
   cubeOutline,
   gridOutline,
   layersOutline,
+  pricetagOutline,
   refreshOutline,
   syncOutline,
   warningOutline
 } from "ionicons/icons";
 import { ensureSeedData, resetSeedData } from "./data/bootstrap";
 import {
+  addBatch,
+  addItem,
   addLocation,
   addStorageSlot,
   addUnitType,
@@ -34,6 +37,7 @@ import {
   deleteStorageSlot,
   loadSnapshot,
   renameLocation,
+  updateItem,
   updateSettings
 } from "./data/repositories";
 import { seedSnapshot } from "./domain/seed";
@@ -43,12 +47,18 @@ import "./theme.css";
 const viewMeta: Array<{ key: ViewKey; label: string; icon: string }> = [
   { key: "dashboard", label: "Dashboard", icon: gridOutline },
   { key: "locations", label: "Orte", icon: cubeOutline },
+  { key: "items", label: "Artikel", icon: pricetagOutline },
   { key: "booking", label: "Buchung", icon: barcodeOutline },
   { key: "units", label: "Einheiten", icon: layersOutline },
   { key: "analytics", label: "Analyse", icon: analyticsOutline }
 ];
 
 const expiryFilters = [7, 10, 30, 60] as const;
+const displayDateFormatter = new Intl.DateTimeFormat("de-AT", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric"
+});
 
 function toneClass(tone: "critical" | "warning" | "neutral" | "good") {
   return `tone-${tone}`;
@@ -64,6 +74,13 @@ function App() {
   const [locationEditName, setLocationEditName] = useState("");
   const [slotKind, setSlotKind] = useState<"shelf" | "drawer">("shelf");
   const [slotNumber, setSlotNumber] = useState("1");
+  const [selectedItemId, setSelectedItemId] = useState("");
+  const [itemNameDraft, setItemNameDraft] = useState("");
+  const [itemBarcodeDraft, setItemBarcodeDraft] = useState("");
+  const [itemUnitTypeId, setItemUnitTypeId] = useState("");
+  const [itemTrackExpiryDraft, setItemTrackExpiryDraft] = useState(true);
+  const [batchCodeDraft, setBatchCodeDraft] = useState("");
+  const [batchExpiryDateDraft, setBatchExpiryDateDraft] = useState("");
   const [unitName, setUnitName] = useState("");
   const [unitShortCode, setUnitShortCode] = useState("");
   const [unitDescription, setUnitDescription] = useState("");
@@ -124,6 +141,36 @@ function App() {
     setLocationEditName(currentLocation?.name ?? "");
   }, [currentLocation?.id, currentLocation?.name]);
 
+  useEffect(() => {
+    if (!snapshotState?.items.length) {
+      setSelectedItemId("");
+      return;
+    }
+
+    setSelectedItemId((current) =>
+      current && snapshotState.items.some((item) => item.id === current)
+        ? current
+        : snapshotState.items[0]?.id ?? ""
+    );
+  }, [snapshotState]);
+
+  const currentItem = snapshotState?.items.find((item) => item.id === selectedItemId) ?? null;
+
+  useEffect(() => {
+    if (currentItem) {
+      setItemNameDraft(currentItem.name);
+      setItemBarcodeDraft(currentItem.barcode ?? "");
+      setItemUnitTypeId(currentItem.unitTypeId);
+      setItemTrackExpiryDraft(currentItem.trackExpiry);
+      return;
+    }
+
+    setItemNameDraft("");
+    setItemBarcodeDraft("");
+    setItemUnitTypeId(snapshotState?.unitTypes[0]?.id ?? "");
+    setItemTrackExpiryDraft(true);
+  }, [currentItem, snapshotState]);
+
   const visibleAlerts = useMemo(
     () =>
       viewModel?.expiryAlerts.filter((alert) => alert.daysUntilExpiry <= expiryFilterDays) ?? [],
@@ -155,6 +202,70 @@ function App() {
     () => (viewModel?.locations.slice().sort((left, right) => right.occupancyPercent - left.occupancyPercent).slice(0, 4) ?? []),
     [viewModel]
   );
+
+  const batchQuantityById = useMemo(() => {
+    const quantities = new Map<string, number>();
+
+    for (const movement of snapshotState?.movements ?? []) {
+      const current = quantities.get(movement.batchId) ?? 0;
+      const delta = movement.toSlotId ? movement.quantity : -movement.quantity;
+      quantities.set(movement.batchId, current + delta);
+    }
+
+    return quantities;
+  }, [snapshotState]);
+
+  const itemSummaries = useMemo(
+    () =>
+      (snapshotState?.items ?? [])
+        .map((item) => {
+          const relatedBatches = snapshotState?.batches.filter((batch) => batch.itemId === item.id) ?? [];
+          const totalQuantity = relatedBatches.reduce(
+            (sum, batch) => sum + Math.max(0, batchQuantityById.get(batch.id) ?? 0),
+            0
+          );
+          const nextExpiry = item.trackExpiry
+            ? relatedBatches
+                .map((batch) => batch.expiryDate)
+                .sort((left, right) => left.localeCompare(right))[0]
+            : null;
+          const unitType = snapshotState?.unitTypes.find((unit) => unit.id === item.unitTypeId);
+
+          return {
+            id: item.id,
+            name: item.name,
+            barcode: item.barcode ?? "kein Code",
+            batchCount: relatedBatches.length,
+            totalQuantity,
+            trackExpiry: item.trackExpiry,
+            nextExpiry: nextExpiry ? displayDateFormatter.format(new Date(nextExpiry)) : "ohne Ablauf",
+            unitLabel: unitType?.shortCode ?? "?"
+          };
+        })
+        .sort((left, right) => left.name.localeCompare(right.name)),
+    [batchQuantityById, snapshotState]
+  );
+
+  const currentItemBatches = useMemo(() => {
+    if (!currentItem || !snapshotState) {
+      return [];
+    }
+
+    const unitType = snapshotState.unitTypes.find((unit) => unit.id === currentItem.unitTypeId);
+
+    return snapshotState.batches
+      .filter((batch) => batch.itemId === currentItem.id)
+      .map((batch) => ({
+        id: batch.id,
+        batchCode: batch.batchCode,
+        expiryLabel: currentItem.trackExpiry
+          ? displayDateFormatter.format(new Date(batch.expiryDate))
+          : "ohne Ablauf",
+        quantity: Math.max(0, batchQuantityById.get(batch.id) ?? 0),
+        unitShortCode: unitType?.shortCode ?? "?"
+      }))
+      .sort((left, right) => left.expiryLabel.localeCompare(right.expiryLabel));
+  }, [batchQuantityById, currentItem, snapshotState]);
 
   async function handleReset() {
     await resetSeedData();
@@ -259,6 +370,75 @@ function App() {
     }
   }
 
+  async function handleSaveItem() {
+    const unitTypeId = itemUnitTypeId || snapshotState?.unitTypes[0]?.id;
+    if (!unitTypeId) {
+      setActionError("Bitte zuerst einen Einheitentyp anlegen.");
+      return;
+    }
+
+    try {
+      if (currentItem && currentItem.id === selectedItemId) {
+        await updateItem({
+          id: currentItem.id,
+          name: itemNameDraft,
+          unitTypeId,
+          barcode: itemBarcodeDraft,
+          trackExpiry: itemTrackExpiryDraft
+        });
+      } else {
+        const newItemId = await addItem({
+          name: itemNameDraft,
+          unitTypeId,
+          barcode: itemBarcodeDraft,
+          trackExpiry: itemTrackExpiryDraft
+        });
+        if (newItemId) {
+          setSelectedItemId(newItemId);
+        }
+      }
+
+      setRefreshToken((current) => current + 1);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Artikel konnte nicht gespeichert werden.");
+    }
+  }
+
+  async function handleSaveBatch() {
+    if (!currentItem) {
+      setActionError("Bitte zuerst einen Artikel waehlen.");
+      return;
+    }
+
+    if (currentItem.trackExpiry && !batchExpiryDateDraft) {
+      setActionError("Bitte ein Ablaufdatum fuer die Charge setzen.");
+      return;
+    }
+
+    try {
+      await addBatch({
+        itemId: currentItem.id,
+        batchCode: batchCodeDraft,
+        expiryDate: currentItem.trackExpiry ? batchExpiryDateDraft : batchExpiryDateDraft || "2099-12-31"
+      });
+      setBatchCodeDraft("");
+      setBatchExpiryDateDraft("");
+      setRefreshToken((current) => current + 1);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Charge konnte nicht gespeichert werden.");
+    }
+  }
+
+  function handleNewItem() {
+    setSelectedItemId("");
+    setItemNameDraft("");
+    setItemBarcodeDraft("");
+    setItemUnitTypeId(snapshotState?.unitTypes[0]?.id ?? "");
+    setItemTrackExpiryDraft(true);
+    setBatchCodeDraft("");
+    setBatchExpiryDateDraft("");
+  }
+
   return (
     <IonApp>
       <IonPage>
@@ -290,7 +470,9 @@ function App() {
           <IonToolbar className="topbar">
             <div className="topbar__main">
               <IonTitle>Lagerkontrolle</IonTitle>
-              <span className="topbar__sub">Teelager · 3 Orte · offline bereit</span>
+              <span className="topbar__sub">
+                {currentLocation?.name ?? "Lager"} · {viewModel?.locations.length ?? 0} Orte · offline bereit
+              </span>
             </div>
             <div className="topbar__actions">
               <span className="status-dot">
@@ -667,6 +849,160 @@ function App() {
                         </section>
                       </>
                     ) : null}
+                  </div>
+                ) : null}
+
+                {activeView === "items" ? (
+                  <div className="stack">
+                    <section className="surface">
+                      <header className="section-header">
+                        <div>
+                          <h1>Artikel</h1>
+                          <span>{itemSummaries.length} angelegt</span>
+                        </div>
+                        <IonButton fill="outline" className="primary-button" onClick={handleNewItem}>
+                          Neu
+                        </IonButton>
+                      </header>
+                      <div className="entity-grid">
+                        {itemSummaries.map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            className={item.id === selectedItemId ? "entity-card entity-card--active" : "entity-card"}
+                            onClick={() => setSelectedItemId(item.id)}
+                          >
+                            <div className="entity-card__top">
+                              <strong>{item.name}</strong>
+                              <IonBadge color="light">{item.unitLabel}</IonBadge>
+                            </div>
+                            <span>{item.totalQuantity} im Bestand</span>
+                            <small>
+                              {item.batchCount} Chargen · {item.trackExpiry ? item.nextExpiry : "ohne Ablauf"}
+                            </small>
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className="surface">
+                      <header className="section-header">
+                        <div>
+                          <h2>{currentItem ? "Artikel bearbeiten" : "Artikel anlegen"}</h2>
+                          <span>{currentItem ? currentItem.name : "Neuer Stammdatensatz"}</span>
+                        </div>
+                      </header>
+                      <div className="unit-form">
+                        <IonItem className="compact-field">
+                          <IonLabel position="stacked">Name</IonLabel>
+                          <IonInput
+                            value={itemNameDraft}
+                            placeholder="z. B. Schwarztee 25er"
+                            onIonInput={(event) => setItemNameDraft(String(event.detail.value ?? ""))}
+                          />
+                        </IonItem>
+                        <label className="form-field">
+                          <span>Einheit</span>
+                          <select
+                            className="app-select"
+                            value={itemUnitTypeId}
+                            onChange={(event) => setItemUnitTypeId(event.target.value)}
+                          >
+                            {viewModel.unitTypes.map((unitType) => (
+                              <option key={unitType.id} value={unitType.id}>
+                                {unitType.name} ({unitType.shortCode})
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <IonItem className="compact-field">
+                          <IonLabel position="stacked">Barcode</IonLabel>
+                          <IonInput
+                            value={itemBarcodeDraft}
+                            placeholder="optional"
+                            onIonInput={(event) => setItemBarcodeDraft(String(event.detail.value ?? ""))}
+                          />
+                        </IonItem>
+                      </div>
+                      <div className="toggle-pills">
+                        <button
+                          type="button"
+                          className={itemTrackExpiryDraft ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                          onClick={() => setItemTrackExpiryDraft(true)}
+                        >
+                          Ablauf aktiv
+                        </button>
+                        <button
+                          type="button"
+                          className={!itemTrackExpiryDraft ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                          onClick={() => setItemTrackExpiryDraft(false)}
+                        >
+                          Ohne Ablauf
+                        </button>
+                      </div>
+                      <div className="form-actions">
+                        <IonButton className="primary-button" onClick={handleSaveItem}>
+                          {currentItem ? "Artikel aktualisieren" : "Artikel speichern"}
+                        </IonButton>
+                        {currentItem ? (
+                          <IonButton fill="outline" className="primary-button" onClick={handleNewItem}>
+                            Neuer Artikel
+                          </IonButton>
+                        ) : null}
+                      </div>
+                    </section>
+
+                    <section className="surface">
+                      <header className="section-header">
+                        <div>
+                          <h2>Chargen</h2>
+                          <span>{currentItem ? currentItem.name : "Bitte zuerst Artikel waehlen"}</span>
+                        </div>
+                      </header>
+                      {currentItem ? (
+                        <>
+                          <div className="unit-form">
+                            <IonItem className="compact-field">
+                              <IonLabel position="stacked">Chargencode</IonLabel>
+                              <IonInput
+                                value={batchCodeDraft}
+                                placeholder="z. B. ST-2026-04"
+                                onIonInput={(event) => setBatchCodeDraft(String(event.detail.value ?? ""))}
+                              />
+                            </IonItem>
+                            <label className="form-field">
+                              <span>{currentItem.trackExpiry ? "Ablaufdatum" : "Datum optional"}</span>
+                              <input
+                                className="app-input"
+                                type="date"
+                                value={batchExpiryDateDraft}
+                                onChange={(event) => setBatchExpiryDateDraft(event.target.value)}
+                              />
+                            </label>
+                            <IonButton className="primary-button" onClick={handleSaveBatch}>
+                              Charge speichern
+                            </IonButton>
+                          </div>
+                          <div className="list">
+                            {currentItemBatches.map((batch) => (
+                              <article key={batch.id} className="list-row">
+                                <div className="list-row__main">
+                                  <strong>{batch.batchCode}</strong>
+                                  <span>{batch.expiryLabel}</span>
+                                </div>
+                                <div className="list-row__meta">
+                                  <b>
+                                    {batch.quantity} {batch.unitShortCode}
+                                  </b>
+                                </div>
+                              </article>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="empty-state">Mit Neu zuerst einen Artikel anlegen oder einen bestehenden waehlen.</div>
+                      )}
+                    </section>
                   </div>
                 ) : null}
 

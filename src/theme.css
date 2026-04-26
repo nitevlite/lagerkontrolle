@@ -208,7 +208,7 @@ ion-content.shell::part(scroll) {
 
 .view-switcher {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
   gap: 0.45rem;
 }
 
@@ -256,6 +256,12 @@ ion-content.shell::part(scroll) {
 .location-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.7rem;
+}
+
+.entity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 0.7rem;
 }
 
@@ -357,10 +363,27 @@ ion-content.shell::part(scroll) {
   text-align: left;
 }
 
+.entity-card {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.95rem;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: #f9fbfd;
+  text-align: left;
+}
+
 .location-card__top {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.5rem;
+}
+
+.entity-card__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
   gap: 0.5rem;
 }
 
@@ -373,9 +396,74 @@ ion-content.shell::part(scroll) {
   color: var(--muted);
 }
 
+.entity-card span,
+.entity-card small {
+  color: var(--muted);
+}
+
 .location-card--active {
   border-color: rgba(15, 98, 254, 0.28);
   background: rgba(15, 98, 254, 0.08);
+}
+
+.entity-card--active {
+  border-color: rgba(15, 98, 254, 0.28);
+  background: rgba(15, 98, 254, 0.08);
+}
+
+.form-field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.form-field span {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.app-select,
+.app-input {
+  width: 100%;
+  min-height: 52px;
+  padding: 0.8rem 0.9rem;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: #fdfefe;
+  color: var(--text);
+  font: inherit;
+}
+
+.toggle-pills,
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.85rem;
+}
+
+.toggle-pill {
+  padding: 0.72rem 1rem;
+  border-radius: 999px;
+  border: 1px solid #d5dde7;
+  background: #eef2f7;
+  color: #293444;
+  font: inherit;
+  font-weight: 700;
+}
+
+.toggle-pill--active {
+  border-color: #16212b;
+  background: #16212b;
+  color: #ffffff;
+}
+
+.empty-state {
+  padding: 1rem;
+  border-radius: 14px;
+  border: 1px dashed var(--border);
+  background: #f9fbfd;
+  color: var(--muted);
 }
 
 .stock-grid {
@@ -503,7 +591,7 @@ ion-content.shell::part(scroll) {
   }
 
   .view-switcher {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 

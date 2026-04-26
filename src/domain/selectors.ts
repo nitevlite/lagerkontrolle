@@ -1,6 +1,6 @@
 import type { AppSettings, Batch, DomainSnapshot, Item, Location, Movement, StorageSlot, UnitType } from "./model";
 
-export type ViewKey = "dashboard" | "locations" | "booking" | "units" | "analytics";
+export type ViewKey = "dashboard" | "locations" | "items" | "booking" | "units" | "analytics";
 
 export type DashboardStat = {
   id: string;

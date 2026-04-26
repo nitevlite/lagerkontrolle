@@ -40,6 +40,96 @@ export async function addUnitType(input: {
   });
 }
 
+export async function addItem(input: {
+  name: string;
+  unitTypeId: string;
+  barcode?: string;
+  trackExpiry: boolean;
+}) {
+  const name = input.name.trim();
+  if (!name) {
+    return;
+  }
+
+  const existing = await db.items
+    .filter((item) => item.name.toLocaleLowerCase() === name.toLocaleLowerCase())
+    .first();
+
+  if (existing) {
+    throw new Error("Artikel existiert bereits.");
+  }
+
+  const id = `item-${crypto.randomUUID()}`;
+
+  await db.items.add({
+    id,
+    name,
+    unitTypeId: input.unitTypeId,
+    barcode: input.barcode?.trim() || undefined,
+    trackExpiry: input.trackExpiry
+  });
+
+  return id;
+}
+
+export async function updateItem(input: {
+  id: string;
+  name: string;
+  unitTypeId: string;
+  barcode?: string;
+  trackExpiry: boolean;
+}) {
+  const name = input.name.trim();
+  if (!name) {
+    return;
+  }
+
+  const existing = await db.items
+    .filter((item) => item.id !== input.id && item.name.toLocaleLowerCase() === name.toLocaleLowerCase())
+    .first();
+
+  if (existing) {
+    throw new Error("Artikel existiert bereits.");
+  }
+
+  await db.items.update(input.id, {
+    name,
+    unitTypeId: input.unitTypeId,
+    barcode: input.barcode?.trim() || undefined,
+    trackExpiry: input.trackExpiry
+  });
+}
+
+export async function addBatch(input: {
+  itemId: string;
+  batchCode: string;
+  expiryDate: string;
+}) {
+  const batchCode = input.batchCode.trim();
+  if (!batchCode || !input.expiryDate) {
+    return;
+  }
+
+  const existing = await db.batches
+    .filter(
+      (batch) =>
+        batch.itemId === input.itemId &&
+        batch.batchCode.toLocaleLowerCase() === batchCode.toLocaleLowerCase()
+    )
+    .first();
+
+  if (existing) {
+    throw new Error("Charge existiert fuer diesen Artikel bereits.");
+  }
+
+  await db.batches.add({
+    id: `batch-${crypto.randomUUID()}`,
+    itemId: input.itemId,
+    batchCode,
+    expiryDate: input.expiryDate
+  });
+}
+
 export async function addLocation(input: { name: string }) {
   const name = input.name.trim();
   if (!name) {
