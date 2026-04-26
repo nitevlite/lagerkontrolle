@@ -234,9 +234,36 @@ ion-content.app-shell::part(scroll) {
 .slot-grid,
 .unit-grid,
 .analytics-preview,
-.form-grid {
+.form-grid,
+.settings-grid {
   display: grid;
   gap: 0.9rem;
+}
+
+.settings-grid {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  margin-bottom: 0.9rem;
+}
+
+.filter-row {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.9rem;
+}
+
+.filter-pill {
+  padding: 0.65rem 1rem;
+  border: none;
+  border-radius: 999px;
+  background: rgba(237, 229, 214, 0.95);
+  color: #305342;
+  font-weight: 700;
+}
+
+.filter-pill--active {
+  background: #1b4332;
+  color: #f8f4ec;
 }
 
 .alert-card {
@@ -252,8 +279,13 @@ ion-content.app-shell::part(scroll) {
 .alert-card span,
 .movement-item p,
 .slot-card p,
-.unit-card p {
+.unit-card p,
+.booking-step p {
   color: #687b70;
+}
+
+.alert-card small {
+  color: #6f7d76;
 }
 
 .alert-card--critical {
@@ -351,6 +383,10 @@ ion-content.app-shell::part(scroll) {
   --border-radius: 16px;
   --padding-start: 0.85rem;
   --inner-padding-end: 0.85rem;
+}
+
+.field--compact {
+  margin: 0;
 }
 
 .unit-grid {

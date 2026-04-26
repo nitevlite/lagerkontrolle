@@ -35,7 +35,9 @@ Warum das sinnvoll ist:
 - freie Einheitentypen wie `Stk`, `Packung`, `Kiste`, `Flasche` anlegen
 - Mengen schnell buchen: `+`, `-`, Umbuchung
 - Ablaufdaten und Chargen fuer fast alle Artikel verwalten
-- Vorwarnungen vor Ablauf anzeigen
+- Vorwarnungen vor Ablauf anzeigen, Standard `10 Tage vorher`
+- Wiedervorlage nach Warnung in `X Tagen`
+- Ablauf im frei waehlbaren Zeitraum filtern
 - Barcode- oder QR-Scan direkt im MVP
 - Mehrgeraete-Sync direkt im MVP
 - Dashboard mit Status, Warnungen und Auswertung

@@ -29,7 +29,9 @@ Eine mobile App, mit der Mitarbeitende Lagerorte und Inhalte in Sekunden pflegen
 - Zu- und Abgaenge buchen
 - Umbuchungen zwischen Orten buchen
 - Ablaufdatum und Charge fuer fast alle Artikel pflegen
-- Vorwarnung vor Ablauf vor dem eigentlichen Ablaufdatum
+- Vorwarnung vor Ablauf vor dem eigentlichen Ablaufdatum, Standard `10 Tage vorher`
+- Wiedervorlage nach Warnung in konfigurierbarem Abstand
+- Filter auf Artikel oder Chargen, die in einem Zeitraum ablaufen
 - Suche ueber Orte und Artikel
 - offline nutzbar
 - Barcode- oder QR-Scan

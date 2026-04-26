@@ -10,12 +10,14 @@ export type UnitType = {
 export type BatchAlert = {
   id: string;
   itemName: string;
+  locationId: string;
   locationName: string;
   slotName: string;
   batchCode: string;
   daysUntilExpiry: number;
   quantity: number;
   unitShortCode: string;
+  reminderDueInDays: number;
 };
 
 export type LocationSummary = {
@@ -29,6 +31,7 @@ export type LocationSummary = {
 
 export type SlotStock = {
   id: string;
+  locationId: string;
   slotName: string;
   itemName: string;
   quantity: number;
@@ -48,36 +51,12 @@ export type MovementSummary = {
   timestampLabel: string;
 };
 
-export const dashboardStats = [
-  {
-    id: "critical",
-    label: "Kritische Chargen",
-    value: "8",
-    detail: "innerhalb 7 Tagen",
-    tone: "critical"
-  },
-  {
-    id: "warning",
-    label: "Fruehwarnungen",
-    value: "21",
-    detail: "innerhalb 30 Tagen",
-    tone: "warning"
-  },
-  {
-    id: "moves",
-    label: "Bewegungen heute",
-    value: "37",
-    detail: "6 Umbuchungen",
-    tone: "neutral"
-  },
-  {
-    id: "sync",
-    label: "Sync-Status",
-    value: "2 Geraete",
-    detail: "zuletzt vor 2 Min.",
-    tone: "good"
-  }
-] as const;
+export type AnalyticsMetric = {
+  id: string;
+  title: string;
+  value: string;
+  detail: string;
+};
 
 export const locationSummaries: LocationSummary[] = [
   {
@@ -109,6 +88,7 @@ export const locationSummaries: LocationSummary[] = [
 export const slotStocks: SlotStock[] = [
   {
     id: "slot-1",
+    locationId: "loc-1",
     slotName: "Regal 1",
     itemName: "Kamillentee 20er",
     quantity: 24,
@@ -118,21 +98,43 @@ export const slotStocks: SlotStock[] = [
   },
   {
     id: "slot-2",
+    locationId: "loc-1",
     slotName: "Regal 3",
     itemName: "Pfefferminztee 20er",
     quantity: 6,
     unitShortCode: "Pkg",
-    expiryDate: "12.05.2026",
+    expiryDate: "06.05.2026",
     status: "warning"
   },
   {
     id: "slot-3",
+    locationId: "loc-1",
     slotName: "Lade 2",
     itemName: "Honigportionen",
     quantity: 3,
     unitShortCode: "Box",
     expiryDate: "01.05.2026",
     status: "critical"
+  },
+  {
+    id: "slot-4",
+    locationId: "loc-2",
+    slotName: "Regal 1",
+    itemName: "Ingwersirup",
+    quantity: 2,
+    unitShortCode: "Fl",
+    expiryDate: "24.05.2026",
+    status: "warning"
+  },
+  {
+    id: "slot-5",
+    locationId: "loc-3",
+    slotName: "Lade 1",
+    itemName: "Serviettenpaket",
+    quantity: 11,
+    unitShortCode: "Pkg",
+    expiryDate: "02.09.2026",
+    status: "ok"
   }
 ];
 
@@ -140,32 +142,62 @@ export const expiryAlerts: BatchAlert[] = [
   {
     id: "alert-1",
     itemName: "Pfefferminztee 20er",
+    locationId: "loc-1",
     locationName: "Teelager",
     slotName: "Regal 3",
     batchCode: "PM-2026-04",
-    daysUntilExpiry: 16,
+    daysUntilExpiry: 9,
     quantity: 6,
-    unitShortCode: "Pkg"
+    unitShortCode: "Pkg",
+    reminderDueInDays: 2
   },
   {
     id: "alert-2",
     itemName: "Honigportionen",
+    locationId: "loc-1",
     locationName: "Teelager",
     slotName: "Lade 2",
     batchCode: "HP-2026-02",
     daysUntilExpiry: 5,
     quantity: 3,
-    unitShortCode: "Box"
+    unitShortCode: "Box",
+    reminderDueInDays: 1
   },
   {
     id: "alert-3",
     itemName: "Ingwersirup",
+    locationId: "loc-2",
     locationName: "Sirupraum",
     slotName: "Regal 1",
     batchCode: "IS-2026-03",
-    daysUntilExpiry: 28,
+    daysUntilExpiry: 18,
     quantity: 2,
-    unitShortCode: "Fl"
+    unitShortCode: "Fl",
+    reminderDueInDays: 4
+  },
+  {
+    id: "alert-4",
+    itemName: "Gruentee Bio",
+    locationId: "loc-1",
+    locationName: "Teelager",
+    slotName: "Regal 6",
+    batchCode: "GB-2026-05",
+    daysUntilExpiry: 27,
+    quantity: 10,
+    unitShortCode: "Pkg",
+    reminderDueInDays: 5
+  },
+  {
+    id: "alert-5",
+    itemName: "Himbeersirup",
+    locationId: "loc-2",
+    locationName: "Sirupraum",
+    slotName: "Lade 1",
+    batchCode: "HS-2026-01",
+    daysUntilExpiry: 46,
+    quantity: 4,
+    unitShortCode: "Fl",
+    reminderDueInDays: 7
   }
 ];
 
@@ -197,10 +229,19 @@ export const recentMovements: MovementSummary[] = [
     unitShortCode: "Fl",
     fromLabel: "Sirupraum / Regal 1",
     timestampLabel: "Heute, 07:56"
+  },
+  {
+    id: "move-4",
+    direction: "in",
+    itemName: "Gruentee Bio",
+    quantity: 8,
+    unitShortCode: "Pkg",
+    toLabel: "Teelager / Regal 6",
+    timestampLabel: "Heute, 07:31"
   }
 ];
 
-export const analyticsCards = [
+export const analyticsMetrics: AnalyticsMetric[] = [
   {
     id: "analytics-1",
     title: "Aktivster Ort",
@@ -209,15 +250,21 @@ export const analyticsCards = [
   },
   {
     id: "analytics-2",
-    title: "Ablaufwarnungen",
-    value: "21",
-    detail: "davon 8 kritisch"
+    title: "Meist gescannt",
+    value: "Kamillentee",
+    detail: "12 Treffer heute"
   },
   {
     id: "analytics-3",
-    title: "Neue Einheitentypen",
-    value: "3",
-    detail: "im letzten Monat angelegt"
+    title: "Hohe Auslastung",
+    value: "Servicewagen",
+    detail: "88% belegt"
+  },
+  {
+    id: "analytics-4",
+    title: "Bald ablaufend",
+    value: "3 Chargen",
+    detail: "innerhalb 10 Tagen"
   }
 ] as const;
 

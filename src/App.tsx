@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   IonApp,
   IonBadge,
@@ -28,13 +28,14 @@ import {
   barcodeOutline,
   checkmarkCircleOutline,
   cubeOutline,
+  layersOutline,
   pulseOutline,
   repeatOutline,
+  syncOutline,
   warningOutline
 } from "ionicons/icons";
 import {
-  analyticsCards,
-  dashboardStats,
+  analyticsMetrics,
   expiryAlerts,
   initialUnitTypes,
   locationSummaries,
@@ -52,11 +53,13 @@ const viewTitles: Record<ViewKey, string> = {
   analytics: "Auswertung"
 };
 
-function getAlertTone(daysUntilExpiry: number) {
-  if (daysUntilExpiry <= 7) {
+const expiryFilters = [7, 10, 30, 60] as const;
+
+function getAlertTone(daysUntilExpiry: number, warningWindowDays: number) {
+  if (daysUntilExpiry <= 5) {
     return "critical";
   }
-  if (daysUntilExpiry <= 21) {
+  if (daysUntilExpiry <= warningWindowDays) {
     return "warning";
   }
   return "neutral";
@@ -69,6 +72,9 @@ function App() {
   const [unitShortCode, setUnitShortCode] = useState("");
   const [unitDescription, setUnitDescription] = useState("");
   const [selectedLocation, setSelectedLocation] = useState(locationSummaries[0].id);
+  const [warningWindowDays, setWarningWindowDays] = useState(10);
+  const [reminderRepeatDays, setReminderRepeatDays] = useState(3);
+  const [expiryFilterDays, setExpiryFilterDays] = useState<number>(10);
 
   const saveUnitType = () => {
     const trimmedName = unitName.trim();
@@ -95,6 +101,71 @@ function App() {
   const currentLocation =
     locationSummaries.find((location) => location.id === selectedLocation) ?? locationSummaries[0];
 
+  const filteredAlerts = useMemo(
+    () =>
+      expiryAlerts
+        .filter((alert) => alert.daysUntilExpiry <= expiryFilterDays)
+        .sort((left, right) => left.daysUntilExpiry - right.daysUntilExpiry),
+    [expiryFilterDays]
+  );
+
+  const locationStocks = useMemo(
+    () => slotStocks.filter((stock) => stock.locationId === currentLocation.id),
+    [currentLocation.id]
+  );
+
+  const dashboardStats = useMemo(() => {
+    const critical = expiryAlerts.filter((alert) => alert.daysUntilExpiry <= 5).length;
+    const warning = expiryAlerts.filter((alert) => alert.daysUntilExpiry <= warningWindowDays).length;
+    const lowStock = slotStocks.filter((stock) => stock.quantity <= 5).length;
+    const overfilled = locationSummaries.filter((location) => location.occupancyPercent >= 80).length;
+
+    return [
+      {
+        id: "critical",
+        label: "Kritisch",
+        value: String(critical),
+        detail: "<= 5 Tage",
+        tone: "critical"
+      },
+      {
+        id: "warning",
+        label: "Warnfenster",
+        value: String(warning),
+        detail: `<= ${warningWindowDays} Tage`,
+        tone: "warning"
+      },
+      {
+        id: "low-stock",
+        label: "Niedrige Bestaende",
+        value: String(lowStock),
+        detail: "<= 5 Einheiten",
+        tone: "neutral"
+      },
+      {
+        id: "moves",
+        label: "Bewegungen",
+        value: "37",
+        detail: "heute",
+        tone: "good"
+      },
+      {
+        id: "scans",
+        label: "Scans",
+        value: "24",
+        detail: "heute",
+        tone: "neutral"
+      },
+      {
+        id: "occupancy",
+        label: "Volle Orte",
+        value: String(overfilled),
+        detail: ">= 80% belegt",
+        tone: "warning"
+      }
+    ] as const;
+  }, [warningWindowDays]);
+
   return (
     <IonApp>
       <IonPage>
@@ -106,7 +177,7 @@ function App() {
             </div>
             <div className="toolbar-meta">
               <IonChip className="status-chip status-chip--good">
-                <IonIcon icon={checkmarkCircleOutline} />
+                <IonIcon icon={syncOutline} />
                 <IonLabel>Sync stabil</IonLabel>
               </IonChip>
               <IonChip className="status-chip status-chip--warning">
@@ -122,16 +193,13 @@ function App() {
           <div className="page-wrap">
             <section className="hero-card">
               <div>
-                <p className="eyebrow">Ticket #6 umgesetzt als klickbarer Frontend-Stand</p>
+                <p className="eyebrow">Mobile Demo</p>
                 <h1>{viewTitles[activeView]}</h1>
-                <p className="hero-copy">
-                  Erste mobile PWA-Ansicht mit Dashboard, Ablaufwarnungen, freien Einheitentypen,
-                  Ortsstruktur und vorbereiteter Schnellbuchung.
-                </p>
+                <p className="hero-copy">Warnen, buchen, scannen, synchronisieren.</p>
               </div>
               <div className="hero-actions">
                 <IonButton shape="round" className="hero-button">
-                  Demo-Daten zuruecksetzen
+                  Demo-Daten
                 </IonButton>
                 <IonChip className="signal-chip">
                   <IonIcon icon={pulseOutline} />
@@ -179,17 +247,57 @@ function App() {
                 <section className="panel">
                   <div className="panel-header">
                     <div>
-                      <h2>Ablaufwarnungen vor Verfall</h2>
-                      <p>Fruehwarnung sichtbar, bevor Ware wirklich ablaeuft.</p>
+                      <h2>Ablauf</h2>
                     </div>
                     <IonChip className="signal-chip signal-chip--critical">
                       <IonIcon icon={warningOutline} />
-                      <IonLabel>Warnfenster 30 Tage</IonLabel>
+                      <IonLabel>{filteredAlerts.length} Treffer</IonLabel>
                     </IonChip>
                   </div>
+
+                  <div className="settings-grid">
+                    <IonItem className="field field--compact">
+                      <IonLabel position="stacked">Warnung ab</IonLabel>
+                      <IonInput
+                        type="number"
+                        min="1"
+                        value={warningWindowDays}
+                        onIonInput={(event) =>
+                          setWarningWindowDays(Math.max(1, Number(event.detail.value ?? 10)))
+                        }
+                      />
+                    </IonItem>
+                    <IonItem className="field field--compact">
+                      <IonLabel position="stacked">Erneut erinnern</IonLabel>
+                      <IonInput
+                        type="number"
+                        min="1"
+                        value={reminderRepeatDays}
+                        onIonInput={(event) =>
+                          setReminderRepeatDays(Math.max(1, Number(event.detail.value ?? 3)))
+                        }
+                      />
+                    </IonItem>
+                  </div>
+
+                  <div className="filter-row">
+                    {expiryFilters.map((days) => (
+                      <button
+                        key={days}
+                        className={
+                          days === expiryFilterDays ? "filter-pill filter-pill--active" : "filter-pill"
+                        }
+                        onClick={() => setExpiryFilterDays(days)}
+                        type="button"
+                      >
+                        {days} Tage
+                      </button>
+                    ))}
+                  </div>
+
                   <div className="alert-list">
-                    {expiryAlerts.map((alert) => {
-                      const tone = getAlertTone(alert.daysUntilExpiry);
+                    {filteredAlerts.map((alert) => {
+                      const tone = getAlertTone(alert.daysUntilExpiry, warningWindowDays);
                       return (
                         <article key={alert.id} className={`alert-card alert-card--${tone}`}>
                           <div>
@@ -200,12 +308,13 @@ function App() {
                             <span>Charge {alert.batchCode}</span>
                           </div>
                           <div className="alert-metrics">
-                            <IonBadge color={tone === "critical" ? "danger" : "warning"}>
+                            <IonBadge color={tone === "critical" ? "danger" : tone === "warning" ? "warning" : "medium"}>
                               {alert.daysUntilExpiry} Tage
                             </IonBadge>
                             <strong>
                               {alert.quantity} {alert.unitShortCode}
                             </strong>
+                            <small>Wiedervorlage in {Math.min(alert.reminderDueInDays, reminderRepeatDays)} Tagen</small>
                           </div>
                         </article>
                       );
@@ -217,7 +326,6 @@ function App() {
                   <div className="panel-header">
                     <div>
                       <h2>Letzte Bewegungen</h2>
-                      <p>Bewegungsjournal als Basis fuer spaeteren Sync und Nachvollziehbarkeit.</p>
                     </div>
                   </div>
                   <IonList lines="none" className="movement-list">
@@ -252,8 +360,7 @@ function App() {
                 <section className="panel">
                   <div className="panel-header">
                     <div>
-                      <h2>Orte und Regale/Laden</h2>
-                      <p>Struktur: Ort mit nummerierten Regalen oder Laden.</p>
+                      <h2>Orte</h2>
                     </div>
                   </div>
                   <div className="location-pills">
@@ -280,7 +387,7 @@ function App() {
                     <div>
                       <h2>{currentLocation.name}</h2>
                       <p>
-                        {currentLocation.itemCount} Artikel · letzte Bewegung {currentLocation.lastMovementLabel}
+                        {currentLocation.itemCount} Artikel · {currentLocation.lastMovementLabel}
                       </p>
                     </div>
                     <IonChip className="signal-chip">
@@ -289,12 +396,20 @@ function App() {
                     </IonChip>
                   </div>
                   <div className="slot-grid">
-                    {slotStocks.map((stock) => (
+                    {locationStocks.map((stock) => (
                       <IonCard key={stock.id} className={`slot-card slot-card--${stock.status}`}>
                         <IonCardContent>
                           <div className="slot-topline">
                             <span>{stock.slotName}</span>
-                            <IonBadge color={stock.status === "critical" ? "danger" : stock.status === "warning" ? "warning" : "success"}>
+                            <IonBadge
+                              color={
+                                stock.status === "critical"
+                                  ? "danger"
+                                  : stock.status === "warning"
+                                    ? "warning"
+                                    : "success"
+                              }
+                            >
                               {stock.status === "critical"
                                 ? "kritisch"
                                 : stock.status === "warning"
@@ -321,7 +436,6 @@ function App() {
                   <div className="panel-header">
                     <div>
                       <h2>Schnellbuchung</h2>
-                      <p>Der Standardflow soll spaeter in wenigen Taps abgeschlossen sein.</p>
                     </div>
                     <IonButton fill="outline" shape="round">
                       <IonIcon slot="start" icon={barcodeOutline} />
@@ -333,22 +447,22 @@ function App() {
                     <article className="booking-step">
                       <span>1</span>
                       <div>
-                        <h3>Ort und Slot waehlen</h3>
-                        <p>Beispiel: `Teelager / Regal 3`</p>
+                        <h3>Ort / Slot</h3>
+                        <p>Teelager / Regal 3</p>
                       </div>
                     </article>
                     <article className="booking-step">
                       <span>2</span>
                       <div>
-                        <h3>Artikel scannen oder suchen</h3>
-                        <p>Barcode-Flow ist sichtbar vorbereitet.</p>
+                        <h3>Artikel</h3>
+                        <p>scannen oder suchen</p>
                       </div>
                     </article>
                     <article className="booking-step">
                       <span>3</span>
                       <div>
-                        <h3>Menge und Charge erfassen</h3>
-                        <p>Plus, Minus und Umbuchung bleiben einheitlich.</p>
+                        <h3>Menge / Charge</h3>
+                        <p>+ / - / Umbuchung</p>
                       </div>
                     </article>
                   </div>
@@ -356,11 +470,11 @@ function App() {
                   <div className="booking-preview">
                     <IonChip className="status-chip status-chip--warning">
                       <IonIcon icon={warningOutline} />
-                      <IonLabel>Warnung 16 Tage vor Ablauf</IonLabel>
+                      <IonLabel>Warnung ab {warningWindowDays} Tagen</IonLabel>
                     </IonChip>
                     <IonChip className="status-chip">
                       <IonIcon icon={cubeOutline} />
-                      <IonLabel>Einheitstyp: Packung</IonLabel>
+                      <IonLabel>Einheit: Packung</IonLabel>
                     </IonChip>
                   </div>
                 </section>
@@ -372,8 +486,7 @@ function App() {
                 <section className="panel panel--unit-form">
                   <div className="panel-header">
                     <div>
-                      <h2>Neue Einheitentypen</h2>
-                      <p>Einheiten sind frei anlegbar und nicht hart codiert.</p>
+                      <h2>Einheit anlegen</h2>
                     </div>
                   </div>
                   <div className="form-grid">
@@ -381,7 +494,7 @@ function App() {
                       <IonLabel position="stacked">Name</IonLabel>
                       <IonInput
                         value={unitName}
-                        placeholder="z. B. Kiste"
+                        placeholder="Kiste"
                         onIonInput={(event) => setUnitName(String(event.detail.value ?? ""))}
                       />
                     </IonItem>
@@ -389,7 +502,7 @@ function App() {
                       <IonLabel position="stacked">Kurzcode</IonLabel>
                       <IonInput
                         value={unitShortCode}
-                        placeholder="z. B. Kis"
+                        placeholder="Kis"
                         onIonInput={(event) => setUnitShortCode(String(event.detail.value ?? ""))}
                       />
                     </IonItem>
@@ -397,22 +510,25 @@ function App() {
                       <IonLabel position="stacked">Beschreibung</IonLabel>
                       <IonInput
                         value={unitDescription}
-                        placeholder="Wofuer wird die Einheit genutzt?"
+                        placeholder="optional"
                         onIonInput={(event) => setUnitDescription(String(event.detail.value ?? ""))}
                       />
                     </IonItem>
                   </div>
                   <IonButton expand="block" className="hero-button" onClick={saveUnitType}>
-                    Einheitentyp anlegen
+                    Einheit speichern
                   </IonButton>
                 </section>
 
                 <section className="panel">
                   <div className="panel-header">
                     <div>
-                      <h2>Aktive Einheiten</h2>
-                      <p>Diese Demo ist schon interaktiv und fuegt neue Einheitstypen lokal hinzu.</p>
+                      <h2>Einheiten</h2>
                     </div>
+                    <IonChip className="signal-chip">
+                      <IonIcon icon={layersOutline} />
+                      <IonLabel>{unitTypes.length} aktiv</IonLabel>
+                    </IonChip>
                   </div>
                   <div className="unit-grid">
                     {unitTypes.map((unitType) => (
@@ -434,7 +550,7 @@ function App() {
             {activeView === "analytics" ? (
               <div className="view-grid">
                 <section className="stats-grid">
-                  {analyticsCards.map((card) => (
+                  {analyticsMetrics.map((card) => (
                     <IonCard key={card.id} className="stat-card stat-card--neutral">
                       <IonCardContent>
                         <p>{card.title}</p>
@@ -447,31 +563,30 @@ function App() {
                 <section className="panel">
                   <div className="panel-header">
                     <div>
-                      <h2>Dashboard-Auswertung</h2>
-                      <p>Hier folgt spaeter die echte Verdichtung aus Bewegungen, Resttagen und Trends.</p>
+                      <h2>Relevante Kennzahlen</h2>
                     </div>
                     <IonChip className="signal-chip">
                       <IonIcon icon={analyticsOutline} />
-                      <IonLabel>Pilot-ready Layout</IonLabel>
+                      <IonLabel>Test-Dashboard</IonLabel>
                     </IonChip>
                   </div>
                   <div className="analytics-preview">
                     <article>
-                      <h3>Was bereits sichtbar ist</h3>
+                      <h3>Fuer den Alltag</h3>
                       <ul>
-                        <li>Kritische Chargen und Fruehwarnungen</li>
-                        <li>Bewegungen pro Tag</li>
-                        <li>Aktivitaet pro Ort</li>
-                        <li>Freie Einheitentypen als Stammdaten</li>
+                        <li>Kritische Chargen</li>
+                        <li>Bald ablaufend im Zeitraum</li>
+                        <li>Niedrige Bestaende</li>
+                        <li>Bewegungen und Scans heute</li>
                       </ul>
                     </article>
                     <article>
-                      <h3>Was spaeter ausgebaut wird</h3>
+                      <h3>Fuer Leitung und Planung</h3>
                       <ul>
-                        <li>Verbrauchstrends pro Artikel</li>
-                        <li>Excel-Import nach Vorliegen der Quelldateien</li>
-                        <li>Inventurabweichungen</li>
-                        <li>Mindestbestandswarnungen</li>
+                        <li>Aktivster Ort</li>
+                        <li>Hohe Auslastung</li>
+                        <li>Trend bei Umbuchungen</li>
+                        <li>Offene Sync-Themen</li>
                       </ul>
                     </article>
                   </div>
@@ -484,9 +599,9 @@ function App() {
         <IonFooter translucent>
           <IonToolbar className="footer-bar">
             <div className="footer-metrics">
-              <span>Offline-Start vorbereitet</span>
-              <span>Sync-Ansicht vorbereitet</span>
-              <span>Scan-Einstieg sichtbar</span>
+              <span>Warnung {warningWindowDays} Tage vorher</span>
+              <span>Wiedervorlage {reminderRepeatDays} Tage</span>
+              <span>Filter {expiryFilterDays} Tage</span>
             </div>
           </IonToolbar>
         </IonFooter>
