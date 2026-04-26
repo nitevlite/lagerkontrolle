@@ -26,6 +26,7 @@
 - CSV-Export
 - Startbildschirm mit wichtigsten Orten
 - Konfliktanzeige oder Konfliktloesung fuer Sync
+- Charts fuer Analyse und Trends
 
 ## P2
 

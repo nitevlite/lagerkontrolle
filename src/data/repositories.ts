@@ -46,6 +46,14 @@ export async function addLocation(input: { name: string }) {
     return;
   }
 
+  const existing = await db.locations
+    .filter((location) => location.name.toLocaleLowerCase() === name.toLocaleLowerCase())
+    .first();
+
+  if (existing) {
+    throw new Error("Ort existiert bereits.");
+  }
+
   await db.locations.add({
     id: `loc-${crypto.randomUUID()}`,
     name
@@ -59,6 +67,16 @@ export async function addStorageSlot(input: {
 }) {
   const number = Math.max(1, input.number);
   const label = input.kind === "shelf" ? `Regal ${number}` : `Lade ${number}`;
+  const duplicate = await db.slots
+    .where("locationId")
+    .equals(input.locationId)
+    .filter((slot) => slot.number === number)
+    .first();
+
+  if (duplicate) {
+    throw new Error("Diese Nummer ist in dem Ort bereits vergeben.");
+  }
+
   const existingCount = await db.slots.where("locationId").equals(input.locationId).count();
 
   await db.slots.add({

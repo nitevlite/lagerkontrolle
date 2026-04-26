@@ -3,6 +3,9 @@ import ReactDOM from "react-dom/client";
 import { setupIonicReact } from "@ionic/react";
 import { defineCustomElements } from "@ionic/pwa-elements/loader";
 import { registerSW } from "virtual:pwa-register";
+import "@fontsource/plus-jakarta-sans/400.css";
+import "@fontsource/plus-jakarta-sans/500.css";
+import "@fontsource/plus-jakarta-sans/700.css";
 import App from "./App";
 import "./theme.css";
 

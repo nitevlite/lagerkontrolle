@@ -41,6 +41,7 @@ Warum das sinnvoll ist:
 - Barcode- oder QR-Scan direkt im MVP
 - Mehrgeraete-Sync direkt im MVP
 - Dashboard mit Status, Warnungen und Auswertung
+- spaeter zusaetzlich Analyse-Charts fuer Trends und Verteilungen
 - Favoriten, letzte Eintraege und schnelle Wiederholung
 - Suche und Filter nach Ort, Artikel, Status
 

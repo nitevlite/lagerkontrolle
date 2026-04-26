@@ -76,6 +76,7 @@ Ergebnis: Das MVP ist bereit fuer den echten Einsatz.
 8. `#7` Add search, filters, favorites and recent actions
 9. `#8` Add multi-device sync with self-hosted CouchDB
 10. `#4` Pilot hardening, import preparation and production checklist
+11. `#11` Add charts to analytics dashboard
 
 ## Technische Leitlinien
 
@@ -91,3 +92,4 @@ Ergebnis: Das MVP ist bereit fuer den echten Einsatz.
 - `#10` ist im Code umgesetzt
 - `#5` ist im Code umgesetzt
 - als Naechstes sind echte CRUD-Flows fuer Orte, Artikel und Buchungen sinnvoll
+- `#11` ist als eigenes Analyse-Ticket angelegt

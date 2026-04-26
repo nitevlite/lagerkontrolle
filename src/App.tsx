@@ -61,6 +61,7 @@ function App() {
   const [refreshToken, setRefreshToken] = useState(0);
   const [snapshotState, setSnapshotState] = useState<Awaited<ReturnType<typeof loadSnapshot>> | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -144,9 +145,13 @@ function App() {
       return;
     }
 
-    await addLocation({ name: trimmed });
-    setLocationName("");
-    setRefreshToken((current) => current + 1);
+    try {
+      await addLocation({ name: trimmed });
+      setLocationName("");
+      setRefreshToken((current) => current + 1);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Ort konnte nicht gespeichert werden.");
+    }
   }
 
   async function handleSaveSlot() {
@@ -154,13 +159,17 @@ function App() {
       return;
     }
 
-    await addStorageSlot({
-      locationId: currentLocation.id,
-      kind: slotKind,
-      number: Math.max(1, Number(slotNumber || "1"))
-    });
-    setSlotNumber("1");
-    setRefreshToken((current) => current + 1);
+    try {
+      await addStorageSlot({
+        locationId: currentLocation.id,
+        kind: slotKind,
+        number: Math.max(1, Number(slotNumber || "1"))
+      });
+      setSlotNumber("1");
+      setRefreshToken((current) => current + 1);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Slot konnte nicht gespeichert werden.");
+    }
   }
 
   async function handleSaveUnit() {
@@ -204,6 +213,18 @@ function App() {
               text: "OK",
               role: "cancel",
               handler: () => setLoadError(null)
+            }
+          ]}
+        />
+        <IonAlert
+          isOpen={Boolean(actionError)}
+          header="Hinweis"
+          message={actionError ?? ""}
+          buttons={[
+            {
+              text: "OK",
+              role: "cancel",
+              handler: () => setActionError(null)
             }
           ]}
         />
