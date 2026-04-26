@@ -94,6 +94,6 @@ Ergebnis: Das MVP ist bereit fuer den echten Einsatz.
 - `#5` ist im Code umgesetzt
 - `#2` ist weitgehend umgesetzt und muss nur noch gegen echte Buchungen verifiziert werden
 - `#3` ist im Frontend gestartet: Artikel bearbeiten und Chargen pflegen sind bereits drin
-- `#1` ist gestartet: Aktion, Artikel und Ort sind bereits als gefuehrter Auswahlfluss sichtbar
+- `#1` ist deutlich weiter: Aktion, Artikel, Ort, Slot, Charge und Menge sind als echter Flow sichtbar und speichern lokale Bewegungen
 - der UX-Kurs ist jetzt klar: Listen mit Filter plus separater Detailscreen statt ueberladener Sammelseiten
 - `#11` ist als eigenes Analyse-Ticket angelegt

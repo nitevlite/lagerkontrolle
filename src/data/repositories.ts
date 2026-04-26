@@ -1,5 +1,17 @@
 import { db } from "./db";
-import type { AppSettings, DomainSnapshot } from "../domain/model";
+import type { AppSettings, DomainSnapshot, MovementKind } from "../domain/model";
+
+async function getSlotBatchQuantity(batchId: string, slotId: string) {
+  const movements = await db.movements
+    .filter((movement) => movement.batchId === batchId && (movement.fromSlotId === slotId || movement.toSlotId === slotId))
+    .toArray();
+
+  return movements.reduce((sum, movement) => {
+    const add = movement.toSlotId === slotId ? movement.quantity : 0;
+    const subtract = movement.fromSlotId === slotId ? movement.quantity : 0;
+    return sum + add - subtract;
+  }, 0);
+}
 
 export async function loadSnapshot(): Promise<DomainSnapshot> {
   const [locations, slots, unitTypes, items, batches, movements, settings] = await Promise.all([
@@ -236,5 +248,92 @@ export async function updateSettings(patch: Partial<Omit<AppSettings, "id">>) {
   await db.settings.put({
     ...current,
     ...patch
+  });
+}
+
+export async function createMovement(input: {
+  kind: MovementKind;
+  itemId: string;
+  quantity: number;
+  fromSlotId?: string;
+  toSlotId?: string;
+  batchId?: string;
+  batchCode?: string;
+  expiryDate?: string;
+}) {
+  const quantity = Math.max(0, Number(input.quantity || 0));
+  if (quantity <= 0) {
+    throw new Error("Bitte eine gueltige Menge eingeben.");
+  }
+
+  if (!input.fromSlotId && !input.toSlotId) {
+    throw new Error("Bitte mindestens einen Slot fuer die Buchung waehlen.");
+  }
+
+  if (input.kind === "transfer" && input.fromSlotId && input.toSlotId && input.fromSlotId === input.toSlotId) {
+    throw new Error("Quell- und Zielslot duerfen nicht identisch sein.");
+  }
+
+  const item = await db.items.get(input.itemId);
+  if (!item) {
+    throw new Error("Artikel wurde nicht gefunden.");
+  }
+
+  let batchId = input.batchId;
+
+  await db.transaction("rw", db.batches, db.movements, async () => {
+    if (!batchId) {
+      const batchCode = input.batchCode?.trim();
+      const expiryDate = item.trackExpiry ? input.expiryDate?.trim() : input.expiryDate?.trim() || "2099-12-31";
+
+      if (!batchCode) {
+        throw new Error("Bitte eine Charge waehlen oder neu anlegen.");
+      }
+
+      if (item.trackExpiry && !expiryDate) {
+        throw new Error("Bitte ein Ablaufdatum fuer die neue Charge setzen.");
+      }
+
+      const duplicateBatch = await db.batches
+        .filter(
+          (batch) =>
+            batch.itemId === item.id &&
+            batch.batchCode.toLocaleLowerCase() === batchCode.toLocaleLowerCase()
+        )
+        .first();
+
+      if (duplicateBatch) {
+        batchId = duplicateBatch.id;
+      } else {
+        batchId = `batch-${crypto.randomUUID()}`;
+        await db.batches.add({
+          id: batchId,
+          itemId: item.id,
+          batchCode,
+          expiryDate: expiryDate ?? "2099-12-31"
+        });
+      }
+    }
+
+    if (!batchId) {
+      throw new Error("Charge konnte nicht vorbereitet werden.");
+    }
+
+    if (input.fromSlotId) {
+      const available = await getSlotBatchQuantity(batchId, input.fromSlotId);
+      if (available < quantity) {
+        throw new Error("Die gebuchte Menge ist hoeher als der verfuegbare Bestand in diesem Slot.");
+      }
+    }
+
+    await db.movements.add({
+      id: `move-${crypto.randomUUID()}`,
+      kind: input.kind,
+      batchId,
+      quantity,
+      fromSlotId: input.fromSlotId,
+      toSlotId: input.toSlotId,
+      createdAt: new Date().toISOString()
+    });
   });
 }

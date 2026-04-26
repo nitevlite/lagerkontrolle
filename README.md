@@ -74,11 +74,12 @@ npm run build
 - Orte, Regale und Laden koennen lokal angelegt, umbenannt und leere Eintraege geloescht werden
 - Artikel mit Einheit, Barcode und Ablaufpflicht koennen angelegt und bearbeitet werden
 - Chargen mit Ablaufdatum koennen pro Artikel gepflegt werden
-- Buchung hat jetzt einen ersten gefuehrten Auswahlfluss fuer Aktion, Artikel und Ort
+- Buchung speichert jetzt echte lokale Bewegungen fuer Zugang, Abgang, Umbuchung und Korrektur
+- Buchung fuehrt mobil durch Aktion, Artikel, Ort, Slot, Charge und Menge
 - echtes Domain-Modell fuer `Location`, `StorageSlot`, `UnitType`, `Item`, `Batch`, `Movement`, `AppSettings`
 - lokale Offline-Persistenz ueber `IndexedDB` mit `Dexie`
 - Bestandsableitung aus Bewegungen statt aus fixen Direktwerten
 
 ## Naechster technischer Schritt
 
-Frontend, Domain-Modell, lokale Persistenz sowie erste Orts-, Artikel- und Buchungsfluesse sind umgesetzt. Als Naechstes folgen Menge, Charge, Slot und Speichern der echten Buchungen, danach Scan und Synchronisation.
+Frontend, Domain-Modell, lokale Persistenz sowie erste Orts-, Artikel- und Buchungsfluesse sind umgesetzt. Als Naechstes folgen Scan direkt in den Buchungsflow, danach Suche/Favoriten und Synchronisation.

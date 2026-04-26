@@ -30,6 +30,7 @@ import {
   addLocation,
   addStorageSlot,
   addUnitType,
+  createMovement,
   deleteLocation,
   deleteStorageSlot,
   loadSnapshot,
@@ -84,6 +85,15 @@ function App() {
   const [bookingAction, setBookingAction] = useState<"in" | "out" | "transfer" | "adjustment">("in");
   const [bookingItemId, setBookingItemId] = useState("");
   const [bookingLocationId, setBookingLocationId] = useState("");
+  const [bookingTargetLocationId, setBookingTargetLocationId] = useState("");
+  const [bookingSourceSlotId, setBookingSourceSlotId] = useState("");
+  const [bookingTargetSlotId, setBookingTargetSlotId] = useState("");
+  const [bookingBatchId, setBookingBatchId] = useState("");
+  const [bookingQuantityDraft, setBookingQuantityDraft] = useState("1");
+  const [bookingBatchMode, setBookingBatchMode] = useState<"existing" | "new">("existing");
+  const [bookingNewBatchCodeDraft, setBookingNewBatchCodeDraft] = useState("");
+  const [bookingNewBatchExpiryDraft, setBookingNewBatchExpiryDraft] = useState("");
+  const [bookingAdjustmentDirection, setBookingAdjustmentDirection] = useState<"increase" | "decrease">("increase");
   const [bookingItemFilterDraft, setBookingItemFilterDraft] = useState("");
   const [bookingLocationFilterDraft, setBookingLocationFilterDraft] = useState("");
   const [unitName, setUnitName] = useState("");
@@ -185,6 +195,7 @@ function App() {
   useEffect(() => {
     if (!viewModel?.locations.length) {
       setBookingLocationId("");
+      setBookingTargetLocationId("");
       return;
     }
 
@@ -194,6 +205,19 @@ function App() {
         : viewModel.locations[0]?.id ?? ""
     );
   }, [viewModel]);
+
+  useEffect(() => {
+    if (!viewModel?.locations.length) {
+      setBookingTargetLocationId("");
+      return;
+    }
+
+    setBookingTargetLocationId((current) =>
+      current && viewModel.locations.some((location) => location.id === current)
+        ? current
+        : bookingLocationId || viewModel.locations[0]?.id || ""
+    );
+  }, [bookingLocationId, viewModel]);
 
   const currentItemId =
     itemDetailId && itemDetailId.length > 0 ? itemDetailId : selectedItemId;
@@ -345,6 +369,107 @@ function App() {
     );
   }, [bookingLocationFilterDraft, viewModel]);
 
+  const bookingItem = itemSummaries.find((item) => item.id === bookingItemId) ?? null;
+  const bookingLocation = viewModel?.locations.find((location) => location.id === bookingLocationId) ?? null;
+
+  const bookingSourceSlots = useMemo(
+    () =>
+      snapshotState?.slots
+        .filter((slot) => slot.locationId === bookingLocationId)
+        .sort((left, right) => left.sortOrder - right.sortOrder) ?? [],
+    [bookingLocationId, snapshotState]
+  );
+
+  const bookingTargetSlots = useMemo(
+    () =>
+      snapshotState?.slots
+        .filter((slot) => slot.locationId === bookingTargetLocationId)
+        .sort((left, right) => left.sortOrder - right.sortOrder) ?? [],
+    [bookingTargetLocationId, snapshotState]
+  );
+
+  const bookingStockLines = useMemo(() => {
+    if (!bookingItem) {
+      return [];
+    }
+
+    return (viewModel?.stockLines ?? []).filter(
+      (line) => line.locationId === bookingLocationId && line.itemName === bookingItem.name && line.quantity > 0
+    );
+  }, [bookingItem, bookingLocationId, viewModel]);
+
+  const bookingAvailableBatches = useMemo(() => {
+    const batchMap = new Map<
+      string,
+      { id: string; batchCode: string; expiryLabel: string; quantity: number }
+    >();
+
+    for (const line of bookingStockLines) {
+      const batchId = line.id.split(":")[1];
+      const batch = snapshotState?.batches.find((entry) => entry.id === batchId);
+      if (!batch) {
+        continue;
+      }
+
+      const current = batchMap.get(batch.id);
+      if (current) {
+        current.quantity += line.quantity;
+        continue;
+      }
+
+      batchMap.set(batch.id, {
+        id: batch.id,
+        batchCode: batch.batchCode,
+        expiryLabel: line.expiryDate,
+        quantity: line.quantity
+      });
+    }
+
+    return Array.from(batchMap.values()).sort((left, right) => left.expiryLabel.localeCompare(right.expiryLabel));
+  }, [bookingStockLines, snapshotState]);
+
+  const bookingAllItemBatches = useMemo(() => {
+    if (!bookingItem || !snapshotState) {
+      return [];
+    }
+
+    return snapshotState.batches
+      .filter((batch) => batch.itemId === bookingItem.id)
+      .map((batch) => ({
+        id: batch.id,
+        batchCode: batch.batchCode,
+        expiryLabel: displayDateFormatter.format(new Date(batch.expiryDate))
+      }))
+      .sort((left, right) => left.expiryLabel.localeCompare(right.expiryLabel));
+  }, [bookingItem, snapshotState]);
+
+  const bookingAvailableSourceLines = useMemo(() => {
+    if (!bookingBatchId) {
+      return bookingStockLines;
+    }
+
+    return bookingStockLines.filter((line) => line.id.endsWith(`:${bookingBatchId}`));
+  }, [bookingBatchId, bookingStockLines]);
+
+  const bookingSourceSlotOptions = useMemo(() => {
+    const map = new Map<string, { id: string; label: string }>();
+
+    for (const line of bookingAvailableSourceLines) {
+      if (!map.has(line.slotId)) {
+        map.set(line.slotId, { id: line.slotId, label: line.slotName });
+      }
+    }
+
+    return Array.from(map.values());
+  }, [bookingAvailableSourceLines]);
+
+  const canCreateNewBookingBatch =
+    bookingAction === "in" || (bookingAction === "adjustment" && bookingAdjustmentDirection === "increase");
+  const mustUseExistingBookingBatch =
+    bookingAction === "out" ||
+    bookingAction === "transfer" ||
+    (bookingAction === "adjustment" && bookingAdjustmentDirection === "decrease");
+
   const currentItemBatches = useMemo(() => {
     if (!currentItem || !snapshotState) {
       return [];
@@ -366,8 +491,50 @@ function App() {
       .sort((left, right) => left.expiryLabel.localeCompare(right.expiryLabel));
   }, [batchQuantityById, currentItem, snapshotState]);
 
-  const bookingItem = itemSummaries.find((item) => item.id === bookingItemId) ?? null;
-  const bookingLocation = viewModel?.locations.find((location) => location.id === bookingLocationId) ?? null;
+  useEffect(() => {
+    setBookingSourceSlotId((current) =>
+      current && bookingSourceSlotOptions.some((slot) => slot.id === current)
+        ? current
+        : bookingSourceSlotOptions[0]?.id ?? ""
+    );
+  }, [bookingSourceSlotOptions]);
+
+  useEffect(() => {
+    setBookingTargetSlotId((current) =>
+      current && bookingTargetSlots.some((slot) => slot.id === current) ? current : bookingTargetSlots[0]?.id ?? ""
+    );
+  }, [bookingTargetSlots]);
+
+  useEffect(() => {
+    if (mustUseExistingBookingBatch) {
+      setBookingBatchMode("existing");
+      setBookingBatchId((current) =>
+        current && bookingAvailableBatches.some((batch) => batch.id === current)
+          ? current
+          : bookingAvailableBatches[0]?.id ?? ""
+      );
+      return;
+    }
+
+    if (bookingAction === "in") {
+      setBookingBatchMode("new");
+      setBookingBatchId("");
+      return;
+    }
+
+    setBookingBatchMode("existing");
+    setBookingBatchId((current) =>
+      current && bookingAllItemBatches.some((batch) => batch.id === current)
+        ? current
+        : bookingAllItemBatches[0]?.id ?? ""
+    );
+  }, [bookingAction, bookingAllItemBatches, bookingAvailableBatches, mustUseExistingBookingBatch]);
+
+  useEffect(() => {
+    if (bookingAction !== "transfer") {
+      setBookingTargetLocationId(bookingLocationId);
+    }
+  }, [bookingAction, bookingLocationId]);
 
   async function handleReset() {
     await resetSeedData();
@@ -537,6 +704,83 @@ function App() {
       setRefreshToken((current) => current + 1);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Charge konnte nicht gespeichert werden.");
+    }
+  }
+
+  async function handleSaveBooking() {
+    if (!bookingItem) {
+      setActionError("Bitte zuerst einen Artikel waehlen.");
+      return;
+    }
+
+    const quantity = Math.max(0, Number(bookingQuantityDraft || "0"));
+    if (quantity <= 0) {
+      setActionError("Bitte eine gueltige Menge eingeben.");
+      return;
+    }
+
+    const wantsExistingBatch = mustUseExistingBookingBatch || bookingBatchMode === "existing";
+
+    if (wantsExistingBatch && !bookingBatchId) {
+      setActionError("Bitte eine bestehende Charge waehlen.");
+      return;
+    }
+
+    if (!wantsExistingBatch && !canCreateNewBookingBatch) {
+      setActionError("Diese Buchung benoetigt eine bestehende Charge.");
+      return;
+    }
+
+    try {
+      if (bookingAction === "in") {
+        await createMovement({
+          kind: "in",
+          itemId: bookingItem.id,
+          quantity,
+          toSlotId: bookingTargetSlotId,
+          batchId: wantsExistingBatch ? bookingBatchId : undefined,
+          batchCode: wantsExistingBatch ? undefined : bookingNewBatchCodeDraft,
+          expiryDate: wantsExistingBatch ? undefined : bookingNewBatchExpiryDraft
+        });
+      } else if (bookingAction === "out") {
+        await createMovement({
+          kind: "out",
+          itemId: bookingItem.id,
+          quantity,
+          fromSlotId: bookingSourceSlotId,
+          batchId: bookingBatchId
+        });
+      } else if (bookingAction === "transfer") {
+        await createMovement({
+          kind: "transfer",
+          itemId: bookingItem.id,
+          quantity,
+          fromSlotId: bookingSourceSlotId,
+          toSlotId: bookingTargetSlotId,
+          batchId: bookingBatchId
+        });
+      } else {
+        await createMovement({
+          kind: "adjustment",
+          itemId: bookingItem.id,
+          quantity,
+          fromSlotId: bookingAdjustmentDirection === "decrease" ? bookingSourceSlotId : undefined,
+          toSlotId: bookingAdjustmentDirection === "increase" ? bookingTargetSlotId : undefined,
+          batchId: wantsExistingBatch ? bookingBatchId : undefined,
+          batchCode: wantsExistingBatch ? undefined : bookingNewBatchCodeDraft,
+          expiryDate: wantsExistingBatch ? undefined : bookingNewBatchExpiryDraft
+        });
+      }
+
+      setBookingQuantityDraft("1");
+      setBookingBatchId("");
+      setBookingBatchMode(bookingAction === "in" ? "new" : "existing");
+      setBookingNewBatchCodeDraft("");
+      setBookingNewBatchExpiryDraft("");
+      setRefreshToken((current) => current + 1);
+      setActiveView("dashboard");
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Buchung konnte nicht gespeichert werden.");
     }
   }
 
@@ -1245,9 +1489,179 @@ function App() {
                     <section className="surface">
                       <header className="section-header">
                         <div>
-                          <h2>Vorschau</h2>
+                          <h2>Buchungsdaten</h2>
                         </div>
                       </header>
+                      {(bookingAction === "out" || bookingAction === "transfer" || (bookingAction === "adjustment" && bookingAdjustmentDirection === "decrease")) ? (
+                        bookingSourceSlotOptions.length > 0 ? (
+                          <label className="form-field">
+                            <span>Quellslot</span>
+                            <select
+                              className="app-select"
+                              value={bookingSourceSlotId}
+                              onChange={(event) => setBookingSourceSlotId(event.target.value)}
+                            >
+                              {bookingSourceSlotOptions.map((slot) => (
+                                <option key={slot.id} value={slot.id}>
+                                  {slot.label}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        ) : (
+                          <div className="empty-state">Kein Bestand fuer diesen Artikel im gewaehlten Ort.</div>
+                        )
+                      ) : null}
+
+                      {(bookingAction === "in" || (bookingAction === "adjustment" && bookingAdjustmentDirection === "increase")) ? (
+                        bookingTargetSlots.length > 0 ? (
+                          <label className="form-field">
+                            <span>Zielslot</span>
+                            <select
+                              className="app-select"
+                              value={bookingTargetSlotId}
+                              onChange={(event) => setBookingTargetSlotId(event.target.value)}
+                            >
+                              {bookingTargetSlots.map((slot) => (
+                                <option key={slot.id} value={slot.id}>
+                                  {slot.label}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        ) : (
+                          <div className="empty-state">Im gewaehlten Ort sind noch keine Slots angelegt.</div>
+                        )
+                      ) : null}
+
+                      {bookingAction === "transfer" ? (
+                        <>
+                          <label className="form-field">
+                            <span>Zielort</span>
+                            <select
+                              className="app-select"
+                              value={bookingTargetLocationId}
+                              onChange={(event) => setBookingTargetLocationId(event.target.value)}
+                            >
+                              {(viewModel.locations ?? []).map((location) => (
+                                <option key={location.id} value={location.id}>
+                                  {location.name}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          {bookingTargetSlots.length > 0 ? (
+                            <label className="form-field">
+                              <span>Zielslot</span>
+                              <select
+                                className="app-select"
+                                value={bookingTargetSlotId}
+                                onChange={(event) => setBookingTargetSlotId(event.target.value)}
+                              >
+                                {bookingTargetSlots.map((slot) => (
+                                  <option key={slot.id} value={slot.id}>
+                                    {slot.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          ) : (
+                            <div className="empty-state">Im Zielort sind noch keine Slots angelegt.</div>
+                          )}
+                        </>
+                      ) : null}
+
+                      {bookingAction === "adjustment" ? (
+                        <div className="toggle-pills">
+                          <button
+                            type="button"
+                            className={bookingAdjustmentDirection === "increase" ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                            onClick={() => setBookingAdjustmentDirection("increase")}
+                          >
+                            Pluskorrektur
+                          </button>
+                          <button
+                            type="button"
+                            className={bookingAdjustmentDirection === "decrease" ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                            onClick={() => setBookingAdjustmentDirection("decrease")}
+                          >
+                            Minuskorrektur
+                          </button>
+                        </div>
+                      ) : null}
+
+                      {canCreateNewBookingBatch ? (
+                        <label className="form-field">
+                          <span>Charge</span>
+                          <div className="toggle-pills">
+                            <button
+                              type="button"
+                              className={bookingBatchMode === "existing" ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                              onClick={() => setBookingBatchMode("existing")}
+                            >
+                              Bestehend
+                            </button>
+                            <button
+                              type="button"
+                              className={bookingBatchMode === "new" ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                              onClick={() => setBookingBatchMode("new")}
+                            >
+                              Neu
+                            </button>
+                          </div>
+                        </label>
+                      ) : null}
+
+                      {bookingBatchMode === "existing" || mustUseExistingBookingBatch ? (
+                        (mustUseExistingBookingBatch ? bookingAvailableBatches : bookingAllItemBatches).length > 0 ? (
+                          <label className="form-field">
+                            <span>Bestehende Charge</span>
+                            <select
+                              className="app-select"
+                              value={bookingBatchId}
+                              onChange={(event) => setBookingBatchId(event.target.value)}
+                            >
+                              {(mustUseExistingBookingBatch ? bookingAvailableBatches : bookingAllItemBatches).map((batch) => (
+                                <option key={batch.id} value={batch.id}>
+                                  {batch.batchCode}{"quantity" in batch ? ` · ${batch.quantity}` : ""}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        ) : (
+                          <div className="empty-state">Keine passende bestehende Charge verfuegbar.</div>
+                        )
+                      ) : (
+                        <div className="unit-form">
+                          <IonItem className="compact-field">
+                            <IonLabel position="stacked">Chargencode</IonLabel>
+                            <IonInput
+                              value={bookingNewBatchCodeDraft}
+                              placeholder="z. B. TEE-2026-04"
+                              onIonInput={(event) => setBookingNewBatchCodeDraft(String(event.detail.value ?? ""))}
+                            />
+                          </IonItem>
+                          <label className="form-field">
+                            <span>{bookingItem?.trackExpiry ? "Ablaufdatum" : "Datum optional"}</span>
+                            <input
+                              className="app-input"
+                              type="date"
+                              value={bookingNewBatchExpiryDraft}
+                              onChange={(event) => setBookingNewBatchExpiryDraft(event.target.value)}
+                            />
+                          </label>
+                        </div>
+                      )}
+
+                      <IonItem className="compact-field compact-field--filter">
+                        <IonLabel position="stacked">Menge</IonLabel>
+                        <IonInput
+                          type="number"
+                          value={bookingQuantityDraft}
+                          onIonInput={(event) => setBookingQuantityDraft(String(event.detail.value ?? ""))}
+                        />
+                      </IonItem>
+
                       <div className="booking-preview">
                         <div className="booking-preview__row">
                           <span>Aktion</span>
@@ -1269,10 +1683,32 @@ function App() {
                           <span>Ort</span>
                           <b>{bookingLocation?.name ?? "bitte waehlen"}</b>
                         </div>
+                        {bookingAction === "transfer" ? (
+                          <div className="booking-preview__row">
+                            <span>Zielort</span>
+                            <b>
+                              {viewModel.locations.find((location) => location.id === bookingTargetLocationId)?.name ??
+                                "bitte waehlen"}
+                            </b>
+                          </div>
+                        ) : null}
                         <div className="booking-preview__row">
-                          <span>Naechster Schritt</span>
-                          <b>Menge, Charge und Slot erfassen</b>
+                          <span>Charge</span>
+                          <b>
+                            {bookingBatchMode === "existing" || mustUseExistingBookingBatch
+                              ? (mustUseExistingBookingBatch ? bookingAvailableBatches : bookingAllItemBatches).find((batch) => batch.id === bookingBatchId)?.batchCode ?? "bitte waehlen"
+                              : bookingNewBatchCodeDraft || "neu anlegen"}
+                          </b>
                         </div>
+                        <div className="booking-preview__row">
+                          <span>Menge</span>
+                          <b>{bookingQuantityDraft || "0"}</b>
+                        </div>
+                      </div>
+                      <div className="form-actions">
+                        <IonButton className="primary-button" onClick={handleSaveBooking}>
+                          Buchung speichern
+                        </IonButton>
                       </div>
                     </section>
                   </div>
