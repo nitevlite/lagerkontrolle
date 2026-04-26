@@ -77,6 +77,7 @@ npm run build
 - Chargen mit Ablaufdatum koennen pro Artikel gepflegt werden
 - Buchung speichert jetzt echte lokale Bewegungen fuer Zugang, Abgang, Umbuchung und Korrektur
 - Buchung fuehrt mobil direkt ueber Buchungsdaten mit Artikel-Dropdown, Ort-Dropdown, Slot, Charge und Menge
+- im Zugang kann direkt ein neuer Artikel mit Minimalstammdaten angelegt und sofort eingebucht werden
 - Scan ist im Buchungsflow und im Artikel-Barcodefeld aktiv, mit manueller Eingabe als Fallback falls Live-Scan nicht verfuegbar ist
 - Favoriten fuer Orte und Artikel bleiben lokal gespeichert
 - Buchung und Dashboard priorisieren Favoriten und zuletzt genutzte Eintraege

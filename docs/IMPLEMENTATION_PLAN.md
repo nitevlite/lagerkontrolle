@@ -101,6 +101,7 @@ Ergebnis: Das MVP ist bereit fuer den echten Einsatz.
 - Mindestbestand pro Artikel ist im Datenmodell und Editor enthalten
 - `#1` ist umgesetzt: Zugang, Abgang, Umbuchung und Korrektur speichern echte lokale Bewegungen
 - der Buchungsflow ist weiter verdichtet: Artikel und Ort werden direkt in den Buchungsdaten ausgewaehlt
+- Zugang kann direkt neue Artikel anlegen und ohne Seitensprung einbuchen
 - der UX-Kurs ist jetzt klar: Listen mit Filter plus separater Detailscreen statt ueberladener Sammelseiten
 - `#7` ist umgesetzt: Favoriten, Suche, Filter und zuletzt genutzte Elemente beschleunigen Dashboard und Buchung
 - `#9` ist umgesetzt: Scan ist aktiv, mit manueller Eingabe als Browser-Fallback

@@ -170,6 +170,10 @@ ion-content.shell::part(scroll) {
   gap: 0.75rem;
 }
 
+.booking-form-stack {
+  gap: 0.9rem;
+}
+
 .settings-row {
   margin-bottom: 0.55rem;
 }
@@ -468,6 +472,25 @@ ion-content.shell::part(scroll) {
   flex-wrap: wrap;
   gap: 0.6rem;
   margin-top: 0.85rem;
+}
+
+.booking-toggle-row {
+  margin-top: 0;
+}
+
+.booking-inline-grid {
+  gap: 0.85rem;
+  padding: 0.1rem 0 0.15rem;
+}
+
+.booking-form-stack .unit-form,
+.booking-form-stack .compact-field,
+.booking-form-stack .empty-state {
+  margin-top: 0;
+}
+
+.booking-preview {
+  margin-top: 0.95rem;
 }
 
 .toggle-pill {

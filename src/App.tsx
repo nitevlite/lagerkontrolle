@@ -108,7 +108,13 @@ function App() {
   const [batchCodeDraft, setBatchCodeDraft] = useState("");
   const [batchExpiryDateDraft, setBatchExpiryDateDraft] = useState("");
   const [bookingAction, setBookingAction] = useState<"in" | "out" | "transfer" | "adjustment">("in");
+  const [bookingItemMode, setBookingItemMode] = useState<"existing" | "new">("existing");
   const [bookingItemId, setBookingItemId] = useState("");
+  const [bookingNewItemNameDraft, setBookingNewItemNameDraft] = useState("");
+  const [bookingNewItemBarcodeDraft, setBookingNewItemBarcodeDraft] = useState("");
+  const [bookingNewItemUnitTypeId, setBookingNewItemUnitTypeId] = useState("");
+  const [bookingNewItemLowStockThresholdDraft, setBookingNewItemLowStockThresholdDraft] = useState("5");
+  const [bookingNewItemTrackExpiry, setBookingNewItemTrackExpiry] = useState(true);
   const [bookingLocationId, setBookingLocationId] = useState("");
   const [bookingTargetLocationId, setBookingTargetLocationId] = useState("");
   const [bookingSourceSlotId, setBookingSourceSlotId] = useState("");
@@ -224,6 +230,19 @@ function App() {
       current && snapshotState.items.some((item) => item.id === current)
         ? current
         : snapshotState.items[0]?.id ?? ""
+    );
+  }, [snapshotState]);
+
+  useEffect(() => {
+    if (!snapshotState?.unitTypes.length) {
+      setBookingNewItemUnitTypeId("");
+      return;
+    }
+
+    setBookingNewItemUnitTypeId((current) =>
+      current && snapshotState.unitTypes.some((unitType) => unitType.id === current)
+        ? current
+        : snapshotState.unitTypes[0]?.id ?? ""
     );
   }, [snapshotState]);
 
@@ -671,6 +690,11 @@ function App() {
   const bookingItems = sortedItemSummaries;
 
   const bookingItem = itemSummaries.find((item) => item.id === bookingItemId) ?? null;
+  const bookingUsesNewItem = bookingAction === "in" && bookingItemMode === "new";
+  const bookingDisplayItemName = bookingUsesNewItem
+    ? bookingNewItemNameDraft.trim() || "Neuer Artikel"
+    : bookingItem?.name ?? "Artikel wählen";
+  const bookingTrackExpiry = bookingUsesNewItem ? bookingNewItemTrackExpiry : (bookingItem?.trackExpiry ?? true);
   const bookingLocation = viewModel?.locations.find((location) => location.id === bookingLocationId) ?? null;
   const scanSupported = Boolean(getBarcodeDetector() && navigator.mediaDevices?.getUserMedia);
 
@@ -837,6 +861,19 @@ function App() {
       setBookingTargetLocationId(bookingLocationId);
     }
   }, [bookingAction, bookingLocationId]);
+
+  useEffect(() => {
+    if (bookingAction !== "in") {
+      setBookingItemMode("existing");
+    }
+  }, [bookingAction]);
+
+  useEffect(() => {
+    if (bookingAction === "in" && bookingItemMode === "new") {
+      setBookingBatchMode("new");
+      setBookingBatchId("");
+    }
+  }, [bookingAction, bookingItemMode]);
 
   useEffect(() => {
     if (!bookingItemId) {
@@ -1086,7 +1123,7 @@ function App() {
   }
 
   async function handleSaveBooking() {
-    if (!bookingItem) {
+    if (!bookingUsesNewItem && !bookingItem) {
       setActionError("Bitte zuerst einen Artikel wählen.");
       return;
     }
@@ -1110,10 +1147,38 @@ function App() {
     }
 
     try {
+      let effectiveItemId = bookingItem?.id;
+
+      if (bookingUsesNewItem) {
+        if (!bookingNewItemNameDraft.trim()) {
+          setActionError("Bitte einen Artikelnamen eingeben.");
+          return;
+        }
+
+        if (!bookingNewItemUnitTypeId) {
+          setActionError("Bitte eine Einheit wählen.");
+          return;
+        }
+
+        effectiveItemId = await addItem({
+          name: bookingNewItemNameDraft,
+          unitTypeId: bookingNewItemUnitTypeId,
+          barcode: bookingNewItemBarcodeDraft,
+          trackExpiry: bookingNewItemTrackExpiry,
+          preferredLocationId: bookingLocationId || undefined,
+          lowStockThreshold: Math.max(0, Number(bookingNewItemLowStockThresholdDraft || "0"))
+        });
+      }
+
+      if (!effectiveItemId) {
+        setActionError("Artikel konnte nicht vorbereitet werden.");
+        return;
+      }
+
       if (bookingAction === "in") {
         await createMovement({
           kind: "in",
-          itemId: bookingItem.id,
+          itemId: effectiveItemId,
           quantity,
           toSlotId: bookingTargetSlotId,
           batchId: wantsExistingBatch ? bookingBatchId : undefined,
@@ -1123,7 +1188,7 @@ function App() {
       } else if (bookingAction === "out") {
         await createMovement({
           kind: "out",
-          itemId: bookingItem.id,
+          itemId: effectiveItemId,
           quantity,
           fromSlotId: bookingSourceSlotId,
           batchId: bookingBatchId
@@ -1131,7 +1196,7 @@ function App() {
       } else if (bookingAction === "transfer") {
         await createMovement({
           kind: "transfer",
-          itemId: bookingItem.id,
+          itemId: effectiveItemId,
           quantity,
           fromSlotId: bookingSourceSlotId,
           toSlotId: bookingTargetSlotId,
@@ -1140,7 +1205,7 @@ function App() {
       } else {
         await createMovement({
           kind: "adjustment",
-          itemId: bookingItem.id,
+          itemId: effectiveItemId,
           quantity,
           fromSlotId: bookingAdjustmentDirection === "decrease" ? bookingSourceSlotId : undefined,
           toSlotId: bookingAdjustmentDirection === "increase" ? bookingTargetSlotId : undefined,
@@ -1151,10 +1216,16 @@ function App() {
       }
 
       setBookingQuantityDraft("1");
+      setBookingItemId(effectiveItemId);
+      setBookingItemMode("existing");
       setBookingBatchId("");
       setBookingBatchMode(bookingAction === "in" ? "new" : "existing");
       setBookingNewBatchCodeDraft("");
       setBookingNewBatchExpiryDraft("");
+      setBookingNewItemNameDraft("");
+      setBookingNewItemBarcodeDraft("");
+      setBookingNewItemLowStockThresholdDraft("5");
+      setBookingNewItemTrackExpiry(true);
       setRefreshToken((current) => current + 1);
       setActiveView("dashboard");
     } catch (error) {
@@ -1988,24 +2059,102 @@ function App() {
                       <header className="section-header">
                         <div>
                           <h2>Buchungsdaten</h2>
-                          <span>{bookingItem?.name ?? "Artikel wählen"}</span>
+                          <span>{bookingDisplayItemName}</span>
                         </div>
                       </header>
                       <div className="booking-form-stack">
-                        <label className="form-field">
-                          <span>Artikel</span>
-                          <select
-                            className="app-select"
-                            value={bookingItemId}
-                            onChange={(event) => setBookingItemId(event.target.value)}
-                          >
-                            {bookingItems.map((item) => (
-                              <option key={item.id} value={item.id}>
-                                {item.name}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
+                        {bookingAction === "in" ? (
+                          <div className="toggle-pills booking-toggle-row">
+                            <button
+                              type="button"
+                              className={bookingItemMode === "existing" ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                              onClick={() => setBookingItemMode("existing")}
+                            >
+                              Bestehender Artikel
+                            </button>
+                            <button
+                              type="button"
+                              className={bookingItemMode === "new" ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                              onClick={() => setBookingItemMode("new")}
+                            >
+                              Neuer Artikel
+                            </button>
+                          </div>
+                        ) : null}
+
+                        {bookingUsesNewItem ? (
+                          <div className="editor-grid booking-inline-grid">
+                            <IonItem className="compact-field">
+                              <IonLabel position="stacked">Artikelname</IonLabel>
+                              <IonInput
+                                value={bookingNewItemNameDraft}
+                                placeholder="z. B. Früchtetee 20er"
+                                onIonInput={(event) => setBookingNewItemNameDraft(String(event.detail.value ?? ""))}
+                              />
+                            </IonItem>
+                            <label className="form-field">
+                              <span>Einheit</span>
+                              <select
+                                className="app-select"
+                                value={bookingNewItemUnitTypeId}
+                                onChange={(event) => setBookingNewItemUnitTypeId(event.target.value)}
+                              >
+                                {viewModel.unitTypes.map((unitType) => (
+                                  <option key={unitType.id} value={unitType.id}>
+                                    {unitType.name} ({unitType.shortCode})
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <IonItem className="compact-field">
+                              <IonLabel position="stacked">Barcode</IonLabel>
+                              <IonInput
+                                value={bookingNewItemBarcodeDraft}
+                                placeholder="optional"
+                                onIonInput={(event) => setBookingNewItemBarcodeDraft(String(event.detail.value ?? ""))}
+                              />
+                            </IonItem>
+                            <IonItem className="compact-field">
+                              <IonLabel position="stacked">Niedriger Bestand ab</IonLabel>
+                              <IonInput
+                                type="number"
+                                value={bookingNewItemLowStockThresholdDraft}
+                                onIonInput={(event) => setBookingNewItemLowStockThresholdDraft(String(event.detail.value ?? ""))}
+                              />
+                            </IonItem>
+                            <div className="toggle-pills booking-toggle-row">
+                              <button
+                                type="button"
+                                className={bookingNewItemTrackExpiry ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                                onClick={() => setBookingNewItemTrackExpiry(true)}
+                              >
+                                Ablauf aktiv
+                              </button>
+                              <button
+                                type="button"
+                                className={!bookingNewItemTrackExpiry ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                                onClick={() => setBookingNewItemTrackExpiry(false)}
+                              >
+                                Ohne Ablauf
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <label className="form-field">
+                            <span>Artikel</span>
+                            <select
+                              className="app-select"
+                              value={bookingItemId}
+                              onChange={(event) => setBookingItemId(event.target.value)}
+                            >
+                              {bookingItems.map((item) => (
+                                <option key={item.id} value={item.id}>
+                                  {item.name}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        )}
                         <label className="form-field">
                           <span>Ort</span>
                           <select
@@ -2121,7 +2270,7 @@ function App() {
                           </>
                         ) : null}
 
-                        {canCreateNewBookingBatch ? (
+                        {canCreateNewBookingBatch && !bookingUsesNewItem ? (
                           <label className="form-field">
                             <span>Charge</span>
                             <div className="toggle-pills">
@@ -2177,7 +2326,7 @@ function App() {
                               />
                             </IonItem>
                             <label className="form-field">
-                              <span>{bookingItem?.trackExpiry ? "Ablaufdatum" : "Datum optional"}</span>
+                              <span>{bookingTrackExpiry ? "Ablaufdatum" : "Datum optional"}</span>
                               <input
                                 className="app-input"
                                 type="date"
@@ -2214,7 +2363,7 @@ function App() {
                         </div>
                         <div className="booking-preview__row">
                           <span>Artikel</span>
-                          <b>{bookingItem?.name ?? "bitte wählen"}</b>
+                          <b>{bookingDisplayItemName}</b>
                         </div>
                         <div className="booking-preview__row">
                           <span>Ort</span>
