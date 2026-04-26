@@ -1,4 +1,5 @@
 export type EntityId = string;
+export type SyncEntityType = "location" | "slot" | "unitType" | "item" | "batch" | "movement" | "settings";
 
 export type Location = {
   id: EntityId;
@@ -57,6 +58,28 @@ export type AppSettings = {
   favoriteLocationIds: EntityId[];
   favoriteItemIds: EntityId[];
   slotTypeNames: string[];
+  sync: SyncConfig;
+};
+
+export type SyncConfig = {
+  enabled: boolean;
+  couchUrl: string;
+  databaseName: string;
+  username?: string;
+  password?: string;
+  deviceId: string;
+  deviceLabel: string;
+  lastSyncedAt?: string;
+};
+
+export type SyncMetadata = {
+  id: string;
+  entityType: SyncEntityType;
+  entityId: string;
+  updatedAt: string;
+  deletedAt?: string;
+  dirty: boolean;
+  lastSyncedAt?: string;
 };
 
 export type DomainSnapshot = {

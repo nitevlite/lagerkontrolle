@@ -61,7 +61,14 @@ const settings: AppSettings = {
   reminderRepeatDays: 3,
   favoriteLocationIds: ["loc-tea"],
   favoriteItemIds: ["item-camomile", "item-ginger"],
-  slotTypeNames: ["Regal", "Lade"]
+  slotTypeNames: ["Regal", "Lade"],
+  sync: {
+    enabled: false,
+    couchUrl: "",
+    databaseName: "lagerkontrolle",
+    deviceId: "device-seed",
+    deviceLabel: "Seed-Gerät"
+  }
 };
 
 export const seedSnapshot: DomainSnapshot = {

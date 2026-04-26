@@ -26,4 +26,4 @@ Empfohlen ist GitHub Pages, weil die App dann über `https` läuft und als PWA i
 
 ## 4. Wichtiger Hinweis
 
-Aktuell hat jedes Gerät seinen eigenen lokalen Datenbestand. Die App ist installierbar, aber noch nicht synchronisiert. Gemeinsame Daten zwischen zwei Handys kommen erst mit Ticket `#8`.
+Aktuell kann Mehrgeräte-Sync über CouchDB eingerichtet werden. Die genaue Einrichtung steht in `docs/SYNC_SETUP.md`. Ohne CouchDB bleibt jedes Gerät weiterhin lokal für sich.

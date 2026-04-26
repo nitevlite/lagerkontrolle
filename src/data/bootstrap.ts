@@ -1,5 +1,6 @@
 import { db } from "./db";
 import { seedSnapshot } from "../domain/seed";
+import { ensureSyncMetadataSeed } from "./sync";
 
 export async function ensureSeedData() {
   const count = await db.locations.count();
@@ -14,6 +15,7 @@ export async function ensureSeedData() {
   await db.batches.bulkPut(seedSnapshot.batches);
   await db.movements.bulkPut(seedSnapshot.movements);
   await db.settings.put(seedSnapshot.settings);
+  await ensureSyncMetadataSeed();
 }
 
 export async function resetSeedData() {
@@ -24,6 +26,7 @@ export async function resetSeedData() {
   await db.batches.clear();
   await db.movements.clear();
   await db.settings.clear();
+  await db.syncMeta.clear();
 
   await ensureSeedData();
 }

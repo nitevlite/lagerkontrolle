@@ -1,5 +1,18 @@
 import { db } from "./db";
 import type { AppSettings, DomainSnapshot, MovementKind } from "../domain/model";
+import { createDefaultSyncConfig, markEntityChanged, markEntityDeleted } from "./sync";
+
+function buildDefaultSettings(): AppSettings {
+  return {
+    id: "default",
+    expiryWarningDays: 10,
+    reminderRepeatDays: 3,
+    favoriteLocationIds: [],
+    favoriteItemIds: [],
+    slotTypeNames: ["Regal", "Lade"],
+    sync: createDefaultSyncConfig()
+  };
+}
 
 async function getSlotBatchQuantity(batchId: string, slotId: string) {
   const movements = await db.movements
@@ -31,14 +44,7 @@ export async function loadSnapshot(): Promise<DomainSnapshot> {
     items,
     batches,
     movements,
-    settings: settings ?? {
-      id: "default",
-      expiryWarningDays: 10,
-      reminderRepeatDays: 3,
-      favoriteLocationIds: [],
-      favoriteItemIds: [],
-      slotTypeNames: ["Regal", "Lade"]
-    }
+    settings: settings ?? buildDefaultSettings()
   };
 }
 
@@ -47,12 +53,14 @@ export async function addUnitType(input: {
   shortCode: string;
   description: string;
 }) {
+  const id = `unit-${crypto.randomUUID()}`;
   await db.unitTypes.add({
-    id: `unit-${crypto.randomUUID()}`,
+    id,
     name: input.name,
     shortCode: input.shortCode,
     description: input.description
   });
+  await markEntityChanged("unitType", id);
 }
 
 export async function addItem(input: {
@@ -87,6 +95,7 @@ export async function addItem(input: {
     preferredLocationId: input.preferredLocationId,
     lowStockThreshold: Math.max(0, Number(input.lowStockThreshold || 0))
   });
+  await markEntityChanged("item", id);
 
   return id;
 }
@@ -121,6 +130,7 @@ export async function updateItem(input: {
     preferredLocationId: input.preferredLocationId,
     lowStockThreshold: Math.max(0, Number(input.lowStockThreshold || 0))
   });
+  await markEntityChanged("item", input.id);
 }
 
 export async function addBatch(input: {
@@ -145,12 +155,14 @@ export async function addBatch(input: {
     throw new Error("Charge existiert für diesen Artikel bereits.");
   }
 
+  const id = `batch-${crypto.randomUUID()}`;
   await db.batches.add({
-    id: `batch-${crypto.randomUUID()}`,
+    id,
     itemId: input.itemId,
     batchCode,
     expiryDate: input.expiryDate
   });
+  await markEntityChanged("batch", id);
 }
 
 export async function addLocation(input: { name: string }) {
@@ -173,6 +185,7 @@ export async function addLocation(input: { name: string }) {
     id,
     name
   });
+  await markEntityChanged("location", id);
 
   return id;
 }
@@ -197,14 +210,16 @@ export async function addStorageSlot(input: {
 
   const existingCount = await db.slots.where("locationId").equals(input.locationId).count();
 
+  const id = `slot-${crypto.randomUUID()}`;
   await db.slots.add({
-    id: `slot-${crypto.randomUUID()}`,
+    id,
     locationId: input.locationId,
     kind,
     number,
     label,
     sortOrder: existingCount + 1
   });
+  await markEntityChanged("slot", id);
 }
 
 export async function renameLocation(input: { id: string; name: string }) {
@@ -225,6 +240,7 @@ export async function renameLocation(input: { id: string; name: string }) {
   }
 
   await db.locations.update(input.id, { name });
+  await markEntityChanged("location", input.id);
 }
 
 export async function deleteLocation(locationId: string) {
@@ -233,6 +249,7 @@ export async function deleteLocation(locationId: string) {
     throw new Error("Ort kann erst gelöscht werden, wenn alle Regale und Laden entfernt sind.");
   }
 
+  await markEntityDeleted("location", locationId);
   await db.locations.delete(locationId);
 }
 
@@ -245,25 +262,24 @@ export async function deleteStorageSlot(slotId: string) {
     throw new Error("Slot kann nicht gelöscht werden, weil bereits Bewegungen darauf gebucht wurden.");
   }
 
+  await markEntityDeleted("slot", slotId);
   await db.slots.delete(slotId);
 }
 
 export async function updateSettings(patch: Partial<Omit<AppSettings, "id">>) {
   const current =
     (await db.settings.get("default")) ??
-    ({
-      id: "default",
-      expiryWarningDays: 10,
-      reminderRepeatDays: 3,
-      favoriteLocationIds: [],
-      favoriteItemIds: [],
-      slotTypeNames: ["Regal", "Lade"]
-    } satisfies AppSettings);
+    buildDefaultSettings();
 
   await db.settings.put({
     ...current,
-    ...patch
+    ...patch,
+    sync: {
+      ...current.sync,
+      ...patch.sync
+    }
   });
+  await markEntityChanged("settings", "default");
 }
 
 export async function toggleFavoriteLocation(locationId: string) {
@@ -332,6 +348,7 @@ export async function renameSlotType(input: { previousName: string; nextName: st
         kind: nextName,
         label: `${nextName} ${slot.number}`
       });
+      await markEntityChanged("slot", slot.id);
     }
   });
 }
@@ -357,6 +374,7 @@ export async function deleteUnitType(unitTypeId: string) {
     throw new Error("Einheit kann nicht gelöscht werden, weil noch Artikel darauf verweisen.");
   }
 
+  await markEntityDeleted("unitType", unitTypeId);
   await db.unitTypes.delete(unitTypeId);
 }
 
@@ -421,6 +439,7 @@ export async function createMovement(input: {
           batchCode,
           expiryDate: expiryDate ?? "2099-12-31"
         });
+        await markEntityChanged("batch", batchId);
       }
     }
 
@@ -435,8 +454,9 @@ export async function createMovement(input: {
       }
     }
 
+    const movementId = `move-${crypto.randomUUID()}`;
     await db.movements.add({
-      id: `move-${crypto.randomUUID()}`,
+      id: movementId,
       kind: input.kind,
       batchId,
       quantity,
@@ -444,5 +464,6 @@ export async function createMovement(input: {
       toSlotId: input.toSlotId,
       createdAt: new Date().toISOString()
     });
+    await markEntityChanged("movement", movementId);
   });
 }

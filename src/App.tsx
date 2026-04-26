@@ -46,6 +46,7 @@ import {
   updateItem,
   updateSettings
 } from "./data/repositories";
+import { runCouchSync, type SyncStatus } from "./data/sync";
 import { seedSnapshot } from "./domain/seed";
 import { buildViewModel, type ViewKey } from "./domain/selectors";
 import "./theme.css";
@@ -132,6 +133,16 @@ function App() {
   const [unitName, setUnitName] = useState("");
   const [unitShortCode, setUnitShortCode] = useState("");
   const [unitDescription, setUnitDescription] = useState("");
+  const [syncEnabledDraft, setSyncEnabledDraft] = useState(false);
+  const [syncUrlDraft, setSyncUrlDraft] = useState("");
+  const [syncDatabaseDraft, setSyncDatabaseDraft] = useState("lagerkontrolle");
+  const [syncUsernameDraft, setSyncUsernameDraft] = useState("");
+  const [syncPasswordDraft, setSyncPasswordDraft] = useState("");
+  const [syncDeviceLabelDraft, setSyncDeviceLabelDraft] = useState("Gerät");
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>({
+    state: "idle",
+    message: "Noch nicht synchronisiert."
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [refreshToken, setRefreshToken] = useState(0);
   const [snapshotState, setSnapshotState] = useState<Awaited<ReturnType<typeof loadSnapshot>> | null>(null);
@@ -162,6 +173,19 @@ function App() {
         setSnapshotState(snapshot);
         setWarningDaysDraft(String(snapshot.settings.expiryWarningDays));
         setReminderDaysDraft(String(snapshot.settings.reminderRepeatDays));
+        setSyncEnabledDraft(snapshot.settings.sync.enabled);
+        setSyncUrlDraft(snapshot.settings.sync.couchUrl);
+        setSyncDatabaseDraft(snapshot.settings.sync.databaseName);
+        setSyncUsernameDraft(snapshot.settings.sync.username ?? "");
+        setSyncPasswordDraft(snapshot.settings.sync.password ?? "");
+        setSyncDeviceLabelDraft(snapshot.settings.sync.deviceLabel);
+        setSyncStatus({
+          state: "idle",
+          message: snapshot.settings.sync.lastSyncedAt
+            ? "Zuletzt synchronisiert"
+            : "Noch nicht synchronisiert.",
+          lastSyncedAt: snapshot.settings.sync.lastSyncedAt
+        });
         setSelectedLocationId((current) => current || snapshot.locations[0]?.id || "");
       } catch (error) {
         if (cancelled) {
@@ -170,6 +194,12 @@ function App() {
         setSnapshotState(seedSnapshot);
         setWarningDaysDraft(String(seedSnapshot.settings.expiryWarningDays));
         setReminderDaysDraft(String(seedSnapshot.settings.reminderRepeatDays));
+        setSyncEnabledDraft(seedSnapshot.settings.sync.enabled);
+        setSyncUrlDraft(seedSnapshot.settings.sync.couchUrl);
+        setSyncDatabaseDraft(seedSnapshot.settings.sync.databaseName);
+        setSyncUsernameDraft(seedSnapshot.settings.sync.username ?? "");
+        setSyncPasswordDraft(seedSnapshot.settings.sync.password ?? "");
+        setSyncDeviceLabelDraft(seedSnapshot.settings.sync.deviceLabel);
         setSelectedLocationId((current) => current || seedSnapshot.locations[0]?.id || "");
         setLoadError(error instanceof Error ? error.message : "Lokale Daten konnten nicht geladen werden.");
       } finally {
@@ -1028,6 +1058,62 @@ function App() {
     setRefreshToken((current) => current + 1);
   }
 
+  async function handleSaveSyncConfig() {
+    const current = snapshotState?.settings.sync;
+    await updateSettings({
+      sync: {
+        enabled: syncEnabledDraft,
+        couchUrl: syncUrlDraft.trim(),
+        databaseName: syncDatabaseDraft.trim() || "lagerkontrolle",
+        username: syncUsernameDraft.trim() || undefined,
+        password: syncPasswordDraft.trim() || undefined,
+        deviceId: current?.deviceId ?? crypto.randomUUID(),
+        deviceLabel: syncDeviceLabelDraft.trim() || "Gerät",
+        lastSyncedAt: current?.lastSyncedAt
+      }
+    });
+    setRefreshToken((currentValue) => currentValue + 1);
+  }
+
+  async function handleRunSync() {
+    const currentConfig = snapshotState?.settings.sync;
+    const syncConfig = {
+      enabled: syncEnabledDraft,
+      couchUrl: syncUrlDraft.trim(),
+      databaseName: syncDatabaseDraft.trim() || "lagerkontrolle",
+      username: syncUsernameDraft.trim() || undefined,
+      password: syncPasswordDraft.trim() || undefined,
+      deviceId: currentConfig?.deviceId ?? crypto.randomUUID(),
+      deviceLabel: syncDeviceLabelDraft.trim() || "Gerät",
+      lastSyncedAt: currentConfig?.lastSyncedAt
+    };
+
+    try {
+      setSyncStatus({
+        state: "syncing",
+        message: "Synchronisation läuft …",
+        lastSyncedAt: currentConfig?.lastSyncedAt
+      });
+
+      await updateSettings({ sync: syncConfig });
+      const result = await runCouchSync(syncConfig);
+      await updateSettings({
+        sync: {
+          ...syncConfig,
+          lastSyncedAt: result.lastSyncedAt
+        }
+      });
+      setSyncStatus(result);
+      setRefreshToken((currentValue) => currentValue + 1);
+    } catch (error) {
+      setSyncStatus({
+        state: "error",
+        message: error instanceof Error ? error.message : "Synchronisation fehlgeschlagen.",
+        lastSyncedAt: currentConfig?.lastSyncedAt
+      });
+    }
+  }
+
   async function handleRenameLocation() {
     if (!currentLocation) {
       return;
@@ -1573,6 +1659,83 @@ function App() {
                             onIonBlur={() => void handlePersistSettings()}
                           />
                         </IonItem>
+                      </div>
+                    </section>
+
+                    <section className="surface">
+                      <header className="section-header">
+                        <div>
+                          <h2>Sync</h2>
+                          <span>{syncStatus.message}</span>
+                        </div>
+                        <IonBadge color="light">
+                          {syncStatus.state === "syncing"
+                            ? "läuft"
+                            : syncStatus.state === "success"
+                              ? "ok"
+                              : syncStatus.state === "error"
+                                ? "Fehler"
+                                : "lokal"}
+                        </IonBadge>
+                      </header>
+                      <div className="settings-row">
+                        <label className="form-field">
+                          <span>CouchDB-URL</span>
+                          <input
+                            className="app-input"
+                            value={syncUrlDraft}
+                            placeholder="https://couch.example.com"
+                            onChange={(event) => setSyncUrlDraft(event.target.value)}
+                          />
+                        </label>
+                        <IonItem className="compact-field">
+                          <IonLabel position="stacked">Datenbank</IonLabel>
+                          <IonInput
+                            value={syncDatabaseDraft}
+                            onIonInput={(event) => setSyncDatabaseDraft(String(event.detail.value ?? ""))}
+                          />
+                        </IonItem>
+                        <IonItem className="compact-field">
+                          <IonLabel position="stacked">Benutzer</IonLabel>
+                          <IonInput
+                            value={syncUsernameDraft}
+                            onIonInput={(event) => setSyncUsernameDraft(String(event.detail.value ?? ""))}
+                          />
+                        </IonItem>
+                        <IonItem className="compact-field">
+                          <IonLabel position="stacked">Passwort</IonLabel>
+                          <IonInput
+                            type="password"
+                            value={syncPasswordDraft}
+                            onIonInput={(event) => setSyncPasswordDraft(String(event.detail.value ?? ""))}
+                          />
+                        </IonItem>
+                        <IonItem className="compact-field">
+                          <IonLabel position="stacked">Gerätename</IonLabel>
+                          <IonInput
+                            value={syncDeviceLabelDraft}
+                            onIonInput={(event) => setSyncDeviceLabelDraft(String(event.detail.value ?? ""))}
+                          />
+                        </IonItem>
+                        <label className="form-field">
+                          <span>Sync aktiv</span>
+                          <select
+                            className="app-select"
+                            value={syncEnabledDraft ? "ja" : "nein"}
+                            onChange={(event) => setSyncEnabledDraft(event.target.value === "ja")}
+                          >
+                            <option value="ja">Ja</option>
+                            <option value="nein">Nein</option>
+                          </select>
+                        </label>
+                      </div>
+                      <div className="form-actions">
+                        <IonButton fill="outline" className="primary-button" onClick={() => void handleSaveSyncConfig()}>
+                          Sync speichern
+                        </IonButton>
+                        <IonButton className="primary-button" onClick={() => void handleRunSync()}>
+                          Jetzt synchronisieren
+                        </IonButton>
                       </div>
                     </section>
                   </div>

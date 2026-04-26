@@ -30,4 +30,4 @@ Die lokalen Daten können verschwinden, wenn:
 
 ## Aktueller Sync-Stand
 
-Mehrgeräte-Synchronisation ist noch offen. Dafür ist ein zentraler Server nötig, zum Beispiel `CouchDB`, plus Replikation zwischen Geräten. Bis das eingebaut ist, ist die App technisch `offline-first`, aber noch nicht `shared-data-first`.
+Mehrgeräte-Synchronisation ist jetzt für `CouchDB` vorbereitet. Dafür wird ein zentraler Server benötigt, und jedes Gerät synchronisiert seine lokalen Daten per Pull/Push. Ohne konfigurierte CouchDB bleibt die App weiter rein lokal.

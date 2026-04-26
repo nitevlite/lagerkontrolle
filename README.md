@@ -60,6 +60,7 @@ Warum das sinnvoll ist:
 - `docs/DATA_STORAGE.md`: wo Daten liegen und was lokal bleibt
 - `docs/PILOT_CHECKLIST.md`: Pilotfreigabe und Testbetrieb
 - `docs/IMPORT_FORMAT.md`: Zielstruktur fuer spaetere Excel-Dateien
+- `docs/SYNC_SETUP.md`: CouchDB-Einrichtung und Mehrgeraete-Sync
 
 ## Entwicklung
 
@@ -99,6 +100,7 @@ npm run build
 - Bestandsableitung aus Bewegungen statt aus fixen Direktwerten
 - erste Pilot-Haertung gestartet: Build-Splitting fuer Storage und UI-Bloecke ist vorbereitet
 - GitHub-Pages-Deploy fuer HTTPS-Verteilung und PWA-Installation ist vorbereitet
+- CouchDB-Sync-Konfiguration und sichtbarer Sync-Status sind im Dashboard eingebaut
 
 ## Naechster technischer Schritt
 
