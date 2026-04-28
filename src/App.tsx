@@ -91,6 +91,15 @@ function getBarcodeDetector() {
   return (globalThis as unknown as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector;
 }
 
+function readStoredView(): ViewKey {
+  if (typeof window === "undefined") {
+    return "booking";
+  }
+
+  const value = window.localStorage.getItem("lagerkontrolle:last-view");
+  return viewMeta.some((view) => view.key === value) ? (value as ViewKey) : "booking";
+}
+
 function downloadTextFile(filename: string, content: string, type: string) {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
@@ -102,7 +111,7 @@ function downloadTextFile(filename: string, content: string, type: string) {
 }
 
 function App() {
-  const [activeView, setActiveView] = useState<ViewKey>("booking");
+  const [activeView, setActiveView] = useState<ViewKey>(() => readStoredView());
   const [navVisible, setNavVisible] = useState(true);
   const [navExpanded, setNavExpanded] = useState(false);
   const [selectedLocationId, setSelectedLocationId] = useState("");
@@ -250,6 +259,10 @@ function App() {
     () => (snapshotState ? buildViewModel(snapshotState) : null),
     [snapshotState]
   );
+
+  useEffect(() => {
+    window.localStorage.setItem("lagerkontrolle:last-view", activeView);
+  }, [activeView]);
 
   const currentLocation =
     viewModel?.locations.find((location) => location.id === selectedLocationId) ?? viewModel?.locations[0];
