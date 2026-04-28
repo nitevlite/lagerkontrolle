@@ -143,6 +143,19 @@ ion-content.shell::part(scroll) {
   background: #f5f7fa;
 }
 
+.metric-card--button {
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.metric-card--active {
+  border-color: #16212b;
+  box-shadow: 0 0 0 2px rgba(22, 33, 43, 0.08);
+}
+
 .metric-card span,
 .metric-card small {
   display: block;

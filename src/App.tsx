@@ -117,6 +117,7 @@ function App() {
   const [navVisible, setNavVisible] = useState(true);
   const [navExpanded, setNavExpanded] = useState(false);
   const [selectedLocationId, setSelectedLocationId] = useState("");
+  const [dashboardDetail, setDashboardDetail] = useState<"critical" | "warning" | "low-stock" | null>(null);
   const [pendingReset, setPendingReset] = useState(false);
   const [pendingDeleteItemId, setPendingDeleteItemId] = useState<string | null>(null);
   const [expiryFilterDays, setExpiryFilterDays] = useState<number>(10);
@@ -476,6 +477,22 @@ function App() {
       viewModel?.expiryAlerts.filter((alert) => alert.daysUntilExpiry <= expiryFilterDays) ?? [],
     [expiryFilterDays, viewModel]
   );
+
+  const dashboardDetailAlerts = useMemo(() => {
+    if (!viewModel || dashboardDetail === "low-stock") {
+      return [];
+    }
+
+    if (dashboardDetail === "critical") {
+      return viewModel.expiryAlerts.filter((alert) => alert.daysUntilExpiry <= 5);
+    }
+
+    if (dashboardDetail === "warning") {
+      return viewModel.expiryAlerts.filter((alert) => alert.daysUntilExpiry <= viewModel.settings.expiryWarningDays);
+    }
+
+    return [];
+  }, [dashboardDetail, viewModel]);
 
   const visibleStocks = useMemo(
     () =>
@@ -1769,14 +1786,100 @@ function App() {
                       </header>
                       <div className="metric-grid metric-grid--dashboard">
                         {viewModel.dashboardStats.map((stat) => (
-                          <article key={stat.id} className="metric-card">
+                          <button
+                            key={stat.id}
+                            type="button"
+                            className={
+                              dashboardDetail === stat.id
+                                ? "metric-card metric-card--button metric-card--active"
+                                : "metric-card metric-card--button"
+                            }
+                            onClick={() => {
+                              if (stat.id === "critical" || stat.id === "warning" || stat.id === "low-stock") {
+                                const detailId = stat.id as "critical" | "warning" | "low-stock";
+                                setDashboardDetail((current) => (current === detailId ? null : detailId));
+                                return;
+                              }
+                              if (stat.id === "movements") {
+                                setActiveView("log");
+                              }
+                            }}
+                          >
                             <span>{stat.label}</span>
                             <strong>{stat.value}</strong>
                             <small>{stat.detail}</small>
-                          </article>
+                          </button>
                         ))}
                       </div>
                     </section>
+
+                    {dashboardDetail ? (
+                      <section className="surface">
+                        <header className="section-header">
+                          <div>
+                            <h2>
+                              {dashboardDetail === "critical"
+                                ? "Kritische Abläufe"
+                                : dashboardDetail === "warning"
+                                  ? "Warnfenster"
+                                  : "Niedrige Bestände"}
+                            </h2>
+                            <span>
+                              {dashboardDetail === "low-stock"
+                                ? `${viewModel.lowStockAlerts.length} Treffer`
+                                : `${dashboardDetailAlerts.length} Treffer`}
+                            </span>
+                          </div>
+                          <IonButton fill="clear" className="back-button" onClick={() => setDashboardDetail(null)}>
+                            Schließen
+                          </IonButton>
+                        </header>
+                        <div className="list list--mobile-cards">
+                          {dashboardDetail === "low-stock" ? (
+                            viewModel.lowStockAlerts.length > 0 ? (
+                              viewModel.lowStockAlerts.map((alert) => (
+                                <article key={alert.id} className="list-row list-row--mobile-card">
+                                  <div className="list-row__main">
+                                    <strong>{alert.itemName}</strong>
+                                    <span>{alert.locationName}</span>
+                                  </div>
+                                  <div className="list-row__meta">
+                                    <b>
+                                      {alert.quantity} / {alert.minimumQuantity} {alert.unitShortCode}
+                                    </b>
+                                    <small>Bestand unter Grenze</small>
+                                  </div>
+                                </article>
+                              ))
+                            ) : (
+                              <div className="empty-state">Keine niedrigen Bestände.</div>
+                            )
+                          ) : dashboardDetailAlerts.length > 0 ? (
+                            dashboardDetailAlerts.map((alert) => (
+                              <article key={alert.id} className="list-row list-row--mobile-card">
+                                <div className="list-row__main">
+                                  <strong>{alert.itemName}</strong>
+                                  <span>
+                                    {alert.locationName} · {alert.slotName}
+                                  </span>
+                                  <span>Charge {alert.batchCode}</span>
+                                </div>
+                                <div className="list-row__meta">
+                                  <b className={`status-text ${toneClass(alert.daysUntilExpiry <= 5 ? "critical" : "warning")}`}>
+                                    {alert.daysUntilExpiry} Tage
+                                  </b>
+                                  <small>
+                                    {alert.quantity} {alert.unitShortCode}
+                                  </small>
+                                </div>
+                              </article>
+                            ))
+                          ) : (
+                            <div className="empty-state">Keine Treffer.</div>
+                          )}
+                        </div>
+                      </section>
+                    ) : null}
 
                     <section className="surface">
                       <header className="section-header">
