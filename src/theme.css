@@ -575,6 +575,14 @@ ion-content.shell::part(scroll) {
   color: var(--muted);
 }
 
+.empty-state--action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .back-button {
   --color: #16212b;
   margin-inline-start: -0.35rem;

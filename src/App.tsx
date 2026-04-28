@@ -1448,6 +1448,25 @@ function App() {
       return;
     }
 
+    const needsSourceSlot =
+      bookingAction === "out" ||
+      bookingAction === "transfer" ||
+      (bookingAction === "adjustment" && bookingAdjustmentDirection === "decrease");
+    const needsTargetSlot =
+      bookingAction === "in" ||
+      bookingAction === "transfer" ||
+      (bookingAction === "adjustment" && bookingAdjustmentDirection === "increase");
+
+    if (needsSourceSlot && !bookingSourceSlotId) {
+      setActionError("Bitte zuerst einen Quellslot wählen. Wenn noch kein Bestand vorhanden ist, zuerst Zugang buchen.");
+      return;
+    }
+
+    if (needsTargetSlot && !bookingTargetSlotId) {
+      setActionError("Bitte zuerst in diesem Ort einen Slot anlegen oder einen Ort mit Slot wählen.");
+      return;
+    }
+
     try {
       let effectiveItemId = bookingItem?.id;
 
@@ -1462,14 +1481,29 @@ function App() {
           return;
         }
 
-        effectiveItemId = await addItem({
-          name: bookingNewItemNameDraft,
-          unitTypeId: bookingNewItemUnitTypeId,
-          barcode: bookingNewItemBarcodeDraft,
-          trackExpiry: bookingNewItemTrackExpiry,
-          preferredLocationId: bookingLocationId || undefined,
-          lowStockThreshold: Math.max(0, Number(bookingNewItemLowStockThresholdDraft || "0"))
-        });
+        const latestSnapshot = await loadSnapshot();
+        const newName = bookingNewItemNameDraft.trim().toLocaleLowerCase();
+        const newBarcode = bookingNewItemBarcodeDraft.trim();
+        const existingItem = latestSnapshot.items.find(
+          (item) =>
+            item.name.trim().toLocaleLowerCase() === newName ||
+            (newBarcode && item.barcode?.trim() === newBarcode)
+        );
+
+        if (existingItem) {
+          effectiveItemId = existingItem.id;
+          setBookingItemId(existingItem.id);
+          setBookingItemMode("existing");
+        } else {
+          effectiveItemId = await addItem({
+            name: bookingNewItemNameDraft,
+            unitTypeId: bookingNewItemUnitTypeId,
+            barcode: bookingNewItemBarcodeDraft,
+            trackExpiry: bookingNewItemTrackExpiry,
+            preferredLocationId: bookingLocationId || undefined,
+            lowStockThreshold: Math.max(0, Number(bookingNewItemLowStockThresholdDraft || "0"))
+          });
+        }
       }
 
       if (!effectiveItemId) {
@@ -1545,6 +1579,24 @@ function App() {
       setRefreshToken((current) => current + 1);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Slot-Typ konnte nicht gespeichert werden.");
+    }
+  }
+
+  async function handleCreateBookingSlot() {
+    if (!bookingLocationId) {
+      setActionError("Bitte zuerst einen Ort wählen.");
+      return;
+    }
+
+    try {
+      await addStorageSlot({
+        locationId: bookingLocationId,
+        kind: slotKind,
+        number: bookingTargetSlots.length + 1
+      });
+      setRefreshToken((current) => current + 1);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Slot konnte nicht angelegt werden.");
     }
   }
 
@@ -2920,7 +2972,12 @@ function App() {
                               </select>
                             </label>
                           ) : (
-                            <div className="empty-state">Im gewählten Ort sind noch keine Slots angelegt.</div>
+                            <div className="empty-state empty-state--action">
+                              <span>Im gewählten Ort sind noch keine Slots angelegt.</span>
+                              <IonButton size="small" className="primary-button" onClick={() => void handleCreateBookingSlot()}>
+                                Ersten Slot anlegen
+                              </IonButton>
+                            </div>
                           )
                         ) : null}
 
