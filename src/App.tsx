@@ -1709,7 +1709,7 @@ function App() {
               <section className="surface surface--loading">Daten werden geladen …</section>
             ) : (
               <>
-                <section className={navVisible || navExpanded ? "surface surface--nav" : "surface surface--nav surface--nav-hidden"}>
+                <section className={navVisible ? "surface surface--nav" : "surface surface--nav surface--nav-hidden"}>
                   <button
                     type="button"
                     className="mobile-nav-toggle"
