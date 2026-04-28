@@ -2,20 +2,44 @@ import { db } from "./db";
 import { seedSnapshot } from "../domain/seed";
 import { ensureSyncMetadataSeed } from "./sync";
 
-export async function ensureSeedData() {
-  const count = await db.locations.count();
-  if (count > 0) {
-    return;
-  }
+function isMissingObjectStoreError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.toLocaleLowerCase().includes("object store") && message.toLocaleLowerCase().includes("not found");
+}
 
-  await db.locations.bulkPut(seedSnapshot.locations);
-  await db.slots.bulkPut(seedSnapshot.slots);
+async function writeInitialData() {
   await db.unitTypes.bulkPut(seedSnapshot.unitTypes);
-  await db.items.bulkPut(seedSnapshot.items);
-  await db.batches.bulkPut(seedSnapshot.batches);
-  await db.movements.bulkPut(seedSnapshot.movements);
-  await db.settings.put(seedSnapshot.settings);
+  await db.settings.put({
+    ...seedSnapshot.settings,
+    sync: {
+      ...seedSnapshot.settings.sync,
+      deviceId: crypto.randomUUID()
+    }
+  });
   await ensureSyncMetadataSeed();
+}
+
+export async function repairLocalDatabase() {
+  await db.close();
+  await db.delete();
+  await writeInitialData();
+}
+
+export async function ensureSeedData() {
+  try {
+    const count = await db.unitTypes.count();
+    if (count > 0) {
+      return;
+    }
+
+    await writeInitialData();
+  } catch (error) {
+    if (!isMissingObjectStoreError(error)) {
+      throw error;
+    }
+
+    await repairLocalDatabase();
+  }
 }
 
 export async function resetSeedData() {

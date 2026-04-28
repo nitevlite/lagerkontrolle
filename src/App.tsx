@@ -31,7 +31,7 @@ import {
   trashOutline,
   warningOutline
 } from "ionicons/icons";
-import { ensureSeedData } from "./data/bootstrap";
+import { ensureSeedData, repairLocalDatabase } from "./data/bootstrap";
 import {
   addBatch,
   addItem,
@@ -233,6 +233,30 @@ function App() {
         if (cancelled) {
           return;
         }
+        const message = error instanceof Error ? error.message : String(error);
+        if (message.toLocaleLowerCase().includes("object store") && message.toLocaleLowerCase().includes("not found")) {
+          try {
+            await repairLocalDatabase();
+            const repairedSnapshot = await loadSnapshot();
+            if (cancelled) {
+              return;
+            }
+            setSnapshotState(repairedSnapshot);
+            setWarningDaysDraft(String(repairedSnapshot.settings.expiryWarningDays));
+            setReminderDaysDraft(String(repairedSnapshot.settings.reminderRepeatDays));
+            setSyncEnabledDraft(repairedSnapshot.settings.sync.enabled);
+            setSyncUrlDraft(repairedSnapshot.settings.sync.couchUrl);
+            setSyncDatabaseDraft(repairedSnapshot.settings.sync.databaseName);
+            setSyncUsernameDraft(repairedSnapshot.settings.sync.username ?? "");
+            setSyncPasswordDraft(repairedSnapshot.settings.sync.password ?? "");
+            setSyncDeviceLabelDraft(repairedSnapshot.settings.sync.deviceLabel);
+            setLoadError("Lokale Datenbank wurde wegen eines alten Speicherfehlers neu erstellt.");
+            return;
+          } catch {
+            // Fall through to the regular fallback below.
+          }
+        }
+
         setSnapshotState(seedSnapshot);
         setWarningDaysDraft(String(seedSnapshot.settings.expiryWarningDays));
         setReminderDaysDraft(String(seedSnapshot.settings.reminderRepeatDays));
@@ -244,7 +268,7 @@ function App() {
         setSyncDeviceLabelDraft(seedSnapshot.settings.sync.deviceLabel);
         setSelectedLocationId((current) => current || seedSnapshot.locations[0]?.id || "");
         setBookingLocationId((current) => current || seedSnapshot.locations[0]?.id || "");
-        setLoadError(error instanceof Error ? error.message : "Lokale Daten konnten nicht geladen werden.");
+        setLoadError(message || "Lokale Daten konnten nicht geladen werden.");
       } finally {
         if (!cancelled) {
           setIsLoading(false);
