@@ -1,6 +1,6 @@
 import type { AppSettings, Batch, DomainSnapshot, Item, Location, Movement, StorageSlot, UnitType } from "./model";
 
-export type ViewKey = "dashboard" | "locations" | "items" | "booking" | "units" | "analytics";
+export type ViewKey = "dashboard" | "locations" | "items" | "booking" | "units" | "analytics" | "log";
 
 export type DashboardStat = {
   id: string;
@@ -57,10 +57,11 @@ export type LowStockAlert = {
 
 export type MovementSummary = {
   id: string;
-  direction: "in" | "out" | "transfer";
+  direction: Movement["kind"];
   itemName: string;
   quantity: number;
   unitShortCode: string;
+  batchCode: string;
   fromLabel?: string;
   toLabel?: string;
   timestampLabel: string;
@@ -264,7 +265,7 @@ export function buildViewModel(snapshot: DomainSnapshot): AppViewModel {
   const recentMovements: MovementSummary[] = snapshot.movements
     .slice()
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
-    .slice(0, 5)
+    .slice(0, 50)
     .map((movement) => {
       const batch = batchById.get(movement.batchId)!;
       const item = itemById.get(batch.itemId)!;
@@ -276,10 +277,11 @@ export function buildViewModel(snapshot: DomainSnapshot): AppViewModel {
 
       return {
         id: movement.id,
-        direction: movement.kind === "adjustment" ? "out" : movement.kind,
+        direction: movement.kind,
         itemName: item.name,
         quantity: movement.quantity,
         unitShortCode: unit.shortCode,
+        batchCode: batch.batchCode,
         fromLabel: fromSlot && fromLocation ? `${fromLocation.name} / ${fromSlot.label}` : undefined,
         toLabel: toSlot && toLocation ? `${toLocation.name} / ${toSlot.label}` : undefined,
         timestampLabel: movementDayLabel(movement.createdAt)

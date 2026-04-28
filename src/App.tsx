@@ -21,6 +21,7 @@ import {
   downloadOutline,
   gridOutline,
   layersOutline,
+  listOutline,
   pricetagOutline,
   refreshOutline,
   searchOutline,
@@ -65,7 +66,8 @@ const viewMeta: Array<{ key: ViewKey; label: string; icon: string }> = [
   { key: "items", label: "Artikel", icon: pricetagOutline },
   { key: "booking", label: "Buchung", icon: barcodeOutline },
   { key: "units", label: "Einheiten", icon: layersOutline },
-  { key: "analytics", label: "Analyse", icon: analyticsOutline }
+  { key: "analytics", label: "Analyse", icon: analyticsOutline },
+  { key: "log", label: "Log", icon: listOutline }
 ];
 
 const expiryFilters = [7, 10, 30, 60] as const;
@@ -1684,8 +1686,8 @@ function App() {
         />
         <IonAlert
           isOpen={pendingReset}
-          header="Lokale Daten löschen"
-          message="Alle Orte, Slots, Artikel, Chargen und Bewegungen auf diesem Gerät werden gelöscht. Standard-Einheiten und Slot-Typen bleiben erhalten."
+          header="Wirklich alles löschen?"
+          message="Alle Orte, Slots, Artikel, Chargen, Bewegungen und lokalen Einstellungen auf diesem Gerät werden gelöscht. Standard-Einheiten und Slot-Typen werden danach neu angelegt. Diese Aktion kann nur mit einem vorherigen Backup rückgängig gemacht werden."
           buttons={[
             {
               text: "Abbrechen",
@@ -1693,7 +1695,7 @@ function App() {
               handler: () => setPendingReset(false)
             },
             {
-              text: "Löschen",
+              text: "Ja, alles löschen",
               role: "destructive",
               handler: () => void handleResetLocalData()
             }
@@ -3217,6 +3219,53 @@ function App() {
                             );
                           })}
                         </div>
+                      </div>
+                    </section>
+                  </div>
+                ) : null}
+
+                {activeView === "log" ? (
+                  <div className="stack">
+                    <section className="surface">
+                      <header className="section-header">
+                        <div>
+                          <h1>Log</h1>
+                          <span>Letzte {viewModel.recentMovements.length} Bewegungen</span>
+                        </div>
+                      </header>
+                      <div className="list list--mobile-cards">
+                        {viewModel.recentMovements.length > 0 ? (
+                          viewModel.recentMovements.map((movement) => (
+                            <article key={movement.id} className="list-row list-row--mobile-card">
+                              <div className="list-row__main">
+                                <strong>{movement.itemName}</strong>
+                                <span>
+                                  {movement.direction === "in"
+                                    ? "Zugang"
+                                    : movement.direction === "out"
+                                      ? "Abgang"
+                                      : movement.direction === "transfer"
+                                        ? "Umbuchung"
+                                        : "Korrektur"}{" "}
+                                  · Charge {movement.batchCode}
+                                </span>
+                                <span>
+                                  {movement.fromLabel ? `Von ${movement.fromLabel}` : ""}
+                                  {movement.fromLabel && movement.toLabel ? " · " : ""}
+                                  {movement.toLabel ? `Nach ${movement.toLabel}` : ""}
+                                </span>
+                              </div>
+                              <div className="list-row__meta">
+                                <b>
+                                  {movement.quantity} {movement.unitShortCode}
+                                </b>
+                                <small>{movement.timestampLabel}</small>
+                              </div>
+                            </article>
+                          ))
+                        ) : (
+                          <div className="empty-state">Noch keine Bewegungen gespeichert.</div>
+                        )}
                       </div>
                     </section>
                   </div>
