@@ -124,3 +124,4 @@ Ergebnis: Das MVP ist bereit fuer den echten Einsatz.
 - `#8` ist im Code umgesetzt: CouchDB-Konfiguration, Pull/Push-Sync, sichtbarer Sync-Status und Dokumentation fuer Zwei-Geraete-Tests sind vorhanden
 - `#16` bis `#26` sind umgesetzt: Seed ohne Testdaten, Buchungsstart, Scan-Workflows, mobile Klappnavigation, Sync-Hilfe, Layout-Abstaende und nachvollziehbare Bestandskorrektur sind eingebaut
 - aus `#27` sind erste Nice-to-haves umgesetzt: lokale Datenbereinigung, JSON-Backup/Restore, CSV-Bestandsexport, Artikelfilter, letzte Scans und Vibrationsfeedback nach Scan
+- Buchungs- und Scan-Flow wurden nachgezogen: direkte Ortsbestände sind als Quelle gültig, bestehende Artikel zeigen Bestand vor der Buchung, Barcodes werden stabilisiert und mehrere Codes pro Artikel sind möglich

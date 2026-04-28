@@ -6,6 +6,18 @@ import { createDefaultSyncConfig, markEntityChanged, markEntityDeleted } from ".
 const defaultSlotTypeNames = ["Regal", "Lade", "Schrank", "Fach", "Kiste", "Box", "Kühlschrank", "Gefrierschrank", "Palette"];
 const noBatchCode = "Keine Charge";
 
+function normalizeBarcode(value: string) {
+  const compact = value.trim().replace(/\s+/g, "");
+  if (/^\d+$/.test(compact) && compact.length === 13 && compact.startsWith("0")) {
+    return compact.slice(1);
+  }
+  return compact;
+}
+
+function uniqueBarcodes(values: Array<string | undefined>) {
+  return Array.from(new Set(values.map((value) => (value ? normalizeBarcode(value) : "")).filter(Boolean)));
+}
+
 function buildDefaultSettings(): AppSettings {
   return {
     id: "default",
@@ -139,6 +151,7 @@ export async function addItem(input: {
   name: string;
   unitTypeId: string;
   barcode?: string;
+  barcodes?: string[];
   trackExpiry: boolean;
   preferredLocationId?: string;
   lowStockThreshold: number;
@@ -157,13 +170,23 @@ export async function addItem(input: {
   }
 
   const id = `item-${crypto.randomUUID()}`;
+  const barcodes = uniqueBarcodes([input.barcode, ...(input.barcodes ?? [])]);
+  if (barcodes.length > 0) {
+    const duplicateBarcode = await db.items
+      .filter((item) => uniqueBarcodes([item.barcode, ...(item.barcodes ?? [])]).some((code) => barcodes.includes(code)))
+      .first();
+    if (duplicateBarcode) {
+      throw new Error("Barcode ist bereits einem anderen Artikel zugeordnet.");
+    }
+  }
 
   await db.transaction("rw", db.items, async () => {
     await db.items.add({
       id,
       name,
       unitTypeId: input.unitTypeId,
-      barcode: input.barcode?.trim() || undefined,
+      barcode: barcodes[0],
+      barcodes,
       trackExpiry: input.trackExpiry,
       preferredLocationId: input.preferredLocationId,
       lowStockThreshold: Math.max(0, Number(input.lowStockThreshold || 0))
@@ -179,6 +202,7 @@ export async function updateItem(input: {
   name: string;
   unitTypeId: string;
   barcode?: string;
+  barcodes?: string[];
   trackExpiry: boolean;
   preferredLocationId?: string;
   lowStockThreshold: number;
@@ -196,10 +220,25 @@ export async function updateItem(input: {
     throw new Error("Artikel existiert bereits.");
   }
 
+  const barcodes = uniqueBarcodes([input.barcode, ...(input.barcodes ?? [])]);
+  if (barcodes.length > 0) {
+    const duplicateBarcode = await db.items
+      .filter(
+        (item) =>
+          item.id !== input.id &&
+          uniqueBarcodes([item.barcode, ...(item.barcodes ?? [])]).some((code) => barcodes.includes(code))
+      )
+      .first();
+    if (duplicateBarcode) {
+      throw new Error("Barcode ist bereits einem anderen Artikel zugeordnet.");
+    }
+  }
+
   await db.items.update(input.id, {
     name,
     unitTypeId: input.unitTypeId,
-    barcode: input.barcode?.trim() || undefined,
+    barcode: barcodes[0],
+    barcodes,
     trackExpiry: input.trackExpiry,
     preferredLocationId: input.preferredLocationId,
     lowStockThreshold: Math.max(0, Number(input.lowStockThreshold || 0))

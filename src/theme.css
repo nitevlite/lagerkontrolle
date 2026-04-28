@@ -540,6 +540,46 @@ ion-content.shell::part(scroll) {
   border: 1px solid var(--border);
   border-radius: 16px;
   background: #f8fafc;
+  grid-column: 1 / -1;
+}
+
+.booking-form-stack .unit-form {
+  grid-template-columns: 1fr;
+}
+
+.booking-batch-fields {
+  grid-template-columns: 1fr !important;
+}
+
+.booking-batch-fields > * {
+  width: 100%;
+}
+
+.app-textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.stock-feedback,
+.booking-feedback {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(22, 121, 77, 0.28);
+  border-radius: 12px;
+  background: #f3fbf7;
+  color: var(--text);
+}
+
+.stock-feedback strong,
+.booking-feedback strong {
+  color: var(--success);
+}
+
+.stock-feedback span,
+.booking-feedback span {
+  color: var(--muted);
+  font-size: 0.92rem;
 }
 
 .toggle-pills--full {

@@ -94,6 +94,34 @@ function getBarcodeDetector() {
   return (globalThis as unknown as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector;
 }
 
+function normalizeBarcode(value: string) {
+  const compact = value.trim().replace(/\s+/g, "");
+  if (/^\d+$/.test(compact) && compact.length === 13 && compact.startsWith("0")) {
+    return compact.slice(1);
+  }
+  return compact;
+}
+
+function parseBarcodeDraft(value: string) {
+  return Array.from(
+    new Set(
+      value
+        .split(/[\n,;]+/)
+        .map(normalizeBarcode)
+        .filter(Boolean)
+    )
+  );
+}
+
+function itemBarcodeList(item: { barcode?: string; barcodes?: string[] }) {
+  return parseBarcodeDraft([...(item.barcodes ?? []), item.barcode].filter(Boolean).join("\n"));
+}
+
+function itemHasBarcode(item: { barcode?: string; barcodes?: string[] }, value: string) {
+  const normalized = normalizeBarcode(value);
+  return Boolean(normalized) && itemBarcodeList(item).includes(normalized);
+}
+
 function readStoredView(): ViewKey {
   if (typeof window === "undefined") {
     return "booking";
@@ -195,6 +223,7 @@ function App() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scanStreamRef = useRef<MediaStream | null>(null);
   const scanFrameRef = useRef<number | null>(null);
+  const scanCandidateRef = useRef<{ value: string; count: number }>({ value: "", count: 0 });
   const itemBarcodeInputRef = useRef<HTMLIonInputElement | null>(null);
   const bookingSourceSlotRef = useRef<HTMLSelectElement | null>(null);
   const bookingTargetSlotRef = useRef<HTMLSelectElement | null>(null);
@@ -396,7 +425,7 @@ function App() {
 
     if (currentItem) {
       setItemNameDraft(currentItem.name);
-      setItemBarcodeDraft(currentItem.barcode ?? "");
+      setItemBarcodeDraft(itemBarcodeList(currentItem).join("\n"));
       setItemUnitTypeId(currentItem.unitTypeId);
       setItemPreferredLocationId(currentItem.preferredLocationId ?? snapshotState?.locations[0]?.id ?? "");
       setItemLowStockThresholdDraft(String(currentItem.lowStockThreshold ?? 5));
@@ -460,11 +489,17 @@ function App() {
 
           try {
             const results = scanPaused ? [] : await detector.detect(videoRef.current);
-            const value = results.find((result) => result.rawValue?.trim())?.rawValue?.trim();
+            const value = normalizeBarcode(results.find((result) => result.rawValue?.trim())?.rawValue ?? "");
 
             if (value) {
-              applyScannedValue(value);
-              return;
+              const candidate = scanCandidateRef.current;
+              scanCandidateRef.current =
+                candidate.value === value ? { value, count: candidate.count + 1 } : { value, count: 1 };
+
+              if (scanCandidateRef.current.count >= 2) {
+                applyScannedValue(value);
+                return;
+              }
             }
           } catch {
             setScanMessage("Kamera ist aktiv, aber der Code wurde noch nicht erkannt.");
@@ -640,7 +675,8 @@ function App() {
           return {
             id: item.id,
             name: item.name,
-            barcode: item.barcode ?? "kein Code",
+            barcodes: itemBarcodeList(item),
+            barcode: itemBarcodeList(item).join(", ") || "kein Code",
             batchCount: relatedBatches.length,
             totalQuantity,
             trackExpiry: item.trackExpiry,
@@ -804,7 +840,7 @@ function App() {
     const query = itemFilterDraft.trim().toLocaleLowerCase();
     const quickFiltered = sortedItemSummaries.filter((item) => {
       if (itemQuickFilter === "no-barcode") {
-        return item.barcode === "kein Code";
+        return item.barcodes.length === 0;
       }
       if (itemQuickFilter === "low") {
         return item.lowStockThreshold > 0 && item.totalQuantity <= item.lowStockThreshold;
@@ -921,6 +957,7 @@ function App() {
 
     for (const line of bookingAvailableSourceLines) {
       if (!line.slotId) {
+        map.set("", { id: "", label: "Direkt am Ort" });
         continue;
       }
       if (!map.has(line.slotId)) {
@@ -931,12 +968,23 @@ function App() {
     return Array.from(map.values());
   }, [bookingAvailableSourceLines]);
 
+  const bookingSelectedItemQuantity = bookingItem?.totalQuantity ?? 0;
+  const bookingSelectedLocationQuantity = bookingStockLines.reduce((sum, line) => sum + line.quantity, 0);
+  const bookingHasDirectSource = bookingAvailableSourceLines.some((line) => !line.slotId);
+
   const canCreateNewBookingBatch =
     bookingAction === "in" || (bookingAction === "adjustment" && bookingAdjustmentDirection === "increase");
   const mustUseExistingBookingBatch =
     bookingAction === "out" ||
     bookingAction === "transfer" ||
     (bookingAction === "adjustment" && bookingAdjustmentDirection === "decrease");
+  const bookingExistingBatchOptions = mustUseExistingBookingBatch ? bookingAvailableBatches : bookingAllItemBatches;
+  const effectiveBookingBatchId =
+    bookingBatchId || (bookingExistingBatchOptions.length === 1 ? bookingExistingBatchOptions[0].id : "");
+  const selectedBookingBatch = bookingExistingBatchOptions.find((batch) => batch.id === effectiveBookingBatchId);
+  const selectedSourceOption = bookingSourceSlotOptions.find((slot) => slot.id === bookingSourceSlotId);
+  const selectedTargetSlot = bookingTargetSlots.find((slot) => slot.id === bookingTargetSlotId);
+  const selectedTargetLocation = viewModel?.locations.find((location) => location.id === bookingTargetLocationId);
 
   const currentItemBatches = useMemo(() => {
     if (!currentItem || !snapshotState) {
@@ -1039,12 +1087,14 @@ function App() {
     setScanMessage(null);
     setScanPaused(false);
     setScanInputDraft("");
+    scanCandidateRef.current = { value: "", count: 0 };
   }
 
   function restartScan() {
     setScanMessage("Code ins Kamerabild halten.");
     setScanInputDraft("");
     setScanPaused(false);
+    scanCandidateRef.current = { value: "", count: 0 };
     setScanNonce((current) => current + 1);
   }
 
@@ -1077,7 +1127,7 @@ function App() {
   }
 
   function applyScannedValue(rawValue: string) {
-    const value = rawValue.trim();
+    const value = normalizeBarcode(rawValue);
     if (!value) {
       setScanMessage("Bitte einen Barcode eingeben oder scannen.");
       return;
@@ -1086,7 +1136,7 @@ function App() {
     setScanPaused(true);
 
     if (scanMode === "item-barcode") {
-      setItemBarcodeDraft(value);
+      setItemBarcodeDraft((current) => parseBarcodeDraft(`${current}\n${value}`).join("\n"));
       closeScan();
       window.setTimeout(() => {
         itemBarcodeInputRef.current?.setFocus();
@@ -1101,7 +1151,7 @@ function App() {
     }
 
     if (scanMode === "item-search") {
-      const matchedItem = itemSummaries.find((item) => item.barcode === value);
+      const matchedItem = itemSummaries.find((item) => item.barcodes.includes(value));
       if (matchedItem) {
         handleOpenItemDetail(matchedItem.id);
         closeScan();
@@ -1116,7 +1166,7 @@ function App() {
     }
 
     if (scanMode === "booking-item") {
-      const matchedItem = itemSummaries.find((item) => item.barcode === value);
+      const matchedItem = itemSummaries.find((item) => item.barcodes.includes(value));
       if (matchedItem) {
         setBookingItemMode("existing");
         setBookingItemId(matchedItem.id);
@@ -1145,11 +1195,12 @@ function App() {
     setScanInputDraft("");
     setScanMessage(null);
     setScanPaused(false);
+    scanCandidateRef.current = { value: "", count: 0 };
     setScanNonce((current) => current + 1);
   }
 
   function reuseBookingScan(code: string) {
-    const matchedItem = itemSummaries.find((item) => item.barcode === code);
+    const matchedItem = itemSummaries.find((item) => item.barcodes.includes(normalizeBarcode(code)));
     if (matchedItem) {
       setBookingItemMode("existing");
       setBookingItemId(matchedItem.id);
@@ -1409,12 +1460,14 @@ function App() {
     }
 
     try {
+      const itemBarcodes = parseBarcodeDraft(itemBarcodeDraft);
       if (currentItem && currentItem.id === selectedItemId) {
         await updateItem({
           id: currentItem.id,
           name: itemNameDraft,
           unitTypeId,
-          barcode: itemBarcodeDraft,
+          barcode: itemBarcodes[0],
+          barcodes: itemBarcodes,
           trackExpiry: itemTrackExpiryDraft,
           preferredLocationId: itemPreferredLocationId || undefined,
           lowStockThreshold: Math.max(0, Number(itemLowStockThresholdDraft || "0"))
@@ -1423,7 +1476,8 @@ function App() {
         const newItemId = await addItem({
           name: itemNameDraft,
           unitTypeId,
-          barcode: itemBarcodeDraft,
+          barcode: itemBarcodes[0],
+          barcodes: itemBarcodes,
           trackExpiry: itemTrackExpiryDraft,
           preferredLocationId: itemPreferredLocationId || undefined,
           lowStockThreshold: Math.max(0, Number(itemLowStockThresholdDraft || "0"))
@@ -1480,7 +1534,7 @@ function App() {
 
     const wantsExistingBatch = mustUseExistingBookingBatch || bookingBatchMode === "existing";
 
-    if (wantsExistingBatch && !bookingBatchId) {
+    if (wantsExistingBatch && !effectiveBookingBatchId) {
       setActionError("Bitte eine bestehende Charge wählen.");
       return;
     }
@@ -1499,8 +1553,8 @@ function App() {
       bookingAction === "transfer" ||
       (bookingAction === "adjustment" && bookingAdjustmentDirection === "increase");
 
-    if (needsSourceSlot && !bookingSourceSlotId) {
-      setActionError("Bitte zuerst einen Quellslot wählen. Wenn noch kein Bestand vorhanden ist, zuerst Zugang buchen.");
+    if (needsSourceSlot && !bookingSourceSlotId && !bookingHasDirectSource) {
+      setActionError("Bitte zuerst einen Quellort mit Bestand wählen. Wenn noch kein Bestand vorhanden ist, zuerst Zugang buchen.");
       return;
     }
 
@@ -1532,11 +1586,11 @@ function App() {
 
         const latestSnapshot = await loadSnapshot();
         const newName = bookingNewItemNameDraft.trim().toLocaleLowerCase();
-        const newBarcode = bookingNewItemBarcodeDraft.trim();
+        const newBarcode = normalizeBarcode(bookingNewItemBarcodeDraft);
         const existingItem = latestSnapshot.items.find(
           (item) =>
             item.name.trim().toLocaleLowerCase() === newName ||
-            (newBarcode && item.barcode?.trim() === newBarcode)
+            itemHasBarcode(item, newBarcode)
         );
 
         if (existingItem) {
@@ -1547,7 +1601,8 @@ function App() {
           effectiveItemId = await addItem({
             name: bookingNewItemNameDraft,
             unitTypeId: bookingNewItemUnitTypeId,
-            barcode: bookingNewItemBarcodeDraft,
+            barcode: newBarcode,
+            barcodes: newBarcode ? [newBarcode] : [],
             trackExpiry: bookingNewItemTrackExpiry,
             preferredLocationId: bookingLocationId || undefined,
             lowStockThreshold: Math.max(0, Number(bookingNewItemLowStockThresholdDraft || "0"))
@@ -1567,7 +1622,7 @@ function App() {
           quantity,
           toLocationId: bookingTargetSlotId ? undefined : bookingTargetLocationId || bookingLocationId,
           toSlotId: bookingTargetSlotId || undefined,
-          batchId: wantsExistingBatch ? bookingBatchId : undefined,
+          batchId: wantsExistingBatch ? effectiveBookingBatchId : undefined,
           batchCode: wantsExistingBatch || bookingBatchHasNoCode ? undefined : bookingNewBatchCodeDraft,
           expiryDate: wantsExistingBatch ? undefined : bookingNewBatchExpiryDraft
         });
@@ -1578,7 +1633,7 @@ function App() {
           quantity,
           fromLocationId: bookingSourceSlotId ? undefined : bookingLocationId,
           fromSlotId: bookingSourceSlotId || undefined,
-          batchId: bookingBatchId
+          batchId: effectiveBookingBatchId
         });
       } else if (bookingAction === "transfer") {
         await createMovement({
@@ -1589,7 +1644,7 @@ function App() {
           toLocationId: bookingTargetSlotId ? undefined : bookingTargetLocationId,
           fromSlotId: bookingSourceSlotId || undefined,
           toSlotId: bookingTargetSlotId || undefined,
-          batchId: bookingBatchId
+          batchId: effectiveBookingBatchId
         });
       } else {
         await createMovement({
@@ -1603,7 +1658,7 @@ function App() {
               : undefined,
           fromSlotId: bookingAdjustmentDirection === "decrease" ? bookingSourceSlotId || undefined : undefined,
           toSlotId: bookingAdjustmentDirection === "increase" ? bookingTargetSlotId || undefined : undefined,
-          batchId: wantsExistingBatch ? bookingBatchId : undefined,
+          batchId: wantsExistingBatch ? effectiveBookingBatchId : undefined,
           batchCode: wantsExistingBatch || bookingBatchHasNoCode ? undefined : bookingNewBatchCodeDraft,
           expiryDate: wantsExistingBatch ? undefined : bookingNewBatchExpiryDraft
         });
@@ -1778,6 +1833,12 @@ function App() {
     }
 
     setBookingLocationId(nextLocationId);
+  }
+
+  function scrollToBookingForm() {
+    window.setTimeout(() => {
+      document.querySelector(".booking-form-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
   }
 
   function handleContentScroll(event: CustomEvent<{ scrollTop: number }>) {
@@ -2576,7 +2637,7 @@ function App() {
                                     </label>
                                   ) : null}
 
-                                  <div className="unit-form">
+                                  <div className="unit-form booking-batch-fields">
                                     {bookingBatchMode === "existing" && !bookingUsesNewItem ? (
                                       bookingAllItemBatches.length > 0 ? (
                                         <label className="form-field">
@@ -2956,15 +3017,16 @@ function App() {
                                 onIonInput={(event) => setItemLowStockThresholdDraft(String(event.detail.value ?? ""))}
                               />
                             </IonItem>
-                            <IonItem className="compact-field">
-                              <IonLabel position="stacked">Barcode</IonLabel>
-                              <IonInput
-                                ref={itemBarcodeInputRef}
+                            <label className="form-field">
+                              <span>Barcodes</span>
+                              <textarea
+                                className="app-input app-textarea"
                                 value={itemBarcodeDraft}
-                                placeholder="optional"
-                                onIonInput={(event) => setItemBarcodeDraft(String(event.detail.value ?? ""))}
+                                placeholder="ein Code pro Zeile"
+                                rows={3}
+                                onChange={(event) => setItemBarcodeDraft(event.target.value)}
                               />
-                            </IonItem>
+                            </label>
                           </div>
                           <div className="form-actions">
                             <IonButton
@@ -3153,7 +3215,7 @@ function App() {
                       </div>
                     </section>
 
-                    <section className="surface">
+                    <section className="surface booking-form-anchor">
                       <header className="section-header">
                         <div>
                           <h2>Buchungsdaten</h2>
@@ -3247,20 +3309,32 @@ function App() {
                             </div>
                           </div>
                         ) : (
-                          <label className="form-field">
-                            <span>Artikel</span>
-                            <select
-                              className="app-select"
-                              value={bookingItemId}
-                              onChange={(event) => setBookingItemId(event.target.value)}
-                            >
-                              {bookingItems.map((item) => (
-                                <option key={item.id} value={item.id}>
-                                  {item.name}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
+                          <>
+                            <label className="form-field">
+                              <span>Artikel</span>
+                              <select
+                                className="app-select"
+                                value={bookingItemId}
+                                onChange={(event) => setBookingItemId(event.target.value)}
+                              >
+                                {bookingItems.map((item) => (
+                                  <option key={item.id} value={item.id}>
+                                    {item.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            {bookingItem ? (
+                              <div className="stock-feedback">
+                                <strong>
+                                  Bestand: {bookingSelectedItemQuantity} {bookingItem.unitLabel}
+                                </strong>
+                                <span>
+                                  Am gewählten Ort: {bookingSelectedLocationQuantity} {bookingItem.unitLabel}
+                                </span>
+                              </div>
+                            ) : null}
+                          </>
                         )}
                         <label className="form-field">
                           <span>Ort</span>
@@ -3305,21 +3379,29 @@ function App() {
 
                         {(bookingAction === "out" || bookingAction === "transfer" || (bookingAction === "adjustment" && bookingAdjustmentDirection === "decrease")) ? (
                           bookingSourceSlotOptions.length > 0 ? (
-                            <label className="form-field">
-                              <span>Quellslot</span>
-                              <select
-                                ref={bookingSourceSlotRef}
-                                className="app-select"
-                                value={bookingSourceSlotId}
-                                onChange={(event) => setBookingSourceSlotId(event.target.value)}
-                              >
-                                {bookingSourceSlotOptions.map((slot) => (
-                                  <option key={slot.id} value={slot.id}>
-                                    {slot.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
+                            <>
+                              <label className="form-field">
+                                <span>Quellort / Slot</span>
+                                <select
+                                  ref={bookingSourceSlotRef}
+                                  className="app-select"
+                                  value={bookingSourceSlotId}
+                                  onChange={(event) => setBookingSourceSlotId(event.target.value)}
+                                >
+                                  {bookingSourceSlotOptions.map((slot) => (
+                                    <option key={slot.id} value={slot.id}>
+                                      {slot.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <div className="booking-feedback">
+                                <strong>Quelle: {selectedSourceOption?.label ?? "Direkt am Ort"}</strong>
+                                <span>
+                                  {bookingSelectedLocationQuantity} {bookingItem?.unitLabel ?? ""} am gewählten Ort verfügbar
+                                </span>
+                              </div>
+                            </>
                           ) : (
                             <div className="empty-state">Kein Bestand für diesen Artikel im gewählten Ort.</div>
                           )
@@ -3388,6 +3470,10 @@ function App() {
                             ) : (
                               <div className="empty-state">Im Zielort sind keine Slots angelegt. Die Umbuchung kann direkt auf den Zielort laufen.</div>
                             )}
+                            <div className="booking-feedback">
+                              <strong>Ziel: {selectedTargetLocation?.name ?? bookingLocation?.name ?? "Ort"}</strong>
+                              <span>{selectedTargetSlot?.label ?? "Direkt auf den Ort"}</span>
+                            </div>
                           </>
                         ) : null}
 
@@ -3414,27 +3500,39 @@ function App() {
                         ) : null}
 
                         {bookingBatchMode === "existing" || mustUseExistingBookingBatch ? (
-                          (mustUseExistingBookingBatch ? bookingAvailableBatches : bookingAllItemBatches).length > 0 ? (
-                            <label className="form-field">
-                              <span>Bestehende Charge</span>
-                              <select
-                                ref={bookingBatchSelectRef}
-                                className="app-select"
-                                value={bookingBatchId}
-                                onChange={(event) => setBookingBatchId(event.target.value)}
-                              >
-                                {(mustUseExistingBookingBatch ? bookingAvailableBatches : bookingAllItemBatches).map((batch) => (
-                                  <option key={batch.id} value={batch.id}>
-                                    {batch.batchCode}{"quantity" in batch ? ` · ${batch.quantity}` : ""}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
+                          bookingExistingBatchOptions.length > 0 ? (
+                            <>
+                              <label className="form-field">
+                                <span>Bestehende Charge</span>
+                                <select
+                                  ref={bookingBatchSelectRef}
+                                  className="app-select"
+                                  value={effectiveBookingBatchId}
+                                  onChange={(event) => setBookingBatchId(event.target.value)}
+                                >
+                                  {bookingExistingBatchOptions.map((batch) => (
+                                    <option key={batch.id} value={batch.id}>
+                                      {batch.batchCode}{"quantity" in batch ? ` · ${batch.quantity}` : ""}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              {selectedBookingBatch ? (
+                                <div className="booking-feedback">
+                                  <strong>Charge gewählt: {selectedBookingBatch.batchCode}</strong>
+                                  <span>
+                                    {"quantity" in selectedBookingBatch
+                                      ? `${selectedBookingBatch.quantity} am gewählten Ort verfügbar`
+                                      : "Bestehende Charge wird verwendet"}
+                                  </span>
+                                </div>
+                              ) : null}
+                            </>
                           ) : (
                             <div className="empty-state">Keine passende bestehende Charge verfügbar.</div>
                           )
                         ) : (
-                          <div className="unit-form">
+                          <div className="unit-form booking-batch-fields">
                             <label className="form-field batch-code-choice">
                               <span>Chargencode</span>
                               <div className="toggle-pills toggle-pills--full">
@@ -3529,7 +3627,7 @@ function App() {
                           <span>Charge</span>
                           <b>
                             {bookingBatchMode === "existing" || mustUseExistingBookingBatch
-                              ? (mustUseExistingBookingBatch ? bookingAvailableBatches : bookingAllItemBatches).find((batch) => batch.id === bookingBatchId)?.batchCode ?? "bitte wählen"
+                              ? selectedBookingBatch?.batchCode ?? "bitte wählen"
                               : bookingBatchHasNoCode
                                 ? "Keine Charge"
                                 : bookingNewBatchCodeDraft || "neu anlegen"}
@@ -3560,7 +3658,11 @@ function App() {
                             key={`book-recent-${item.id}`}
                             type="button"
                             className="shortcut-card"
-                            onClick={() => setBookingItemId(item.id)}
+                            onClick={() => {
+                              setBookingItemId(item.id);
+                              setActionSuccess(`${item.name} ist für die Buchung ausgewählt.`);
+                              scrollToBookingForm();
+                            }}
                           >
                             <div className="shortcut-card__top">
                               <IonIcon icon={timeOutline} />
@@ -3575,7 +3677,11 @@ function App() {
                             key={`book-fav-item-${item.id}`}
                             type="button"
                             className="shortcut-card"
-                            onClick={() => setBookingItemId(item.id)}
+                            onClick={() => {
+                              setBookingItemId(item.id);
+                              setActionSuccess(`${item.name} ist für die Buchung ausgewählt.`);
+                              scrollToBookingForm();
+                            }}
                           >
                             <div className="shortcut-card__top">
                               <IonIcon icon={star} />
@@ -3590,7 +3696,11 @@ function App() {
                             key={`book-fav-loc-${location.id}`}
                             type="button"
                             className="shortcut-card"
-                            onClick={() => setBookingLocationId(location.id)}
+                            onClick={() => {
+                              setBookingLocationId(location.id);
+                              setActionSuccess(`${location.name} ist als Ort ausgewählt.`);
+                              scrollToBookingForm();
+                            }}
                           >
                             <div className="shortcut-card__top">
                               <IonIcon icon={star} />

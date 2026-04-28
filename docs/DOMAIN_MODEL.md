@@ -6,6 +6,7 @@
 - `StorageSlot`: optionales nummeriertes Regal, Fach oder eine Lade innerhalb eines Orts
 - `StorageSlot.kind`: frei definierbarer Slot-Typ wie `Regal`, `Lade`, `Kiste`
 - `Item`: ein Artikel, Gebinde, Gefaess oder Verbrauchsmaterial
+- `Item.barcodes`: optionale Liste mehrerer Barcode- oder QR-Codes fuer denselben Artikel
 - `Item.preferredLocationId`: bevorzugter Standard-Ort fuer schnellere Buchung
 - `Item.lowStockThreshold`: Schwellwert, ab dem der Bestand als niedrig gilt
 - `UnitType`: frei definierbare Einheit wie `Stk`, `Kiste`, `Flasche`
@@ -20,6 +21,7 @@
 - Slot-Typen sind nicht fest verdrahtet, sondern ueber Einstellungen pflegbar
 - Ein `Item` kann direkt an einem Ort oder genauer in mehreren Slots liegen
 - Jedes `Item` referenziert genau einen `UnitType`
+- Ein `Item` kann mehrere Barcodes haben; `Item.barcode` bleibt als erster Code fuer alte Daten und einfache Listen erhalten
 - Ein `Item` kann einen bevorzugten Ort fuer schnellere Auswahl im Buchungsflow haben
 - Ein `Item` kann einen eigenen Mindestbestand fuer Warnungen haben
 - Ablaufdatum und Charge sind fuer fast alle Artikel relevant; der Chargencode kann bewusst als nicht vorhanden markiert werden
@@ -32,6 +34,7 @@
 Ort: `Teelager`  
 Slot: `Regal 3` oder `Ohne Slot`  
 Artikel: `Kamillentee 20er`  
+Barcodes: `123456789012`, `998877665544`  
 Charge: `KT-2026-04` oder `Keine Charge`  
 Ablaufdatum: `2027-04-30`
 

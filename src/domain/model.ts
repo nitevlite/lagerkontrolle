@@ -27,6 +27,7 @@ export type Item = {
   name: string;
   unitTypeId: EntityId;
   barcode?: string;
+  barcodes?: string[];
   trackExpiry: boolean;
   preferredLocationId?: EntityId;
   lowStockThreshold: number;
