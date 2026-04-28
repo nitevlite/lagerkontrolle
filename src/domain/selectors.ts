@@ -93,7 +93,16 @@ const fullDateFormatter = new Intl.DateTimeFormat("de-AT", {
 });
 
 function startOfToday() {
-  return new Date("2026-04-26T00:00:00.000Z");
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+}
+
+function localDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function daysUntil(dateIso: string) {
@@ -116,7 +125,7 @@ function getTone(daysUntilExpiry: number | null, warningDays: number): "ok" | "w
 }
 
 function relativeMovementLabel(isoDate: string) {
-  const diffMinutes = Math.round((new Date("2026-04-26T09:24:00.000Z").getTime() - new Date(isoDate).getTime()) / 60000);
+  const diffMinutes = Math.max(0, Math.round((Date.now() - new Date(isoDate).getTime()) / 60000));
   if (diffMinutes < 60) {
     return `vor ${diffMinutes} Min.`;
   }
@@ -130,7 +139,12 @@ function relativeMovementLabel(isoDate: string) {
 function movementDayLabel(isoDate: string) {
   const date = new Date(isoDate);
   const time = date.toLocaleTimeString("de-AT", { hour: "2-digit", minute: "2-digit" });
-  return `Heute, ${time}`;
+  const todayKey = localDateKey();
+  const movementKey = localDateKey(date);
+  if (movementKey === todayKey) {
+    return `Heute, ${time}`;
+  }
+  return `${date.toLocaleDateString("de-AT", { day: "2-digit", month: "2-digit" })}, ${time}`;
 }
 
 function buildMaps(snapshot: DomainSnapshot) {
@@ -333,7 +347,7 @@ export function buildViewModel(snapshot: DomainSnapshot): AppViewModel {
     {
       id: "movements",
       label: "Bewegungen",
-      value: String(snapshot.movements.filter((movement) => movement.createdAt.startsWith("2026-04-26")).length),
+      value: String(snapshot.movements.filter((movement) => localDateKey(new Date(movement.createdAt)) === localDateKey()).length),
       detail: "heute",
       tone: "good"
     },

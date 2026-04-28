@@ -86,6 +86,13 @@ function toneClass(tone: "critical" | "warning" | "neutral" | "good") {
   return `tone-${tone}`;
 }
 
+function localDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 type BarcodeDetectorCtor = new (options?: { formats?: string[] }) => {
   detect: (source: ImageBitmapSource) => Promise<Array<{ rawValue?: string }>>;
 };
@@ -783,17 +790,18 @@ function App() {
   }, [viewModel]);
 
   const analyticsMovementSeries = useMemo(() => {
-    const today = new Date("2026-04-26T00:00:00.000Z");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const dayKeys = Array.from({ length: 7 }, (_, index) => {
       const date = new Date(today);
-      date.setUTCDate(today.getUTCDate() - (6 - index));
-      return date.toISOString().slice(0, 10);
+      date.setDate(today.getDate() - (6 - index));
+      return localDateKey(date);
     });
 
     const counts = new Map(dayKeys.map((key) => [key, 0]));
 
     for (const movement of snapshotState?.movements ?? []) {
-      const key = movement.createdAt.slice(0, 10);
+      const key = localDateKey(new Date(movement.createdAt));
       if (counts.has(key)) {
         counts.set(key, (counts.get(key) ?? 0) + 1);
       }

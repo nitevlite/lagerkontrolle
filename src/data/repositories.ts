@@ -332,6 +332,9 @@ export async function addStorageSlot(input: {
 }) {
   const number = Math.max(1, input.number);
   const kind = input.kind.trim();
+  if (!kind) {
+    throw new Error("Bitte einen Slot-Typ eingeben.");
+  }
   const label = `${kind} ${number}`;
   const duplicate = await db.slots
     .where("locationId")
@@ -382,6 +385,14 @@ export async function deleteLocation(locationId: string) {
   const slotCount = await db.slots.where("locationId").equals(locationId).count();
   if (slotCount > 0) {
     throw new Error("Ort kann erst gelöscht werden, wenn alle Regale und Laden entfernt sind.");
+  }
+
+  const movement = await db.movements
+    .filter((entry) => entry.fromLocationId === locationId || entry.toLocationId === locationId)
+    .first();
+
+  if (movement) {
+    throw new Error("Ort kann nicht gelöscht werden, weil bereits Bewegungen darauf gebucht wurden.");
   }
 
   await markEntityDeleted("location", locationId);
