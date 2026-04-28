@@ -12,7 +12,7 @@ class LagerkontrolleDatabase extends Dexie {
   syncMeta!: EntityTable<SyncMetadata, "id">;
 
   constructor() {
-    super("lagerkontrolle-db");
+    super("lagerkontrolle-db-v2");
     this.version(1).stores({
       locations: "id, name",
       slots: "id, locationId, sortOrder",
