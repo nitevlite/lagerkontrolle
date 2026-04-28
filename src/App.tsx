@@ -648,7 +648,9 @@ function App() {
 
     for (const movement of snapshotState?.movements ?? []) {
       const current = quantities.get(movement.batchId) ?? 0;
-      const delta = movement.toSlotId || movement.toLocationId ? movement.quantity : -movement.quantity;
+      const incoming = movement.toSlotId || movement.toLocationId ? movement.quantity : 0;
+      const outgoing = movement.fromSlotId || movement.fromLocationId ? movement.quantity : 0;
+      const delta = incoming - outgoing;
       quantities.set(movement.batchId, current + delta);
     }
 
