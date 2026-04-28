@@ -2,7 +2,7 @@
 
 ## Empfehlung
 
-Die aktuelle Implementierung ist eine installierbare PWA mit lokalem Offline-Speicher und vorbereiteter Repository-Schicht fuer spaetere Synchronisation.
+Die aktuelle Implementierung ist eine installierbare PWA mit lokalem Offline-Speicher, Repository-Schicht und vorbereitetem CouchDB-Sync.
 
 Empfohlener Open-Source-Stack:
 
@@ -11,7 +11,7 @@ Empfohlener Open-Source-Stack:
 - `Ionic` fuer mobile, schnelle UI-Bausteine
 - `Dexie` auf `IndexedDB` fuer lokale Offline-Daten
 - Repository-Schicht als Trennung zwischen UI und Speicherung
-- spaeterer Sync-Adapter fuer Mehrgeraete-Synchronisation
+- CouchDB-Sync-Adapter fuer Mehrgeraete-Synchronisation
 - `ZXing` oder `BarcodeDetector` fuer Barcode- und QR-Scan
 - `Workbox` fuer Offline-Caching
 - `Vitest` + `Testing Library`
@@ -22,7 +22,7 @@ Empfohlener Open-Source-Stack:
 - direkt auf Handy und Tablet installierbar
 - sehr schnelle Iteration
 - offline schon heute ohne Zusatzinfrastruktur
-- klarer Migrationspfad zu spaeterem Sync durch getrennte Repository-Schicht
+- klarer Offline-Betrieb mit optionalem CouchDB-Sync
 - spaeter per `Capacitor` als native Android-App verpackbar
 - Scan ist im Web-Stack realistisch umsetzbar
 
@@ -30,17 +30,11 @@ Empfohlener Open-Source-Stack:
 
 ### Aktueller Stand
 
-Die App speichert derzeit lokal in `IndexedDB`. Der aktuelle Fokus liegt bewusst auf Bedienung, Datenmodell und robuster Offline-Nutzung. Synchronisation ist weiter geplant, aber noch nicht implementiert.
+Die App speichert lokal in `IndexedDB`. Mehrgeraete-Sync ist ueber CouchDB vorbereitet und muss fuer den echten Betrieb mit einer erreichbaren CouchDB-Instanz getestet werden.
 
 ### Naechste Architekturentscheidung
 
-Vor Ticket `#8` muss entschieden werden, ob der Sync ueber:
-
-- einen eigenen API-Dienst
-- `CouchDB`-kompatible Replikation
-- oder einen anderen self-hosted Sync-Ansatz
-
-laufen soll.
+Vor produktiver Mehrgeraete-Nutzung muss entschieden werden, welche CouchDB-Instanz betrieben wird und wie Backup, Benutzer und Zugriffsrechte organisiert werden.
 
 ### Option C: Flutter
 

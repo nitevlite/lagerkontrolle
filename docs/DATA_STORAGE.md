@@ -28,6 +28,14 @@ Die lokalen Daten können verschwinden, wenn:
 - die App in einem anderen Browser geöffnet wird
 - ein anderes Gerät verwendet wird
 
+## Lokale Daten zurücksetzen
+
+In der App kann unter `Dashboard -> Lokale Daten -> Lokale Daten löschen` der lokale Bestand dieses Geräts gelöscht werden. Dabei werden Orte, Slots, Artikel, Chargen und Bewegungen entfernt. Standard-Einheiten und Slot-Typen werden neu angelegt.
+
+Ein normales App-Update löscht lokale Daten nicht automatisch. Bereits weitergegebene Handys behalten ihren lokalen Datenstand, bis er dort manuell gelöscht wird.
+
+Unter `Dashboard -> Lokale Daten` kann außerdem ein JSON-Backup exportiert und wieder importiert werden. Der CSV-Export ist für den aktuellen Bestand gedacht und nicht als Wiederherstellungsformat.
+
 ## Aktueller Sync-Stand
 
 Mehrgeräte-Synchronisation ist jetzt für `CouchDB` vorbereitet. Dafür wird ein zentraler Server benötigt, und jedes Gerät synchronisiert seine lokalen Daten per Pull/Push. Ohne konfigurierte CouchDB bleibt die App weiter rein lokal.

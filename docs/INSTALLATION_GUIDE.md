@@ -23,7 +23,9 @@ Empfohlen ist GitHub Pages, weil die App dann über `https` läuft und als PWA i
 - Bei jedem Push auf `main` wird GitHub Pages neu gebaut.
 - Die PWA lädt den neuen Stand beim nächsten Öffnen oder Reload.
 - Wenn ein Gerät einen alten Stand zeigt: Browser-Tab schließen und die App neu öffnen.
+- Ein Update löscht lokale Daten auf dem Handy nicht automatisch.
+- Testdaten aus einer alten Installation können in der App unter `Dashboard -> Lokale Daten -> Lokale Daten löschen` entfernt werden. Standard-Einheiten und Slot-Typen bleiben danach erhalten.
 
 ## 4. Wichtiger Hinweis
 
-Aktuell kann Mehrgeräte-Sync über CouchDB eingerichtet werden. Die genaue Einrichtung steht in `docs/SYNC_SETUP.md`. Ohne CouchDB bleibt jedes Gerät weiterhin lokal für sich.
+Mehrgeräte-Sync kann über CouchDB eingerichtet werden. Die genaue Einrichtung steht in `docs/SYNC_SETUP.md`. Ohne CouchDB bleibt jedes Gerät weiterhin lokal für sich.

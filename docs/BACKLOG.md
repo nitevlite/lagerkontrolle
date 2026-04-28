@@ -23,15 +23,15 @@
 
 - Favoriten und letzte Eingaben
 - Warnliste fuer kritische Ablaufdaten
-- CSV-Export
+- CSV-Export fuer aktuellen Bestand
 - Startbildschirm mit wichtigsten Orten
 - Konfliktanzeige oder Konfliktloesung fuer Sync
 - Charts fuer Analyse und Trends
-- Backup- und Restore-Flow im UI
+- JSON-Backup-Export und Restore im UI
 
 ## P2
 
 - einfache Benutzerverwaltung
 - Inventurmodus
-- Mindestbestand und Warnungen
 - Excel-Import
+- QR-Code-Druck fuer Orte und Slots

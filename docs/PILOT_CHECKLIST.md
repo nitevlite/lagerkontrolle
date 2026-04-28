@@ -15,14 +15,16 @@
 - Buchung für Zugang, Abgang, Umbuchung und Korrektur funktioniert
 - Kamera-Scan funktioniert auf Zielgeräten oder der manuelle Fallback ist akzeptabel
 - Dashboard, Orte, Artikel und Analyse sind mobil lesbar
+- neue Installation enthält keine Testartikel und keine Testorte
+- lokaler Reset löscht alte Testdaten und behält Standard-Stammdaten
 
 ## Betriebsrisiken aktuell
 
-- Kein Geräte-Sync zwischen mehreren Handys
+- Geräte-Sync ist nur mit eingerichteter und getesteter CouchDB nutzbar
 - Kein echter Backup-/Restore-Flow im UI
 - Kein Excel-Import im Produktivfluss
 - Lokale Daten hängen am jeweiligen Browser-Speicher
 
 ## Go-Live nur für Pilot
 
-Aktueller Stand ist geeignet für Einzelgerät- oder kontrollierte Testläufe. Für echten Mehrnutzerbetrieb muss zuerst Ticket `#8` umgesetzt werden.
+Aktueller Stand ist geeignet für Einzelgerät- oder kontrollierte Testläufe. Für echten Mehrnutzerbetrieb muss CouchDB eingerichtet und mit mindestens zwei echten Geräten geprüft werden.

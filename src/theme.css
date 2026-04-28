@@ -97,6 +97,13 @@ ion-content.shell::part(scroll) {
   margin-bottom: 0.9rem;
 }
 
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .section-header h1,
 .section-header h2,
 .section-header span,
@@ -197,6 +204,21 @@ ion-content.shell::part(scroll) {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
   gap: 0.45rem;
+}
+
+.mobile-nav-toggle {
+  display: none;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #f6f8fb;
+  color: var(--text);
+  font: inherit;
+  font-weight: 800;
 }
 
 .view-switcher__button {
@@ -573,6 +595,13 @@ ion-content.shell::part(scroll) {
   margin-bottom: 0.8rem;
 }
 
+.scan-sheet__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
 .scan-viewfinder {
   overflow: hidden;
   border-radius: 18px;
@@ -600,6 +629,42 @@ ion-content.shell::part(scroll) {
   display: grid;
   gap: 0.7rem;
   margin-top: 0.9rem;
+}
+
+.help-box {
+  display: grid;
+  gap: 0.3rem;
+  margin-top: 0.85rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid rgba(15, 98, 254, 0.16);
+  border-radius: 14px;
+  background: rgba(15, 98, 254, 0.06);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.help-box strong {
+  color: var(--text);
+}
+
+.help-box--compact {
+  margin-top: 0;
+}
+
+.recent-scan-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .stock-grid {
@@ -830,6 +895,12 @@ ion-content.shell::part(scroll) {
     padding-top: 1.2rem;
   }
 
+  .surface--nav-hidden {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
   .metric-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -853,6 +924,10 @@ ion-content.shell::part(scroll) {
 }
 
 @media (max-width: 767px) {
+  .shell__inner {
+    padding-top: 0.45rem;
+  }
+
   .metric-grid,
   .action-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -866,6 +941,15 @@ ion-content.shell::part(scroll) {
 
   .section-header--stack-mobile {
     flex-direction: column;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .header-actions .primary-button {
+    flex: 1 1 9rem;
   }
 
   .section-header--stack-mobile .primary-button {
@@ -923,6 +1007,43 @@ ion-content.shell::part(scroll) {
 
   .view-switcher {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .mobile-nav-toggle {
+    display: flex;
+  }
+
+  .surface--nav {
+    padding: 0.45rem;
+  }
+
+  .surface--nav-hidden {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .surface--nav-hidden .view-switcher,
+  .surface--nav:not(:has(.view-switcher--expanded)) .view-switcher {
+    display: none;
+  }
+
+  .view-switcher--expanded {
+    display: grid;
+    margin-top: 0.45rem;
+  }
+
+  .editor-grid,
+  .unit-form,
+  .settings-row,
+  .booking-form-stack {
+    gap: 0.95rem;
+  }
+
+  .compact-field,
+  .app-select,
+  .app-input {
+    margin-top: 0.05rem;
   }
 
   .surface--nav {

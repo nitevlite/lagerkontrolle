@@ -1,6 +1,9 @@
 import { db } from "./db";
 import type { AppSettings, DomainSnapshot, MovementKind } from "../domain/model";
+import { seedSnapshot } from "../domain/seed";
 import { createDefaultSyncConfig, markEntityChanged, markEntityDeleted } from "./sync";
+
+const defaultSlotTypeNames = ["Regal", "Lade", "Schrank", "Fach", "Kiste", "Box", "Kühlschrank", "Gefrierschrank", "Palette"];
 
 function buildDefaultSettings(): AppSettings {
   return {
@@ -9,9 +12,61 @@ function buildDefaultSettings(): AppSettings {
     reminderRepeatDays: 3,
     favoriteLocationIds: [],
     favoriteItemIds: [],
-    slotTypeNames: ["Regal", "Lade"],
+    slotTypeNames: defaultSlotTypeNames,
     sync: createDefaultSyncConfig()
   };
+}
+
+export async function resetToStandardData() {
+  await db.transaction("rw", [db.locations, db.slots, db.unitTypes, db.items, db.batches, db.movements, db.settings, db.syncMeta], async () => {
+    await db.locations.clear();
+    await db.slots.clear();
+    await db.unitTypes.clear();
+    await db.items.clear();
+    await db.batches.clear();
+    await db.movements.clear();
+    await db.settings.clear();
+    await db.syncMeta.clear();
+
+    await db.unitTypes.bulkPut(seedSnapshot.unitTypes);
+    await db.settings.put({
+      ...seedSnapshot.settings,
+      sync: {
+        ...seedSnapshot.settings.sync,
+        deviceId: crypto.randomUUID()
+      }
+    });
+  });
+  await markEntityChanged("settings", "default");
+}
+
+export async function restoreSnapshot(input: DomainSnapshot) {
+  await db.transaction("rw", [db.locations, db.slots, db.unitTypes, db.items, db.batches, db.movements, db.settings, db.syncMeta], async () => {
+    await db.locations.clear();
+    await db.slots.clear();
+    await db.unitTypes.clear();
+    await db.items.clear();
+    await db.batches.clear();
+    await db.movements.clear();
+    await db.settings.clear();
+    await db.syncMeta.clear();
+
+    await db.locations.bulkPut(input.locations);
+    await db.slots.bulkPut(input.slots);
+    await db.unitTypes.bulkPut(input.unitTypes);
+    await db.items.bulkPut(input.items);
+    await db.batches.bulkPut(input.batches);
+    await db.movements.bulkPut(input.movements);
+    await db.settings.put({
+      ...input.settings,
+      sync: {
+        ...input.settings.sync,
+        deviceId: input.settings.sync.deviceId || crypto.randomUUID()
+      }
+    });
+  });
+
+  await markEntityChanged("settings", "default");
 }
 
 async function getSlotBatchQuantity(batchId: string, slotId: string) {
@@ -131,6 +186,28 @@ export async function updateItem(input: {
     lowStockThreshold: Math.max(0, Number(input.lowStockThreshold || 0))
   });
   await markEntityChanged("item", input.id);
+}
+
+export async function deleteItem(itemId: string) {
+  const relatedBatches = await db.batches.where("itemId").equals(itemId).toArray();
+  const relatedBatchIds = new Set(relatedBatches.map((batch) => batch.id));
+
+  await db.transaction("rw", db.items, db.batches, db.movements, db.syncMeta, async () => {
+    const movements = await db.movements.filter((movement) => relatedBatchIds.has(movement.batchId)).toArray();
+
+    for (const movement of movements) {
+      await markEntityDeleted("movement", movement.id);
+      await db.movements.delete(movement.id);
+    }
+
+    for (const batch of relatedBatches) {
+      await markEntityDeleted("batch", batch.id);
+      await db.batches.delete(batch.id);
+    }
+
+    await markEntityDeleted("item", itemId);
+    await db.items.delete(itemId);
+  });
 }
 
 export async function addBatch(input: {

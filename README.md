@@ -82,16 +82,21 @@ npm run build
 ## Aktueller Stand
 
 - modernes mobiles Frontend mit kompakter Navigation ohne Hero-Header
+- App startet direkt in der Buchung; die mobile Navigation ist standardmaessig eingeklappt
 - Orte und Artikel sind als Listen mit Filtersuche und separatem Detailscreen aufgebaut
+- neue Installationen starten ohne Testorte, Testartikel, Chargen oder Bewegungen
+- Standard-Einheiten und sinnvolle Slot-Typen sind weiterhin vorbereitet
 - Orte, Slots und freie Slot-Typen koennen lokal angelegt, umbenannt und leere Eintraege geloescht werden
-- Artikel mit Einheit, Barcode, Ablaufpflicht und bevorzugtem Ort koennen angelegt und bearbeitet werden
+- Artikel mit Einheit, Barcode, Ablaufpflicht und bevorzugtem Ort koennen angelegt, bearbeitet, gescannt und geloescht werden
 - Chargen mit Ablaufdatum koennen pro Artikel gepflegt werden
-- Buchung speichert jetzt echte lokale Bewegungen fuer Zugang, Abgang, Umbuchung und Korrektur
+- Buchung speichert echte lokale Bewegungen fuer Zugang, Abgang, Umbuchung und Korrektur
 - Buchung fuehrt mobil direkt ueber Buchungsdaten mit Artikel-Dropdown, Ort-Dropdown, Slot, Charge und Menge
-- im Zugang kann direkt ein neuer Artikel mit Minimalstammdaten angelegt und sofort eingebucht werden
-- Scan ist im Buchungsflow und im Artikel-Barcodefeld aktiv, mit manueller Eingabe als Fallback falls Live-Scan nicht verfuegbar ist
+- im Zugang kann direkt ein neuer Artikel mit Minimalstammdaten angelegt und sofort eingebucht werden; unbekannte Barcodes werden dabei uebernommen
+- Scan ist im Buchungsflow, im Ort-Detail, im Artikelbereich und im Artikel-Barcodefeld aktiv, mit manueller Eingabe als Fallback
+- Orte koennen als Scan-Kontext vorausgewaehlt werden; fuer mehrere Produkte gibt es einen Sammel-Scan-Workflow
 - Favoriten fuer Orte und Artikel bleiben lokal gespeichert
 - Buchung und Dashboard priorisieren Favoriten und zuletzt genutzte Eintraege
+- Dashboard bietet lokale Datenbereinigung, JSON-Backup/Restore und CSV-Bestandsexport
 - Analyse zeigt mobile Charts fuer Bewegungen, Ablauf-Verteilung, Top-Orte und Top-Artikel plus priorisierte Risiko-Liste
 - Dashboard zeigt Ablaufwarnungen und niedrige Bestaende getrennt
 - mobile Listen und Analysekarten sind fuer Handy dichter und lesbarer nachgezogen
@@ -100,8 +105,8 @@ npm run build
 - Bestandsableitung aus Bewegungen statt aus fixen Direktwerten
 - erste Pilot-Haertung gestartet: Build-Splitting fuer Storage und UI-Bloecke ist vorbereitet
 - GitHub-Pages-Deploy fuer HTTPS-Verteilung und PWA-Installation ist vorbereitet
-- CouchDB-Sync-Konfiguration und sichtbarer Sync-Status sind im Dashboard eingebaut
+- CouchDB-Sync-Konfiguration, sichtbarer Sync-Status und kurze Feld-Erklaerung sind im Dashboard eingebaut
 
 ## Naechster technischer Schritt
 
-Frontend, Domain-Modell, lokale Persistenz sowie schnelle Orts-, Artikel- und Buchungsfluesse sind umgesetzt. Als Naechstes folgt Synchronisation zwischen mehreren Geraeten.
+Frontend, Domain-Modell, lokale Persistenz, schnelle Orts-, Artikel- und Buchungsfluesse sowie CouchDB-Sync sind vorbereitet. Als Naechstes sollte der Sync mit echten Geraeten und einer echten CouchDB-Instanz getestet werden.

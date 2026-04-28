@@ -16,13 +16,18 @@ import {
 import {
   analyticsOutline,
   barcodeOutline,
+  chevronDownOutline,
   cubeOutline,
+  downloadOutline,
   gridOutline,
   layersOutline,
   pricetagOutline,
+  refreshOutline,
+  searchOutline,
   star,
   starOutline,
   timeOutline,
+  trashOutline,
   warningOutline
 } from "ionicons/icons";
 import { ensureSeedData } from "./data/bootstrap";
@@ -34,6 +39,7 @@ import {
   addStorageSlot,
   addUnitType,
   createMovement,
+  deleteItem,
   deleteSlotType,
   deleteUnitType,
   deleteLocation,
@@ -41,6 +47,8 @@ import {
   loadSnapshot,
   renameLocation,
   renameSlotType,
+  resetToStandardData,
+  restoreSnapshot,
   toggleFavoriteItem,
   toggleFavoriteLocation,
   updateItem,
@@ -83,10 +91,23 @@ function getBarcodeDetector() {
   return (globalThis as unknown as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector;
 }
 
+function downloadTextFile(filename: string, content: string, type: string) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function App() {
-  const [activeView, setActiveView] = useState<ViewKey>("locations");
-  const [navVisible, setNavVisible] = useState(true);
+  const [activeView, setActiveView] = useState<ViewKey>("booking");
+  const [navVisible, setNavVisible] = useState(false);
+  const [navExpanded, setNavExpanded] = useState(false);
   const [selectedLocationId, setSelectedLocationId] = useState("");
+  const [pendingReset, setPendingReset] = useState(false);
+  const [pendingDeleteItemId, setPendingDeleteItemId] = useState<string | null>(null);
   const [expiryFilterDays, setExpiryFilterDays] = useState<number>(10);
   const [warningDaysDraft, setWarningDaysDraft] = useState("10");
   const [reminderDaysDraft, setReminderDaysDraft] = useState("3");
@@ -100,6 +121,7 @@ function App() {
   const [slotTypeEditDraft, setSlotTypeEditDraft] = useState("");
   const [itemDetailId, setItemDetailId] = useState<string | null>(null);
   const [itemFilterDraft, setItemFilterDraft] = useState("");
+  const [itemQuickFilter, setItemQuickFilter] = useState<"all" | "no-barcode" | "low" | "expiry">("all");
   const [selectedItemId, setSelectedItemId] = useState("");
   const [itemNameDraft, setItemNameDraft] = useState("");
   const [itemBarcodeDraft, setItemBarcodeDraft] = useState("");
@@ -127,9 +149,14 @@ function App() {
   const [bookingNewBatchCodeDraft, setBookingNewBatchCodeDraft] = useState("");
   const [bookingNewBatchExpiryDraft, setBookingNewBatchExpiryDraft] = useState("");
   const [bookingAdjustmentDirection, setBookingAdjustmentDirection] = useState<"increase" | "decrease">("increase");
-  const [scanMode, setScanMode] = useState<"booking-item" | "item-barcode" | "booking-new-item-barcode" | null>(null);
+  const [scanMode, setScanMode] = useState<"booking-item" | "item-barcode" | "booking-new-item-barcode" | "item-search" | null>(null);
   const [scanMessage, setScanMessage] = useState<string | null>(null);
   const [scanInputDraft, setScanInputDraft] = useState("");
+  const [scanPaused, setScanPaused] = useState(false);
+  const [scanNonce, setScanNonce] = useState(0);
+  const [recentScans, setRecentScans] = useState<string[]>([]);
+  const [batchScanMode, setBatchScanMode] = useState(false);
+  const [bookingPinnedLocationId, setBookingPinnedLocationId] = useState<string | null>(null);
   const [unitName, setUnitName] = useState("");
   const [unitShortCode, setUnitShortCode] = useState("");
   const [unitDescription, setUnitDescription] = useState("");
@@ -157,6 +184,7 @@ function App() {
   const bookingBatchSelectRef = useRef<HTMLSelectElement | null>(null);
   const bookingBatchCodeRef = useRef<HTMLInputElement | null>(null);
   const bookingQuantityInputRef = useRef<HTMLIonInputElement | null>(null);
+  const backupInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -187,6 +215,7 @@ function App() {
           lastSyncedAt: snapshot.settings.sync.lastSyncedAt
         });
         setSelectedLocationId((current) => current || snapshot.locations[0]?.id || "");
+        setBookingLocationId((current) => current || snapshot.locations[0]?.id || "");
       } catch (error) {
         if (cancelled) {
           return;
@@ -201,6 +230,7 @@ function App() {
         setSyncPasswordDraft(seedSnapshot.settings.sync.password ?? "");
         setSyncDeviceLabelDraft(seedSnapshot.settings.sync.deviceLabel);
         setSelectedLocationId((current) => current || seedSnapshot.locations[0]?.id || "");
+        setBookingLocationId((current) => current || seedSnapshot.locations[0]?.id || "");
         setLoadError(error instanceof Error ? error.message : "Lokale Daten konnten nicht geladen werden.");
       } finally {
         if (!cancelled) {
@@ -384,7 +414,7 @@ function App() {
           }
 
           try {
-            const results = await detector.detect(videoRef.current);
+            const results = scanPaused ? [] : await detector.detect(videoRef.current);
             const value = results.find((result) => result.rawValue?.trim())?.rawValue?.trim();
 
             if (value) {
@@ -424,7 +454,7 @@ function App() {
         scanStreamRef.current = null;
       }
     };
-  }, [scanMode]);
+  }, [scanMode, scanPaused, scanNonce]);
 
   const visibleAlerts = useMemo(
     () =>
@@ -707,16 +737,29 @@ function App() {
 
   const filteredItems = useMemo(() => {
     const query = itemFilterDraft.trim().toLocaleLowerCase();
+    const quickFiltered = sortedItemSummaries.filter((item) => {
+      if (itemQuickFilter === "no-barcode") {
+        return item.barcode === "kein Code";
+      }
+      if (itemQuickFilter === "low") {
+        return item.lowStockThreshold > 0 && item.totalQuantity <= item.lowStockThreshold;
+      }
+      if (itemQuickFilter === "expiry") {
+        return item.trackExpiry;
+      }
+      return true;
+    });
+
     if (!query) {
-      return sortedItemSummaries;
+      return quickFiltered;
     }
 
-    return sortedItemSummaries.filter(
+    return quickFiltered.filter(
       (item) =>
         item.name.toLocaleLowerCase().includes(query) ||
         item.barcode.toLocaleLowerCase().includes(query)
     );
-  }, [itemFilterDraft, sortedItemSummaries]);
+  }, [itemFilterDraft, itemQuickFilter, sortedItemSummaries]);
 
   const bookingItems = sortedItemSummaries;
 
@@ -926,6 +969,22 @@ function App() {
   function closeScan() {
     setScanMode(null);
     setScanMessage(null);
+    setScanPaused(false);
+    setScanInputDraft("");
+  }
+
+  function restartScan() {
+    setScanMessage("Code ins Kamerabild halten.");
+    setScanInputDraft("");
+    setScanPaused(false);
+    setScanNonce((current) => current + 1);
+  }
+
+  function rememberScan(value: string) {
+    setRecentScans((current) => [value, ...current.filter((entry) => entry !== value)].slice(0, 5));
+    if ("vibrate" in navigator) {
+      navigator.vibrate?.(45);
+    }
   }
 
   function focusNextBookingField() {
@@ -950,13 +1009,16 @@ function App() {
   }
 
   function applyScannedValue(rawValue: string) {
-    if (!rawValue.trim()) {
+    const value = rawValue.trim();
+    if (!value) {
       setScanMessage("Bitte einen Barcode eingeben oder scannen.");
       return;
     }
+    rememberScan(value);
+    setScanPaused(true);
 
     if (scanMode === "item-barcode") {
-      setItemBarcodeDraft(rawValue);
+      setItemBarcodeDraft(value);
       closeScan();
       window.setTimeout(() => {
         itemBarcodeInputRef.current?.setFocus();
@@ -965,13 +1027,28 @@ function App() {
     }
 
     if (scanMode === "booking-new-item-barcode") {
-      setBookingNewItemBarcodeDraft(rawValue);
+      setBookingNewItemBarcodeDraft(value);
+      closeScan();
+      return;
+    }
+
+    if (scanMode === "item-search") {
+      const matchedItem = itemSummaries.find((item) => item.barcode === value);
+      if (matchedItem) {
+        handleOpenItemDetail(matchedItem.id);
+        closeScan();
+        return;
+      }
+
+      handleNewItem();
+      setItemBarcodeDraft(value);
+      setScanMessage(`Kein Artikel mit Code ${value} gefunden. Neuer Artikel ist vorbereitet.`);
       closeScan();
       return;
     }
 
     if (scanMode === "booking-item") {
-      const matchedItem = itemSummaries.find((item) => item.barcode === rawValue);
+      const matchedItem = itemSummaries.find((item) => item.barcode === value);
       if (matchedItem) {
         setBookingItemId(matchedItem.id);
         closeScan();
@@ -979,14 +1056,95 @@ function App() {
         return;
       }
 
-      setScanMessage(`Kein Artikel mit Code ${rawValue} gefunden.`);
+      setBookingAction("in");
+      setBookingItemMode("new");
+      setBookingNewItemBarcodeDraft(value);
+      setBookingNewItemNameDraft("");
+      setBookingBatchMode("new");
+      setBookingBatchId("");
+      closeScan();
+      setActionError(`Kein Artikel mit Code ${value} gefunden. Neuer Artikel ist vorbereitet.`);
     }
   }
 
-  function openScan(mode: "booking-item" | "item-barcode" | "booking-new-item-barcode") {
+  function openScan(mode: "booking-item" | "item-barcode" | "booking-new-item-barcode" | "item-search") {
     setScanMode(mode);
     setScanInputDraft("");
     setScanMessage(null);
+    setScanPaused(false);
+    setScanNonce((current) => current + 1);
+  }
+
+  function reuseBookingScan(code: string) {
+    const matchedItem = itemSummaries.find((item) => item.barcode === code);
+    if (matchedItem) {
+      setBookingItemMode("existing");
+      setBookingItemId(matchedItem.id);
+      return;
+    }
+
+    setBookingAction("in");
+    setBookingItemMode("new");
+    setBookingNewItemBarcodeDraft(code);
+  }
+
+  function handleExportBackup() {
+    if (!snapshotState) {
+      return;
+    }
+
+    downloadTextFile(
+      `lagerkontrolle-backup-${new Date().toISOString().slice(0, 10)}.json`,
+      JSON.stringify(snapshotState, null, 2),
+      "application/json"
+    );
+  }
+
+  function handleExportStockCsv() {
+    const header = "ort,slot,artikel,menge,einheit,charge,ablaufdatum";
+    const rows = (viewModel?.stockLines ?? []).map((line) =>
+      [
+        line.locationName,
+        line.slotName,
+        line.itemName,
+        String(line.quantity).replace(".", ","),
+        line.unitShortCode,
+        line.id.split(":")[1] ?? "",
+        line.expiryDate
+      ]
+        .map((value) => `"${value.replaceAll('"', '""')}"`)
+        .join(",")
+    );
+
+    downloadTextFile(
+      `lagerkontrolle-bestand-${new Date().toISOString().slice(0, 10)}.csv`,
+      [header, ...rows].join("\n"),
+      "text/csv;charset=utf-8"
+    );
+  }
+
+  async function handleRestoreBackup(file: File | undefined) {
+    if (!file) {
+      return;
+    }
+
+    try {
+      const raw = await file.text();
+      const parsed = JSON.parse(raw) as Awaited<ReturnType<typeof loadSnapshot>>;
+      if (!Array.isArray(parsed.locations) || !Array.isArray(parsed.items) || !parsed.settings) {
+        throw new Error("Backup-Datei hat nicht das erwartete Format.");
+      }
+
+      await restoreSnapshot(parsed);
+      setRefreshToken((current) => current + 1);
+      setActiveView("booking");
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Backup konnte nicht importiert werden.");
+    } finally {
+      if (backupInputRef.current) {
+        backupInputRef.current.value = "";
+      }
+    }
   }
 
   async function handleSaveLocation() {
@@ -1111,6 +1269,25 @@ function App() {
         message: error instanceof Error ? error.message : "Synchronisation fehlgeschlagen.",
         lastSyncedAt: currentConfig?.lastSyncedAt
       });
+    }
+  }
+
+  async function handleResetLocalData() {
+    try {
+      await resetToStandardData();
+      setPendingReset(false);
+      setLocationDetailId(null);
+      setItemDetailId(null);
+      setSelectedLocationId("");
+      setSelectedItemId("");
+      setBookingItemId("");
+      setBookingLocationId("");
+      setBookingPinnedLocationId(null);
+      setBatchScanMode(false);
+      setRefreshToken((currentValue) => currentValue + 1);
+      setActiveView("booking");
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Lokale Daten konnten nicht zurückgesetzt werden.");
     }
   }
 
@@ -1320,7 +1497,10 @@ function App() {
       setBookingNewItemLowStockThresholdDraft("5");
       setBookingNewItemTrackExpiry(true);
       setRefreshToken((current) => current + 1);
-      setActiveView("dashboard");
+      setActiveView("booking");
+      if (batchScanMode) {
+        window.setTimeout(() => openScan("booking-item"), 250);
+      }
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Buchung konnte nicht gespeichert werden.");
     }
@@ -1382,6 +1562,23 @@ function App() {
     }
   }
 
+  async function handleDeleteItem() {
+    if (!pendingDeleteItemId) {
+      return;
+    }
+
+    try {
+      await deleteItem(pendingDeleteItemId);
+      setPendingDeleteItemId(null);
+      setItemDetailId(null);
+      setSelectedItemId("");
+      setBookingItemId("");
+      setRefreshToken((current) => current + 1);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Artikel konnte nicht gelöscht werden.");
+    }
+  }
+
   function handleNewItem() {
     setItemDetailId("");
     setItemNameDraft("");
@@ -1402,6 +1599,35 @@ function App() {
   function handleOpenItemDetail(itemId: string) {
     setSelectedItemId(itemId);
     setItemDetailId(itemId);
+  }
+
+  function handleLocationScan(locationId: string, multiple = false) {
+    setBookingAction("in");
+    setBookingLocationId(locationId);
+    setBookingTargetLocationId(locationId);
+    setBookingPinnedLocationId(locationId);
+    setBatchScanMode(multiple);
+    setActiveView("booking");
+    openScan("booking-item");
+  }
+
+  function handleBookingLocationChange(nextLocationId: string) {
+    if (
+      bookingPinnedLocationId &&
+      nextLocationId !== bookingPinnedLocationId &&
+      !window.confirm("Dieser Scan wurde aus einem Ort gestartet. Wirklich auf einen anderen Ort buchen?")
+    ) {
+      return;
+    }
+
+    if (nextLocationId === bookingPinnedLocationId) {
+      setBookingPinnedLocationId(nextLocationId);
+    } else {
+      setBookingPinnedLocationId(null);
+      setBatchScanMode(false);
+    }
+
+    setBookingLocationId(nextLocationId);
   }
 
   function handleContentScroll(event: CustomEvent<{ scrollTop: number }>) {
@@ -1443,14 +1669,56 @@ function App() {
             }
           ]}
         />
+        <IonAlert
+          isOpen={pendingReset}
+          header="Lokale Daten löschen"
+          message="Alle Orte, Slots, Artikel, Chargen und Bewegungen auf diesem Gerät werden gelöscht. Standard-Einheiten und Slot-Typen bleiben erhalten."
+          buttons={[
+            {
+              text: "Abbrechen",
+              role: "cancel",
+              handler: () => setPendingReset(false)
+            },
+            {
+              text: "Löschen",
+              role: "destructive",
+              handler: () => void handleResetLocalData()
+            }
+          ]}
+        />
+        <IonAlert
+          isOpen={Boolean(pendingDeleteItemId)}
+          header="Artikel löschen"
+          message="Dieser Artikel wird inklusive Chargen und Bewegungen von diesem Gerät gelöscht."
+          buttons={[
+            {
+              text: "Abbrechen",
+              role: "cancel",
+              handler: () => setPendingDeleteItemId(null)
+            },
+            {
+              text: "Löschen",
+              role: "destructive",
+              handler: () => void handleDeleteItem()
+            }
+          ]}
+        />
         <IonContent fullscreen className="shell" scrollEvents onIonScroll={handleContentScroll}>
           <div className="shell__inner">
             {isLoading || !viewModel ? (
               <section className="surface surface--loading">Daten werden geladen …</section>
             ) : (
               <>
-                <section className={navVisible ? "surface surface--nav" : "surface surface--nav surface--nav-hidden"}>
-                  <div className="view-switcher">
+                <section className={navVisible || navExpanded ? "surface surface--nav" : "surface surface--nav surface--nav-hidden"}>
+                  <button
+                    type="button"
+                    className="mobile-nav-toggle"
+                    onClick={() => setNavExpanded((current) => !current)}
+                  >
+                    <span>{viewMeta.find((view) => view.key === activeView)?.label ?? "Navigation"}</span>
+                    <IonIcon icon={chevronDownOutline} />
+                  </button>
+                  <div className={navExpanded ? "view-switcher view-switcher--expanded" : "view-switcher"}>
                     {viewMeta.map((view) => (
                       <button
                         key={view.key}
@@ -1460,7 +1728,10 @@ function App() {
                             ? "view-switcher__button view-switcher__button--active"
                             : "view-switcher__button"
                         }
-                        onClick={() => setActiveView(view.key)}
+                        onClick={() => {
+                          setActiveView(view.key);
+                          setNavExpanded(false);
+                        }}
                       >
                         <IonIcon icon={view.icon} />
                         <span>{view.label}</span>
@@ -1729,6 +2000,13 @@ function App() {
                           </select>
                         </label>
                       </div>
+                      <div className="help-box">
+                        <strong>Was hier hineingehört</strong>
+                        <span>
+                          Ohne CouchDB bleibt jedes Handy lokal. Die URL ist die Adresse deines CouchDB-Servers, die Datenbank
+                          ist meistens `lagerkontrolle`, Benutzer und Passwort kommen aus CouchDB, der Gerätename ist frei wählbar.
+                        </span>
+                      </div>
                       <div className="form-actions">
                         <IonButton fill="outline" className="primary-button" onClick={() => void handleSaveSyncConfig()}>
                           Sync speichern
@@ -1736,6 +2014,44 @@ function App() {
                         <IonButton className="primary-button" onClick={() => void handleRunSync()}>
                           Jetzt synchronisieren
                         </IonButton>
+                      </div>
+                    </section>
+
+                    <section className="surface">
+                      <header className="section-header">
+                        <div>
+                          <h2>Lokale Daten</h2>
+                          <span>Dieses Gerät zurücksetzen</span>
+                        </div>
+                      </header>
+                      <div className="help-box">
+                        <span>
+                          Löscht nur die Daten auf diesem Handy oder Browser. Standard-Einheiten und Slot-Typen bleiben erhalten.
+                        </span>
+                      </div>
+                      <div className="form-actions">
+                        <IonButton fill="outline" className="primary-button" onClick={handleExportBackup}>
+                          <IonIcon slot="start" icon={downloadOutline} />
+                          Backup exportieren
+                        </IonButton>
+                        <IonButton fill="outline" className="primary-button" onClick={() => backupInputRef.current?.click()}>
+                          Backup importieren
+                        </IonButton>
+                        <IonButton fill="outline" className="primary-button" onClick={handleExportStockCsv}>
+                          <IonIcon slot="start" icon={downloadOutline} />
+                          Bestand CSV
+                        </IonButton>
+                        <IonButton fill="outline" className="danger-button" onClick={() => setPendingReset(true)}>
+                          <IonIcon slot="start" icon={trashOutline} />
+                          Lokale Daten löschen
+                        </IonButton>
+                        <input
+                          ref={backupInputRef}
+                          type="file"
+                          accept="application/json,.json"
+                          className="visually-hidden"
+                          onChange={(event) => void handleRestoreBackup(event.target.files?.[0])}
+                        />
                       </div>
                     </section>
                   </div>
@@ -1821,6 +2137,18 @@ function App() {
                               </IonButton>
                             ) : null}
                           </div>
+                          {detailLocation ? (
+                            <div className="form-actions">
+                              <IonButton className="primary-button" onClick={() => handleLocationScan(detailLocation.id)}>
+                                <IonIcon slot="start" icon={barcodeOutline} />
+                                Für diesen Ort scannen
+                              </IonButton>
+                              <IonButton fill="outline" className="primary-button" onClick={() => handleLocationScan(detailLocation.id, true)}>
+                                <IonIcon slot="start" icon={refreshOutline} />
+                                Mehrere scannen
+                              </IonButton>
+                            </div>
+                          ) : null}
                         </section>
 
                         {detailLocation ? (
@@ -1990,9 +2318,15 @@ function App() {
                             <h1>Artikel</h1>
                             <span>{itemSummaries.length} angelegt</span>
                           </div>
-                          <IonButton fill="outline" className="primary-button" onClick={handleNewItem}>
-                            Neu
-                          </IonButton>
+                          <div className="header-actions">
+                            <IonButton fill="outline" className="primary-button" onClick={() => openScan("item-search")}>
+                              <IonIcon slot="start" icon={searchOutline} />
+                              Scannen
+                            </IonButton>
+                            <IonButton fill="outline" className="primary-button" onClick={handleNewItem}>
+                              Neu
+                            </IonButton>
+                          </div>
                         </header>
                         <IonItem className="compact-field compact-field--filter">
                           <IonLabel position="stacked">Filtern</IonLabel>
@@ -2002,6 +2336,23 @@ function App() {
                             onIonInput={(event) => setItemFilterDraft(String(event.detail.value ?? ""))}
                           />
                         </IonItem>
+                        <div className="filter-pills filter-pills--grid-mobile">
+                          {[
+                            ["all", "Alle"],
+                            ["no-barcode", "Ohne Barcode"],
+                            ["low", "Niedrig"],
+                            ["expiry", "Ablauf"]
+                          ].map(([key, label]) => (
+                            <button
+                              key={key}
+                              type="button"
+                              className={itemQuickFilter === key ? "pill pill--active" : "pill"}
+                              onClick={() => setItemQuickFilter(key as typeof itemQuickFilter)}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
                         <div className="list list--items">
                           {filteredItems.map((item) => (
                             <article
@@ -2129,6 +2480,30 @@ function App() {
                             <IonButton className="primary-button" onClick={handleSaveItem}>
                               {currentItem ? "Artikel aktualisieren" : "Artikel speichern"}
                             </IonButton>
+                            {currentItem ? (
+                              <>
+                                <IonButton
+                                  fill="outline"
+                                  className="primary-button"
+                                  onClick={() => {
+                                    setBookingAction("adjustment");
+                                    setBookingAdjustmentDirection("increase");
+                                    setBookingItemMode("existing");
+                                    setBookingItemId(currentItem.id);
+                                    setBookingLocationId(currentItem.preferredLocationId ?? snapshotState?.locations[0]?.id ?? "");
+                                    setBookingPinnedLocationId(null);
+                                    setBatchScanMode(false);
+                                    setActiveView("booking");
+                                  }}
+                                >
+                                  Bestand korrigieren
+                                </IonButton>
+                                <IonButton fill="outline" className="danger-button" onClick={() => setPendingDeleteItemId(currentItem.id)}>
+                                  <IonIcon slot="start" icon={trashOutline} />
+                                  Artikel löschen
+                                </IonButton>
+                              </>
+                            ) : null}
                           </div>
                         </section>
 
@@ -2194,7 +2569,7 @@ function App() {
                       <header className="section-header">
                         <div>
                           <h1>Schnellbuchung</h1>
-                          <span>wenige Taps für Zugang, Abgang und Umbuchung</span>
+                          <span>{batchScanMode ? "Sammelscan aktiv: nach dem Speichern folgt der nächste Scan" : "wenige Taps für Zugang, Abgang und Umbuchung"}</span>
                         </div>
                         <IonButton fill="solid" className="primary-button" onClick={() => openScan("booking-item")}>
                           <IonIcon slot="start" icon={barcodeOutline} />
@@ -2351,7 +2726,7 @@ function App() {
                           <select
                             className="app-select"
                             value={bookingLocationId}
-                            onChange={(event) => setBookingLocationId(event.target.value)}
+                            onChange={(event) => handleBookingLocationChange(event.target.value)}
                           >
                             {(viewModel.locations ?? []).map((location) => (
                               <option key={location.id} value={location.id}>
@@ -2360,6 +2735,13 @@ function App() {
                             ))}
                           </select>
                         </label>
+                        {bookingPinnedLocationId ? (
+                          <div className="help-box help-box--compact">
+                            <span>
+                              Ort wurde aus dem Ort-Scan vorausgewählt. Beim Wechsel fragt die App zur Sicherheit nach.
+                            </span>
+                          </div>
+                        ) : null}
 
                         {bookingAction === "adjustment" ? (
                           <div className="toggle-pills">
@@ -2643,6 +3025,15 @@ function App() {
                           </button>
                         ))}
                       </div>
+                      {recentScans.length > 0 ? (
+                        <div className="recent-scan-row">
+                          {recentScans.map((code) => (
+                            <button key={code} type="button" className="pill" onClick={() => reuseBookingScan(code)}>
+                              {code}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
                     </section>
                   </div>
                 ) : null}
@@ -2841,12 +3232,23 @@ function App() {
         </IonFooter>
         {scanMode ? (
           <div className="scan-overlay">
-            <div className="scan-sheet">
-              <div className="scan-sheet__header">
-                <strong>{scanMode === "booking-item" ? "Artikel scannen" : "Barcode erfassen"}</strong>
-                <IonButton fill="clear" className="back-button" onClick={closeScan}>
-                  Schließen
-                </IonButton>
+              <div className="scan-sheet">
+                <div className="scan-sheet__header">
+                <strong>
+                  {scanMode === "booking-item"
+                    ? "Artikel scannen"
+                    : scanMode === "item-search"
+                      ? "Artikel suchen"
+                      : "Barcode erfassen"}
+                </strong>
+                <div className="scan-sheet__actions">
+                  <IonButton fill="clear" className="back-button" onClick={restartScan}>
+                    Neu scannen
+                  </IonButton>
+                  <IonButton fill="clear" className="back-button" onClick={closeScan}>
+                    Schließen
+                  </IonButton>
+                </div>
               </div>
               <div className="scan-viewfinder">
                 <video ref={videoRef} className="scan-video" playsInline muted />

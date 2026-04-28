@@ -82,6 +82,18 @@ Ergebnis: Das MVP ist bereit fuer den echten Einsatz.
 13. `#13` UI 02: Custom slot types and unit cleanup
 14. `#14` UI 03: Item list and mobile editor refinement
 15. `#15` UI 04: Booking simplification and active scanner
+16. `#16` Update seed data for real use and keep standard master data
+17. `#17` Open app directly on booking view
+18. `#18` Create new item directly from unknown booking barcode
+19. `#19` Add rescan action inside scanner dialog
+20. `#20` Add location-based scan flow with preselected location
+21. `#21` Add batch scanning mode for multiple products at one location
+22. `#22` Make mobile navigation collapsed by default
+23. `#23` Improve Sync dashboard explanation and setup guidance
+24. `#24` Fix mobile spacing in location and item edit forms
+25. `#25` Add item barcode scan to open or create article
+26. `#26` Allow stock correction from item edit as traceable movement
+27. `#27` Collect useful next improvements for daily warehouse use
 
 ## Technische Leitlinien
 
@@ -110,3 +122,5 @@ Ergebnis: Das MVP ist bereit fuer den echten Einsatz.
 - `#4` ist gestartet: mobile Oberflaechen wurden weiter verdichtet und erste Bundle-Aufteilung fuer die Pilot-Haertung ist eingebaut
 - `#4` ist jetzt fachlich vorbereitet: Installationsdoku, Datenspeicher-Doku, Import-Zielformat und Pilot-Checkliste liegen im Repo
 - `#8` ist im Code umgesetzt: CouchDB-Konfiguration, Pull/Push-Sync, sichtbarer Sync-Status und Dokumentation fuer Zwei-Geraete-Tests sind vorhanden
+- `#16` bis `#26` sind umgesetzt: Seed ohne Testdaten, Buchungsstart, Scan-Workflows, mobile Klappnavigation, Sync-Hilfe, Layout-Abstaende und nachvollziehbare Bestandskorrektur sind eingebaut
+- aus `#27` sind erste Nice-to-haves umgesetzt: lokale Datenbereinigung, JSON-Backup/Restore, CSV-Bestandsexport, Artikelfilter, letzte Scans und Vibrationsfeedback nach Scan
