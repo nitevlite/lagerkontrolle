@@ -11,6 +11,62 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        if (params.get("repair") !== "1") {
+          return;
+        }
+
+        document.getElementById("root").innerHTML =
+          '<main style="font-family: sans-serif; padding: 24px; line-height: 1.45;">' +
+          "<h1>Lagerkontrolle wird repariert</h1>" +
+          "<p>Lokaler Cache und alte lokale Datenbanken werden geloescht. Danach startet die App neu.</p>" +
+          "</main>";
+
+        var tasks = [];
+        if ("serviceWorker" in navigator) {
+          tasks.push(
+            navigator.serviceWorker.getRegistrations().then(function (registrations) {
+              return Promise.all(
+                registrations.map(function (registration) {
+                  return registration.unregister();
+                })
+              );
+            })
+          );
+        }
+
+        if ("caches" in window) {
+          tasks.push(
+            caches.keys().then(function (keys) {
+              return Promise.all(
+                keys.map(function (key) {
+                  return caches.delete(key);
+                })
+              );
+            })
+          );
+        }
+
+        if ("indexedDB" in window) {
+          ["lagerkontrolle-db", "lagerkontrolle-db-v2"].forEach(function (name) {
+            tasks.push(
+              new Promise(function (resolve) {
+                var request = indexedDB.deleteDatabase(name);
+                request.onsuccess = resolve;
+                request.onerror = resolve;
+                request.onblocked = resolve;
+              })
+            );
+          });
+        }
+
+        Promise.allSettled(tasks).then(function () {
+          window.location.replace(window.location.pathname + "?repaired=" + Date.now());
+        });
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
   </html>
