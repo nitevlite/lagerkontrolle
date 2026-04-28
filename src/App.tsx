@@ -103,7 +103,7 @@ function downloadTextFile(filename: string, content: string, type: string) {
 
 function App() {
   const [activeView, setActiveView] = useState<ViewKey>("booking");
-  const [navVisible, setNavVisible] = useState(false);
+  const [navVisible, setNavVisible] = useState(true);
   const [navExpanded, setNavExpanded] = useState(false);
   const [selectedLocationId, setSelectedLocationId] = useState("");
   const [pendingReset, setPendingReset] = useState(false);

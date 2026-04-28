@@ -896,9 +896,9 @@ ion-content.shell::part(scroll) {
   }
 
   .surface--nav-hidden {
-    transform: translateY(calc(-100% - 0.75rem));
-    opacity: 0;
-    pointer-events: none;
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .metric-grid {
@@ -1018,9 +1018,9 @@ ion-content.shell::part(scroll) {
   }
 
   .surface--nav-hidden {
-    transform: translateY(0);
-    opacity: 1;
-    pointer-events: auto;
+    transform: translateY(calc(-100% - 0.75rem));
+    opacity: 0;
+    pointer-events: none;
   }
 
   .surface--nav-hidden .view-switcher,
