@@ -169,6 +169,7 @@ function App() {
   const [recentScans, setRecentScans] = useState<string[]>([]);
   const [batchScanMode, setBatchScanMode] = useState(false);
   const [bookingPinnedLocationId, setBookingPinnedLocationId] = useState<string | null>(null);
+  const [locationScanMode, setLocationScanMode] = useState<"single" | "multi" | null>(null);
   const [unitName, setUnitName] = useState("");
   const [unitShortCode, setUnitShortCode] = useState("");
   const [unitDescription, setUnitDescription] = useState("");
@@ -1082,9 +1083,12 @@ function App() {
     if (scanMode === "booking-item") {
       const matchedItem = itemSummaries.find((item) => item.barcode === value);
       if (matchedItem) {
+        setBookingItemMode("existing");
         setBookingItemId(matchedItem.id);
         closeScan();
-        focusNextBookingField();
+        if (activeView === "booking") {
+          focusNextBookingField();
+        }
         return;
       }
 
@@ -1095,7 +1099,9 @@ function App() {
       setBookingBatchMode("new");
       setBookingBatchId("");
       closeScan();
-      setActionError(`Kein Artikel mit Code ${value} gefunden. Neuer Artikel ist vorbereitet.`);
+      if (activeView === "booking") {
+        setActionError(`Kein Artikel mit Code ${value} gefunden. Neuer Artikel ist vorbereitet.`);
+      }
     }
   }
 
@@ -1563,8 +1569,9 @@ function App() {
       setBookingNewItemLowStockThresholdDraft("5");
       setBookingNewItemTrackExpiry(true);
       setRefreshToken((current) => current + 1);
-      setActiveView("booking");
-      if (batchScanMode) {
+      if (locationScanMode === "single") {
+        closeLocationScanFlow();
+      } else if (batchScanMode) {
         window.setTimeout(() => openScan("booking-item"), 250);
       }
     } catch (error) {
@@ -1691,8 +1698,14 @@ function App() {
     setBookingTargetLocationId(locationId);
     setBookingPinnedLocationId(locationId);
     setBatchScanMode(multiple);
-    setActiveView("booking");
+    setLocationScanMode(multiple ? "multi" : "single");
     openScan("booking-item");
+  }
+
+  function closeLocationScanFlow() {
+    setLocationScanMode(null);
+    setBookingPinnedLocationId(null);
+    setBatchScanMode(false);
   }
 
   function handleBookingLocationChange(nextLocationId: string) {
@@ -2311,11 +2324,11 @@ function App() {
                             <div className="form-actions">
                               <IonButton className="primary-button" onClick={() => handleLocationScan(detailLocation.id)}>
                                 <IonIcon slot="start" icon={barcodeOutline} />
-                                Für diesen Ort scannen
+                                Einmal scannen
                               </IonButton>
                               <IonButton fill="outline" className="primary-button" onClick={() => handleLocationScan(detailLocation.id, true)}>
                                 <IonIcon slot="start" icon={refreshOutline} />
-                                Mehrere scannen
+                                Sammelscan starten
                               </IonButton>
                             </div>
                           ) : null}
@@ -2323,6 +2336,133 @@ function App() {
 
                         {detailLocation ? (
                           <>
+                            {bookingPinnedLocationId === detailLocation.id && locationScanMode ? (
+                              <section className="surface surface--scan-context">
+                                <header className="section-header">
+                                  <div>
+                                    <h2>{locationScanMode === "multi" ? "Sammelscan" : "Scan für diesen Ort"}</h2>
+                                    <span>
+                                      Bucht auf {detailLocation.name}
+                                      {locationScanMode === "multi" ? " · Ort bleibt für alle folgenden Scans gesetzt" : ""}
+                                    </span>
+                                  </div>
+                                  <IonBadge color="light">{detailLocation.name}</IonBadge>
+                                </header>
+                                <div className="help-box help-box--compact">
+                                  <strong>{locationScanMode === "multi" ? "Mehrere nacheinander" : "Einmaliger Scan"}</strong>
+                                  <span>
+                                    {locationScanMode === "multi"
+                                      ? "Nach dem Speichern öffnet sich der Scanner wieder und bleibt bei diesem Ort."
+                                      : "Nach dem Speichern ist der Scan-Workflow beendet."}
+                                  </span>
+                                </div>
+                                <div className="booking-form-stack">
+                                  {bookingUsesNewItem ? (
+                                    <div className="editor-grid booking-inline-grid">
+                                      <IonItem className="compact-field">
+                                        <IonLabel position="stacked">Artikelname</IonLabel>
+                                        <IonInput
+                                          value={bookingNewItemNameDraft}
+                                          placeholder="z. B. Artikelname"
+                                          onIonInput={(event) => setBookingNewItemNameDraft(String(event.detail.value ?? ""))}
+                                        />
+                                      </IonItem>
+                                      <label className="form-field">
+                                        <span>Einheit</span>
+                                        <select
+                                          className="app-select"
+                                          value={bookingNewItemUnitTypeId}
+                                          onChange={(event) => setBookingNewItemUnitTypeId(event.target.value)}
+                                        >
+                                          {viewModel.unitTypes.map((unitType) => (
+                                            <option key={unitType.id} value={unitType.id}>
+                                              {unitType.name} ({unitType.shortCode})
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </label>
+                                      <IonItem className="compact-field">
+                                        <IonLabel position="stacked">Barcode</IonLabel>
+                                        <IonInput
+                                          value={bookingNewItemBarcodeDraft}
+                                          onIonInput={(event) => setBookingNewItemBarcodeDraft(String(event.detail.value ?? ""))}
+                                        />
+                                      </IonItem>
+                                    </div>
+                                  ) : (
+                                    <div className="booking-preview__row">
+                                      <span>Artikel</span>
+                                      <b>{bookingDisplayItemName}</b>
+                                    </div>
+                                  )}
+
+                                  {bookingTargetSlots.length > 0 ? (
+                                    <label className="form-field">
+                                      <span>Slot in {detailLocation.name}</span>
+                                      <select
+                                        className="app-select"
+                                        value={bookingTargetSlotId}
+                                        onChange={(event) => setBookingTargetSlotId(event.target.value)}
+                                      >
+                                        {bookingTargetSlots.map((slot) => (
+                                          <option key={slot.id} value={slot.id}>
+                                            {slot.label}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </label>
+                                  ) : (
+                                    <div className="empty-state empty-state--action">
+                                      <span>In diesem Ort ist noch kein Slot angelegt.</span>
+                                      <IonButton size="small" className="primary-button" onClick={() => void handleCreateBookingSlot()}>
+                                        Ersten Slot anlegen
+                                      </IonButton>
+                                    </div>
+                                  )}
+
+                                  <div className="unit-form">
+                                    <IonItem className="compact-field">
+                                      <IonLabel position="stacked">Chargencode</IonLabel>
+                                      <IonInput
+                                        value={bookingNewBatchCodeDraft}
+                                        placeholder="z. B. CH-2026-01"
+                                        onIonInput={(event) => setBookingNewBatchCodeDraft(String(event.detail.value ?? ""))}
+                                      />
+                                    </IonItem>
+                                    <label className="form-field">
+                                      <span>{bookingTrackExpiry ? "Ablaufdatum" : "Datum optional"}</span>
+                                      <input
+                                        className="app-input"
+                                        type="date"
+                                        value={bookingNewBatchExpiryDraft}
+                                        onChange={(event) => setBookingNewBatchExpiryDraft(event.target.value)}
+                                      />
+                                    </label>
+                                    <IonItem className="compact-field">
+                                      <IonLabel position="stacked">Menge</IonLabel>
+                                      <IonInput
+                                        type="number"
+                                        value={bookingQuantityDraft}
+                                        onIonInput={(event) => setBookingQuantityDraft(String(event.detail.value ?? ""))}
+                                      />
+                                    </IonItem>
+                                  </div>
+                                </div>
+                                <div className="form-actions">
+                                  <IonButton fill="outline" className="primary-button" onClick={() => openScan("booking-item")}>
+                                    <IonIcon slot="start" icon={barcodeOutline} />
+                                    Erneut scannen
+                                  </IonButton>
+                                  <IonButton className="primary-button" onClick={handleSaveBooking}>
+                                    Buchung für {detailLocation.name} speichern
+                                  </IonButton>
+                                  <IonButton fill="clear" className="back-button" onClick={closeLocationScanFlow}>
+                                    Scan beenden
+                                  </IonButton>
+                                </div>
+                              </section>
+                            ) : null}
+
                             <section className="surface">
                               <header className="section-header">
                                 <div>
