@@ -55,6 +55,12 @@ function buildRemoteDocId(entityType: SyncEntityType, entityId: string) {
   return buildSyncKey(entityType, entityId);
 }
 
+function isMissingObjectStoreError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  const normalized = message.toLocaleLowerCase();
+  return normalized.includes("objectstore") || (normalized.includes("object store") && normalized.includes("not found"));
+}
+
 function normalizeUrl(value: string) {
   return value.trim().replace(/\/+$/, "");
 }
@@ -84,7 +90,14 @@ async function fetchJson<T>(url: string, init: RequestInit) {
 }
 
 async function putSyncMeta(input: SyncMetadata) {
-  await db.syncMeta.put(input);
+  try {
+    await db.syncMeta.put(input);
+  } catch (error) {
+    if (isMissingObjectStoreError(error)) {
+      return;
+    }
+    throw error;
+  }
 }
 
 export async function markEntityChanged(entityType: SyncEntityType, entityId: string, updatedAt?: string) {

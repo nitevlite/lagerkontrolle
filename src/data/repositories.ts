@@ -158,7 +158,7 @@ export async function addItem(input: {
 
   const id = `item-${crypto.randomUUID()}`;
 
-  await db.transaction("rw", db.items, db.syncMeta, async () => {
+  await db.transaction("rw", db.items, async () => {
     await db.items.add({
       id,
       name,
@@ -168,8 +168,8 @@ export async function addItem(input: {
       preferredLocationId: input.preferredLocationId,
       lowStockThreshold: Math.max(0, Number(input.lowStockThreshold || 0))
     });
-    await markEntityChanged("item", id);
   });
+  await markEntityChanged("item", id);
 
   return id;
 }
@@ -430,7 +430,7 @@ export async function renameSlotType(input: { previousName: string; nextName: st
     throw new Error("Slot-Typ existiert bereits.");
   }
 
-  await db.transaction("rw", db.settings, db.slots, db.syncMeta, async () => {
+  await db.transaction("rw", db.settings, db.slots, async () => {
     await updateSettings({
       slotTypeNames: current.settings.slotTypeNames.map((entry) => (entry === input.previousName ? nextName : entry))
     });
@@ -510,7 +510,9 @@ export async function createMovement(input: {
 
   let batchId = input.batchId;
 
-  await db.transaction("rw", db.batches, db.movements, db.syncMeta, async () => {
+  const changedEntityIds: Array<{ type: "batch" | "movement"; id: string }> = [];
+
+  await db.transaction("rw", db.batches, db.movements, async () => {
     if (!batchId) {
       const batchCode = input.batchCode?.trim() || noBatchCode;
       const expiryDate = item.trackExpiry ? input.expiryDate?.trim() : input.expiryDate?.trim() || "2099-12-31";
@@ -537,7 +539,7 @@ export async function createMovement(input: {
           batchCode,
           expiryDate: expiryDate ?? "2099-12-31"
         });
-        await markEntityChanged("batch", batchId);
+        changedEntityIds.push({ type: "batch", id: batchId });
       }
     }
 
@@ -569,6 +571,10 @@ export async function createMovement(input: {
       toSlotId: input.toSlotId,
       createdAt: new Date().toISOString()
     });
-    await markEntityChanged("movement", movementId);
+    changedEntityIds.push({ type: "movement", id: movementId });
   });
+
+  for (const entity of changedEntityIds) {
+    await markEntityChanged(entity.type, entity.id);
+  }
 }
