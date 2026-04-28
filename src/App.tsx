@@ -2373,6 +2373,28 @@ function App() {
                                   </span>
                                 </div>
                                 <div className="booking-form-stack">
+                                  <div className="toggle-pills booking-toggle-row">
+                                    <button
+                                      type="button"
+                                      className={bookingItemMode === "existing" ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                                      onClick={() => setBookingItemMode("existing")}
+                                    >
+                                      Bestehender Artikel
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={bookingItemMode === "new" ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                                      onClick={() => {
+                                        setBookingAction("in");
+                                        setBookingItemMode("new");
+                                        setBookingBatchMode("new");
+                                        setBookingBatchId("");
+                                      }}
+                                    >
+                                      Neuer Artikel
+                                    </button>
+                                  </div>
+
                                   {bookingUsesNewItem ? (
                                     <div className="editor-grid booking-inline-grid">
                                       <IonItem className="compact-field">
@@ -2409,9 +2431,47 @@ function App() {
                                           Übernommener Barcode: <strong>{bookingNewItemBarcodeDraft.trim()}</strong>
                                         </div>
                                       ) : null}
+                                      <IonItem className="compact-field">
+                                        <IonLabel position="stacked">Niedriger Bestand ab</IonLabel>
+                                        <IonInput
+                                          type="number"
+                                          value={bookingNewItemLowStockThresholdDraft}
+                                          onIonInput={(event) => setBookingNewItemLowStockThresholdDraft(String(event.detail.value ?? ""))}
+                                        />
+                                      </IonItem>
+                                      <div className="toggle-pills booking-toggle-row">
+                                        <button
+                                          type="button"
+                                          className={bookingNewItemTrackExpiry ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                                          onClick={() => setBookingNewItemTrackExpiry(true)}
+                                        >
+                                          Ablauf aktiv
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className={!bookingNewItemTrackExpiry ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                                          onClick={() => setBookingNewItemTrackExpiry(false)}
+                                        >
+                                          Ohne Ablauf
+                                        </button>
+                                      </div>
                                     </div>
                                   ) : (
                                     <>
+                                      <label className="form-field">
+                                        <span>Artikel</span>
+                                        <select
+                                          className="app-select"
+                                          value={bookingItemId}
+                                          onChange={(event) => setBookingItemId(event.target.value)}
+                                        >
+                                          {bookingItems.map((item) => (
+                                            <option key={item.id} value={item.id}>
+                                              {item.name}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </label>
                                       <div className="booking-preview__row">
                                         <span>Artikel</span>
                                         <b>{bookingDisplayItemName}</b>
@@ -2449,24 +2509,69 @@ function App() {
                                     </div>
                                   )}
 
-                                  <div className="unit-form">
-                                    <IonItem className="compact-field">
-                                      <IonLabel position="stacked">Chargencode</IonLabel>
-                                      <IonInput
-                                        value={bookingNewBatchCodeDraft}
-                                        placeholder="z. B. CH-2026-01"
-                                        onIonInput={(event) => setBookingNewBatchCodeDraft(String(event.detail.value ?? ""))}
-                                      />
-                                    </IonItem>
+                                  {canCreateNewBookingBatch && !bookingUsesNewItem ? (
                                     <label className="form-field">
-                                      <span>{bookingTrackExpiry ? "Ablaufdatum" : "Datum optional"}</span>
-                                      <input
-                                        className="app-input"
-                                        type="date"
-                                        value={bookingNewBatchExpiryDraft}
-                                        onChange={(event) => setBookingNewBatchExpiryDraft(event.target.value)}
-                                      />
+                                      <span>Charge</span>
+                                      <div className="toggle-pills">
+                                        <button
+                                          type="button"
+                                          className={bookingBatchMode === "existing" ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                                          onClick={() => setBookingBatchMode("existing")}
+                                        >
+                                          Bestehend
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className={bookingBatchMode === "new" ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                                          onClick={() => setBookingBatchMode("new")}
+                                        >
+                                          Neu
+                                        </button>
+                                      </div>
                                     </label>
+                                  ) : null}
+
+                                  <div className="unit-form">
+                                    {bookingBatchMode === "existing" && !bookingUsesNewItem ? (
+                                      bookingAllItemBatches.length > 0 ? (
+                                        <label className="form-field">
+                                          <span>Bestehende Charge</span>
+                                          <select
+                                            className="app-select"
+                                            value={bookingBatchId}
+                                            onChange={(event) => setBookingBatchId(event.target.value)}
+                                          >
+                                            {bookingAllItemBatches.map((batch) => (
+                                              <option key={batch.id} value={batch.id}>
+                                                {batch.batchCode}
+                                              </option>
+                                            ))}
+                                          </select>
+                                        </label>
+                                      ) : (
+                                        <div className="empty-state">Keine bestehende Charge verfügbar.</div>
+                                      )
+                                    ) : (
+                                      <>
+                                        <IonItem className="compact-field">
+                                          <IonLabel position="stacked">Chargencode</IonLabel>
+                                          <IonInput
+                                            value={bookingNewBatchCodeDraft}
+                                            placeholder="z. B. CH-2026-01"
+                                            onIonInput={(event) => setBookingNewBatchCodeDraft(String(event.detail.value ?? ""))}
+                                          />
+                                        </IonItem>
+                                        <label className="form-field">
+                                          <span>{bookingTrackExpiry ? "Ablaufdatum" : "Datum optional"}</span>
+                                          <input
+                                            className="app-input"
+                                            type="date"
+                                            value={bookingNewBatchExpiryDraft}
+                                            onChange={(event) => setBookingNewBatchExpiryDraft(event.target.value)}
+                                          />
+                                        </label>
+                                      </>
+                                    )}
                                     <IonItem className="compact-field">
                                       <IonLabel position="stacked">Menge</IonLabel>
                                       <IonInput
