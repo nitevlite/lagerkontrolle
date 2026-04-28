@@ -23,7 +23,7 @@ export type StockLine = {
   id: string;
   locationId: string;
   locationName: string;
-  slotId: string;
+  slotId?: string;
   slotName: string;
   itemName: string;
   quantity: number;
@@ -145,18 +145,22 @@ function buildMaps(snapshot: DomainSnapshot) {
 
 export function buildViewModel(snapshot: DomainSnapshot): AppViewModel {
   const { locationById, slotById, itemById, batchById, unitById } = buildMaps(snapshot);
-  const stockLedger = new Map<string, { slotId: string; batchId: string; quantity: number }>();
+  const stockLedger = new Map<string, { locationId: string; slotId?: string; batchId: string; quantity: number }>();
 
   for (const movement of snapshot.movements) {
-    if (movement.toSlotId) {
-      const key = `${movement.toSlotId}:${movement.batchId}`;
-      const entry = stockLedger.get(key) ?? { slotId: movement.toSlotId, batchId: movement.batchId, quantity: 0 };
+    const toLocationId = movement.toLocationId ?? (movement.toSlotId ? slotById.get(movement.toSlotId)?.locationId : undefined);
+    if (toLocationId) {
+      const key = `${toLocationId}:${movement.toSlotId ?? "ort"}:${movement.batchId}`;
+      const entry =
+        stockLedger.get(key) ?? { locationId: toLocationId, slotId: movement.toSlotId, batchId: movement.batchId, quantity: 0 };
       entry.quantity += movement.quantity;
       stockLedger.set(key, entry);
     }
-    if (movement.fromSlotId) {
-      const key = `${movement.fromSlotId}:${movement.batchId}`;
-      const entry = stockLedger.get(key) ?? { slotId: movement.fromSlotId, batchId: movement.batchId, quantity: 0 };
+    const fromLocationId = movement.fromLocationId ?? (movement.fromSlotId ? slotById.get(movement.fromSlotId)?.locationId : undefined);
+    if (fromLocationId) {
+      const key = `${fromLocationId}:${movement.fromSlotId ?? "ort"}:${movement.batchId}`;
+      const entry =
+        stockLedger.get(key) ?? { locationId: fromLocationId, slotId: movement.fromSlotId, batchId: movement.batchId, quantity: 0 };
       entry.quantity -= movement.quantity;
       stockLedger.set(key, entry);
     }
@@ -165,19 +169,19 @@ export function buildViewModel(snapshot: DomainSnapshot): AppViewModel {
   const stockLines: StockLine[] = Array.from(stockLedger.values())
     .filter((entry) => entry.quantity > 0)
     .map((entry) => {
-      const slot = slotById.get(entry.slotId)!;
-      const location = locationById.get(slot.locationId)!;
+      const slot = entry.slotId ? slotById.get(entry.slotId) : undefined;
+      const location = locationById.get(entry.locationId)!;
       const batch = batchById.get(entry.batchId)!;
       const item = itemById.get(batch.itemId)!;
       const unit = unitById.get(item.unitTypeId)!;
       const remainingDays = item.trackExpiry ? daysUntil(batch.expiryDate) : null;
 
       return {
-        id: `${entry.slotId}:${entry.batchId}`,
+        id: `${entry.locationId}:${entry.slotId ?? "ort"}:${entry.batchId}`,
         locationId: location.id,
         locationName: location.name,
-        slotId: slot.id,
-        slotName: slot.label,
+        slotId: slot?.id,
+        slotName: slot?.label ?? "Ohne Slot",
         itemName: item.name,
         quantity: entry.quantity,
         unitShortCode: unit.shortCode,
@@ -191,7 +195,7 @@ export function buildViewModel(snapshot: DomainSnapshot): AppViewModel {
   const expiryAlerts: ExpiryAlert[] = stockLines
     .filter((line) => line.daysUntilExpiry !== null)
     .map((line) => {
-      const [, batchId] = line.id.split(":");
+      const batchId = line.id.split(":").at(-1)!;
       const batch = batchById.get(batchId)!;
       return {
         id: line.id,
@@ -243,12 +247,16 @@ export function buildViewModel(snapshot: DomainSnapshot): AppViewModel {
   const locations: LocationSummary[] = snapshot.locations.map((location) => {
     const locationSlots = snapshot.slots.filter((slot) => slot.locationId === location.id);
     const activeLines = stockLines.filter((line) => line.locationId === location.id);
-    const activeSlotIds = new Set(activeLines.map((line) => line.slotId));
+    const activeSlotIds = new Set(activeLines.map((line) => line.slotId).filter(Boolean));
     const activeItemNames = new Set(activeLines.map((line) => line.itemName));
     const latestMovement = snapshot.movements
       .filter((movement) => {
-        const relatedSlot = movement.toSlotId ?? movement.fromSlotId;
-        return relatedSlot ? slotById.get(relatedSlot)?.locationId === location.id : false;
+        const relatedLocation =
+          movement.toLocationId ??
+          movement.fromLocationId ??
+          (movement.toSlotId ? slotById.get(movement.toSlotId)?.locationId : undefined) ??
+          (movement.fromSlotId ? slotById.get(movement.fromSlotId)?.locationId : undefined);
+        return relatedLocation === location.id;
       })
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt))[0];
 
@@ -272,8 +280,16 @@ export function buildViewModel(snapshot: DomainSnapshot): AppViewModel {
       const unit = unitById.get(item.unitTypeId)!;
       const fromSlot = movement.fromSlotId ? slotById.get(movement.fromSlotId) : undefined;
       const toSlot = movement.toSlotId ? slotById.get(movement.toSlotId) : undefined;
-      const fromLocation = fromSlot ? locationById.get(fromSlot.locationId) : undefined;
-      const toLocation = toSlot ? locationById.get(toSlot.locationId) : undefined;
+      const fromLocation = movement.fromLocationId
+        ? locationById.get(movement.fromLocationId)
+        : fromSlot
+          ? locationById.get(fromSlot.locationId)
+          : undefined;
+      const toLocation = movement.toLocationId
+        ? locationById.get(movement.toLocationId)
+        : toSlot
+          ? locationById.get(toSlot.locationId)
+          : undefined;
 
       return {
         id: movement.id,
@@ -282,8 +298,8 @@ export function buildViewModel(snapshot: DomainSnapshot): AppViewModel {
         quantity: movement.quantity,
         unitShortCode: unit.shortCode,
         batchCode: batch.batchCode,
-        fromLabel: fromSlot && fromLocation ? `${fromLocation.name} / ${fromSlot.label}` : undefined,
-        toLabel: toSlot && toLocation ? `${toLocation.name} / ${toSlot.label}` : undefined,
+        fromLabel: fromLocation ? `${fromLocation.name}${fromSlot ? ` / ${fromSlot.label}` : " / Ohne Slot"}` : undefined,
+        toLabel: toLocation ? `${toLocation.name}${toSlot ? ` / ${toSlot.label}` : " / Ohne Slot"}` : undefined,
         timestampLabel: movementDayLabel(movement.createdAt)
       };
     });

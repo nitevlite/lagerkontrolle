@@ -679,6 +679,15 @@ ion-content.shell::part(scroll) {
   margin-top: 0;
 }
 
+.barcode-confirmation {
+  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(22, 121, 77, 0.24);
+  border-radius: 14px;
+  background: rgba(22, 121, 77, 0.08);
+  color: var(--success);
+  font-size: 0.9rem;
+}
+
 .recent-scan-row {
   display: flex;
   flex-wrap: wrap;

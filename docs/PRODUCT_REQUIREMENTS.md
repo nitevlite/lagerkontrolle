@@ -11,7 +11,7 @@ Eine mobile App, mit der Mitarbeitende Lagerorte und Inhalte in Sekunden pflegen
 ## Hauptobjekte
 
 - Ort
-- Regal oder Lade
+- Regal oder Lade, falls eine genauere Unterteilung gebraucht wird
 - Artikel
 - Einheitentyp
 - Charge
@@ -22,7 +22,7 @@ Eine mobile App, mit der Mitarbeitende Lagerorte und Inhalte in Sekunden pflegen
 ## Muss-Anforderungen fuer MVP
 
 - Orte anlegen und bearbeiten
-- Regale oder Laden je Ort nummeriert anlegen und bearbeiten
+- Regale oder Laden je Ort optional nummeriert anlegen und bearbeiten
 - Artikel frei und schnell anlegen
 - neue Einheitentypen frei anlegen und verwenden
 - Mengen je Ort verwalten

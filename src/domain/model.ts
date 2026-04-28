@@ -46,6 +46,8 @@ export type Movement = {
   kind: MovementKind;
   batchId: EntityId;
   quantity: number;
+  fromLocationId?: EntityId;
+  toLocationId?: EntityId;
   fromSlotId?: EntityId;
   toSlotId?: EntityId;
   createdAt: string;

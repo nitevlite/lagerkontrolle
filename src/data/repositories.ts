@@ -81,6 +81,22 @@ async function getSlotBatchQuantity(batchId: string, slotId: string) {
   }, 0);
 }
 
+async function getLocationBatchQuantity(batchId: string, locationId: string) {
+  const movements = await db.movements
+    .filter(
+      (movement) =>
+        movement.batchId === batchId &&
+        (movement.fromLocationId === locationId || movement.toLocationId === locationId)
+    )
+    .toArray();
+
+  return movements.reduce((sum, movement) => {
+    const add = movement.toLocationId === locationId ? movement.quantity : 0;
+    const subtract = movement.fromLocationId === locationId ? movement.quantity : 0;
+    return sum + add - subtract;
+  }, 0);
+}
+
 export async function loadSnapshot(): Promise<DomainSnapshot> {
   const [locations, slots, unitTypes, items, batches, movements, settings] = await Promise.all([
     db.locations.toArray(),
@@ -459,6 +475,8 @@ export async function createMovement(input: {
   kind: MovementKind;
   itemId: string;
   quantity: number;
+  fromLocationId?: string;
+  toLocationId?: string;
   fromSlotId?: string;
   toSlotId?: string;
   batchId?: string;
@@ -470,12 +488,16 @@ export async function createMovement(input: {
     throw new Error("Bitte eine gültige Menge eingeben.");
   }
 
-  if (!input.fromSlotId && !input.toSlotId) {
-    throw new Error("Bitte mindestens einen Slot für die Buchung wählen.");
+  if (!input.fromSlotId && !input.toSlotId && !input.fromLocationId && !input.toLocationId) {
+    throw new Error("Bitte mindestens einen Ort für die Buchung wählen.");
   }
 
-  if (input.kind === "transfer" && input.fromSlotId && input.toSlotId && input.fromSlotId === input.toSlotId) {
-    throw new Error("Quell- und Zielslot duerfen nicht identisch sein.");
+  if (
+    input.kind === "transfer" &&
+    input.fromSlotId === input.toSlotId &&
+    input.fromLocationId === input.toLocationId
+  ) {
+    throw new Error("Quelle und Ziel dürfen nicht identisch sein.");
   }
 
   const item = await db.items.get(input.itemId);
@@ -529,6 +551,11 @@ export async function createMovement(input: {
       if (available < quantity) {
         throw new Error("Die gebuchte Menge ist höher als der verfügbare Bestand in diesem Slot.");
       }
+    } else if (input.fromLocationId) {
+      const available = await getLocationBatchQuantity(batchId, input.fromLocationId);
+      if (available < quantity) {
+        throw new Error("Die gebuchte Menge ist höher als der verfügbare Bestand in diesem Ort.");
+      }
     }
 
     const movementId = `move-${crypto.randomUUID()}`;
@@ -537,6 +564,8 @@ export async function createMovement(input: {
       kind: input.kind,
       batchId,
       quantity,
+      fromLocationId: input.fromLocationId,
+      toLocationId: input.toLocationId,
       fromSlotId: input.fromSlotId,
       toSlotId: input.toSlotId,
       createdAt: new Date().toISOString()
