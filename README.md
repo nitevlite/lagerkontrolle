@@ -88,7 +88,7 @@ npm run build
 - Standard-Einheiten und sinnvolle Slot-Typen sind weiterhin vorbereitet
 - Orte, Slots und freie Slot-Typen koennen lokal angelegt, umbenannt und leere Eintraege geloescht werden
 - Artikel mit Einheit, Barcode, Ablaufpflicht und bevorzugtem Ort koennen angelegt, bearbeitet, gescannt und geloescht werden
-- Chargen mit Ablaufdatum koennen pro Artikel gepflegt werden
+- Chargen mit Ablaufdatum koennen pro Artikel gepflegt werden; ohne Chargencode gibt es die Auswahl `Keine Charge`
 - Buchung speichert echte lokale Bewegungen fuer Zugang, Abgang, Umbuchung und Korrektur
 - Buchung fuehrt mobil direkt ueber Buchungsdaten mit Artikel-Dropdown, Ort-Dropdown, optionalem Slot, Charge und Menge
 - im Zugang kann direkt ein neuer Artikel mit Minimalstammdaten angelegt und sofort eingebucht werden; unbekannte Barcodes werden dabei uebernommen

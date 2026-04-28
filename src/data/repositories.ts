@@ -4,6 +4,7 @@ import { seedSnapshot } from "../domain/seed";
 import { createDefaultSyncConfig, markEntityChanged, markEntityDeleted } from "./sync";
 
 const defaultSlotTypeNames = ["Regal", "Lade", "Schrank", "Fach", "Kiste", "Box", "Kühlschrank", "Gefrierschrank", "Palette"];
+const noBatchCode = "Keine Charge";
 
 function buildDefaultSettings(): AppSettings {
   return {
@@ -157,16 +158,18 @@ export async function addItem(input: {
 
   const id = `item-${crypto.randomUUID()}`;
 
-  await db.items.add({
-    id,
-    name,
-    unitTypeId: input.unitTypeId,
-    barcode: input.barcode?.trim() || undefined,
-    trackExpiry: input.trackExpiry,
-    preferredLocationId: input.preferredLocationId,
-    lowStockThreshold: Math.max(0, Number(input.lowStockThreshold || 0))
+  await db.transaction("rw", db.items, db.syncMeta, async () => {
+    await db.items.add({
+      id,
+      name,
+      unitTypeId: input.unitTypeId,
+      barcode: input.barcode?.trim() || undefined,
+      trackExpiry: input.trackExpiry,
+      preferredLocationId: input.preferredLocationId,
+      lowStockThreshold: Math.max(0, Number(input.lowStockThreshold || 0))
+    });
+    await markEntityChanged("item", id);
   });
-  await markEntityChanged("item", id);
 
   return id;
 }
@@ -231,8 +234,8 @@ export async function addBatch(input: {
   batchCode: string;
   expiryDate: string;
 }) {
-  const batchCode = input.batchCode.trim();
-  if (!batchCode || !input.expiryDate) {
+  const batchCode = input.batchCode.trim() || noBatchCode;
+  if (!input.expiryDate) {
     return;
   }
 
@@ -427,7 +430,7 @@ export async function renameSlotType(input: { previousName: string; nextName: st
     throw new Error("Slot-Typ existiert bereits.");
   }
 
-  await db.transaction("rw", db.settings, db.slots, async () => {
+  await db.transaction("rw", db.settings, db.slots, db.syncMeta, async () => {
     await updateSettings({
       slotTypeNames: current.settings.slotTypeNames.map((entry) => (entry === input.previousName ? nextName : entry))
     });
@@ -507,14 +510,10 @@ export async function createMovement(input: {
 
   let batchId = input.batchId;
 
-  await db.transaction("rw", db.batches, db.movements, async () => {
+  await db.transaction("rw", db.batches, db.movements, db.syncMeta, async () => {
     if (!batchId) {
-      const batchCode = input.batchCode?.trim();
+      const batchCode = input.batchCode?.trim() || noBatchCode;
       const expiryDate = item.trackExpiry ? input.expiryDate?.trim() : input.expiryDate?.trim() || "2099-12-31";
-
-      if (!batchCode) {
-        throw new Error("Bitte eine Charge wählen oder neu anlegen.");
-      }
 
       if (item.trackExpiry && !expiryDate) {
         throw new Error("Bitte ein Ablaufdatum für die neue Charge setzen.");

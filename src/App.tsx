@@ -142,6 +142,7 @@ function App() {
   const [itemLowStockThresholdDraft, setItemLowStockThresholdDraft] = useState("5");
   const [itemTrackExpiryDraft, setItemTrackExpiryDraft] = useState(true);
   const [batchCodeDraft, setBatchCodeDraft] = useState("");
+  const [batchHasNoCode, setBatchHasNoCode] = useState(false);
   const [batchExpiryDateDraft, setBatchExpiryDateDraft] = useState("");
   const [bookingAction, setBookingAction] = useState<"in" | "out" | "transfer" | "adjustment">("in");
   const [bookingItemMode, setBookingItemMode] = useState<"existing" | "new">("existing");
@@ -159,6 +160,7 @@ function App() {
   const [bookingQuantityDraft, setBookingQuantityDraft] = useState("1");
   const [bookingBatchMode, setBookingBatchMode] = useState<"existing" | "new">("existing");
   const [bookingNewBatchCodeDraft, setBookingNewBatchCodeDraft] = useState("");
+  const [bookingBatchHasNoCode, setBookingBatchHasNoCode] = useState(false);
   const [bookingNewBatchExpiryDraft, setBookingNewBatchExpiryDraft] = useState("");
   const [bookingAdjustmentDirection, setBookingAdjustmentDirection] = useState<"increase" | "decrease">("increase");
   const [scanMode, setScanMode] = useState<"booking-item" | "item-barcode" | "booking-new-item-barcode" | "item-search" | null>(null);
@@ -1059,7 +1061,7 @@ function App() {
       }
 
       if (bookingBatchMode === "new") {
-        if (!bookingNewBatchCodeDraft.trim()) {
+        if (!bookingBatchHasNoCode && !bookingNewBatchCodeDraft.trim()) {
           bookingBatchCodeRef.current?.focus();
           return;
         }
@@ -1450,10 +1452,11 @@ function App() {
     try {
       await addBatch({
         itemId: currentItem.id,
-        batchCode: batchCodeDraft,
+        batchCode: batchHasNoCode ? "" : batchCodeDraft,
         expiryDate: currentItem.trackExpiry ? batchExpiryDateDraft : batchExpiryDateDraft || "2099-12-31"
       });
       setBatchCodeDraft("");
+      setBatchHasNoCode(false);
       setBatchExpiryDateDraft("");
       setRefreshToken((current) => current + 1);
     } catch (error) {
@@ -1556,7 +1559,7 @@ function App() {
           toLocationId: bookingTargetSlotId ? undefined : bookingTargetLocationId || bookingLocationId,
           toSlotId: bookingTargetSlotId || undefined,
           batchId: wantsExistingBatch ? bookingBatchId : undefined,
-          batchCode: wantsExistingBatch ? undefined : bookingNewBatchCodeDraft,
+          batchCode: wantsExistingBatch || bookingBatchHasNoCode ? undefined : bookingNewBatchCodeDraft,
           expiryDate: wantsExistingBatch ? undefined : bookingNewBatchExpiryDraft
         });
       } else if (bookingAction === "out") {
@@ -1592,7 +1595,7 @@ function App() {
           fromSlotId: bookingAdjustmentDirection === "decrease" ? bookingSourceSlotId || undefined : undefined,
           toSlotId: bookingAdjustmentDirection === "increase" ? bookingTargetSlotId || undefined : undefined,
           batchId: wantsExistingBatch ? bookingBatchId : undefined,
-          batchCode: wantsExistingBatch ? undefined : bookingNewBatchCodeDraft,
+          batchCode: wantsExistingBatch || bookingBatchHasNoCode ? undefined : bookingNewBatchCodeDraft,
           expiryDate: wantsExistingBatch ? undefined : bookingNewBatchExpiryDraft
         });
       }
@@ -2577,14 +2580,40 @@ function App() {
                                       )
                                     ) : (
                                       <>
+                                        <label className="form-field">
+                                          <span>Chargencode</span>
+                                          <div className="toggle-pills">
+                                            <button
+                                              type="button"
+                                              className={!bookingBatchHasNoCode ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                                              onClick={() => setBookingBatchHasNoCode(false)}
+                                            >
+                                              Code vorhanden
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className={bookingBatchHasNoCode ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                                              onClick={() => {
+                                                setBookingBatchHasNoCode(true);
+                                                setBookingNewBatchCodeDraft("");
+                                              }}
+                                            >
+                                              Keine Charge
+                                            </button>
+                                          </div>
+                                        </label>
                                         <IonItem className="compact-field">
                                           <IonLabel position="stacked">Chargencode</IonLabel>
                                           <IonInput
                                             value={bookingNewBatchCodeDraft}
                                             placeholder="z. B. CH-2026-01"
+                                            disabled={bookingBatchHasNoCode}
                                             onIonInput={(event) => setBookingNewBatchCodeDraft(String(event.detail.value ?? ""))}
                                           />
                                         </IonItem>
+                                        {bookingBatchHasNoCode ? (
+                                          <div className="empty-state">Die Buchung wird unter „Keine Charge“ gespeichert.</div>
+                                        ) : null}
                                         <label className="form-field">
                                           <span>{bookingTrackExpiry ? "Ablaufdatum" : "Datum optional"}</span>
                                           <input
@@ -2985,14 +3014,40 @@ function App() {
                           {currentItem ? (
                             <>
                               <div className="unit-form">
+                                <label className="form-field">
+                                  <span>Chargencode</span>
+                                  <div className="toggle-pills">
+                                    <button
+                                      type="button"
+                                      className={!batchHasNoCode ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                                      onClick={() => setBatchHasNoCode(false)}
+                                    >
+                                      Code vorhanden
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={batchHasNoCode ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                                      onClick={() => {
+                                        setBatchHasNoCode(true);
+                                        setBatchCodeDraft("");
+                                      }}
+                                    >
+                                      Keine Charge
+                                    </button>
+                                  </div>
+                                </label>
                                 <IonItem className="compact-field">
                                   <IonLabel position="stacked">Chargencode</IonLabel>
                                   <IonInput
                                     value={batchCodeDraft}
                                     placeholder="z. B. ST-2026-04"
+                                    disabled={batchHasNoCode}
                                     onIonInput={(event) => setBatchCodeDraft(String(event.detail.value ?? ""))}
                                   />
                                 </IonItem>
+                                {batchHasNoCode ? (
+                                  <div className="empty-state">Die Charge wird als „Keine Charge“ gespeichert.</div>
+                                ) : null}
                                 <label className="form-field">
                                   <span>{currentItem.trackExpiry ? "Ablaufdatum" : "Datum optional"}</span>
                                   <input
@@ -3362,17 +3417,43 @@ function App() {
                           )
                         ) : (
                           <div className="unit-form">
+                            <label className="form-field">
+                              <span>Chargencode</span>
+                              <div className="toggle-pills">
+                                <button
+                                  type="button"
+                                  className={!bookingBatchHasNoCode ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                                  onClick={() => setBookingBatchHasNoCode(false)}
+                                >
+                                  Code vorhanden
+                                </button>
+                                <button
+                                  type="button"
+                                  className={bookingBatchHasNoCode ? "toggle-pill toggle-pill--active" : "toggle-pill"}
+                                  onClick={() => {
+                                    setBookingBatchHasNoCode(true);
+                                    setBookingNewBatchCodeDraft("");
+                                  }}
+                                >
+                                  Keine Charge
+                                </button>
+                              </div>
+                            </label>
                             <IonItem className="compact-field">
                               <IonLabel position="stacked">Chargencode</IonLabel>
                               <IonInput
                                 value={bookingNewBatchCodeDraft}
                                 placeholder="z. B. TEE-2026-04"
+                                disabled={bookingBatchHasNoCode}
                                 onIonInput={(event) => setBookingNewBatchCodeDraft(String(event.detail.value ?? ""))}
                                 ref={(element) => {
                                   bookingBatchCodeRef.current = element?.querySelector("input") ?? null;
                                 }}
                               />
                             </IonItem>
+                            {bookingBatchHasNoCode ? (
+                              <div className="empty-state">Die Buchung wird unter „Keine Charge“ gespeichert.</div>
+                            ) : null}
                             <label className="form-field">
                               <span>{bookingTrackExpiry ? "Ablaufdatum" : "Datum optional"}</span>
                               <input
@@ -3431,7 +3512,9 @@ function App() {
                           <b>
                             {bookingBatchMode === "existing" || mustUseExistingBookingBatch
                               ? (mustUseExistingBookingBatch ? bookingAvailableBatches : bookingAllItemBatches).find((batch) => batch.id === bookingBatchId)?.batchCode ?? "bitte wählen"
-                              : bookingNewBatchCodeDraft || "neu anlegen"}
+                              : bookingBatchHasNoCode
+                                ? "Keine Charge"
+                                : bookingNewBatchCodeDraft || "neu anlegen"}
                           </b>
                         </div>
                         <div className="booking-preview__row">
