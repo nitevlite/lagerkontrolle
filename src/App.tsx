@@ -272,6 +272,11 @@ function App() {
   const bookingQuantityInputRef = useRef<HTMLIonInputElement | null>(null);
   const backupInputRef = useRef<HTMLInputElement | null>(null);
 
+  function showActionSuccess(message: string) {
+    setActionError(null);
+    setActionSuccess(message);
+  }
+
   useEffect(() => {
     let cancelled = false;
 
@@ -1268,6 +1273,7 @@ function App() {
       JSON.stringify(snapshotState, null, 2),
       "application/json"
     );
+    showActionSuccess("Backup-Datei wurde erstellt.");
   }
 
   function handleExportStockCsv() {
@@ -1291,6 +1297,7 @@ function App() {
       [header, ...rows].join("\n"),
       "text/csv;charset=utf-8"
     );
+    showActionSuccess("Bestandsliste wurde als CSV erstellt.");
   }
 
   async function handleRestoreBackup(file: File | undefined) {
@@ -1308,6 +1315,7 @@ function App() {
       await restoreSnapshot(parsed);
       setRefreshToken((current) => current + 1);
       setActiveView("booking");
+      showActionSuccess("Backup wurde importiert.");
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Backup konnte nicht importiert werden.");
     } finally {
@@ -1324,6 +1332,7 @@ function App() {
     }
 
     try {
+      const isNewLocation = locationDetailId === "";
       if (locationDetailId === "") {
         const newLocationId = await addLocation({ name: trimmed });
         if (newLocationId) {
@@ -1334,6 +1343,7 @@ function App() {
         await renameLocation({ id: detailLocation.id, name: trimmed });
       }
       setRefreshToken((current) => current + 1);
+      showActionSuccess(isNewLocation ? `Ort "${trimmed}" wurde angelegt.` : `Ort "${trimmed}" wurde gespeichert.`);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Ort konnte nicht gespeichert werden.");
     }
@@ -1353,6 +1363,7 @@ function App() {
       setSlotNumber("1");
       setSlotFormVisible(false);
       setRefreshToken((current) => current + 1);
+      showActionSuccess(`${slotKind} wurde angelegt.`);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Slot konnte nicht gespeichert werden.");
     }
@@ -1365,43 +1376,58 @@ function App() {
       return;
     }
 
-    await addUnitType({
-      name: trimmedName,
-      shortCode: trimmedCode,
-      description: unitDescription.trim() || "Benutzerdefiniert"
-    });
-    setUnitName("");
-    setUnitShortCode("");
-    setUnitDescription("");
-    setRefreshToken((current) => current + 1);
+    try {
+      await addUnitType({
+        name: trimmedName,
+        shortCode: trimmedCode,
+        description: unitDescription.trim() || "Benutzerdefiniert"
+      });
+      setUnitName("");
+      setUnitShortCode("");
+      setUnitDescription("");
+      setRefreshToken((current) => current + 1);
+      showActionSuccess(`Einheit "${trimmedName}" wurde angelegt.`);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Einheit konnte nicht gespeichert werden.");
+    }
   }
 
   async function handlePersistSettings() {
     const warningDays = Math.max(1, Number(warningDaysDraft || "10"));
     const reminderDays = Math.max(1, Number(reminderDaysDraft || "3"));
 
-    await updateSettings({
-      expiryWarningDays: warningDays,
-      reminderRepeatDays: reminderDays
-    });
-    setRefreshToken((current) => current + 1);
+    try {
+      await updateSettings({
+        expiryWarningDays: warningDays,
+        reminderRepeatDays: reminderDays
+      });
+      setRefreshToken((current) => current + 1);
+      showActionSuccess("Warn- und Wiedervorlagezeiten wurden gespeichert.");
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Einstellungen konnten nicht gespeichert werden.");
+    }
   }
 
   async function handleSaveSyncConfig() {
     const current = snapshotState?.settings.sync;
-    await updateSettings({
-      sync: {
-        enabled: syncEnabledDraft,
-        couchUrl: syncUrlDraft.trim(),
-        databaseName: syncDatabaseDraft.trim() || "lagerkontrolle",
-        username: syncUsernameDraft.trim() || undefined,
-        password: syncPasswordDraft.trim() || undefined,
-        deviceId: current?.deviceId ?? crypto.randomUUID(),
-        deviceLabel: syncDeviceLabelDraft.trim() || "Gerät",
-        lastSyncedAt: current?.lastSyncedAt
-      }
-    });
-    setRefreshToken((currentValue) => currentValue + 1);
+    try {
+      await updateSettings({
+        sync: {
+          enabled: syncEnabledDraft,
+          couchUrl: syncUrlDraft.trim(),
+          databaseName: syncDatabaseDraft.trim() || "lagerkontrolle",
+          username: syncUsernameDraft.trim() || undefined,
+          password: syncPasswordDraft.trim() || undefined,
+          deviceId: current?.deviceId ?? crypto.randomUUID(),
+          deviceLabel: syncDeviceLabelDraft.trim() || "Gerät",
+          lastSyncedAt: current?.lastSyncedAt
+        }
+      });
+      setRefreshToken((currentValue) => currentValue + 1);
+      showActionSuccess("Sync-Einstellungen wurden gespeichert.");
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Sync-Einstellungen konnten nicht gespeichert werden.");
+    }
   }
 
   async function handleRunSync() {
@@ -1434,6 +1460,7 @@ function App() {
       });
       setSyncStatus(result);
       setRefreshToken((currentValue) => currentValue + 1);
+      showActionSuccess("Synchronisation abgeschlossen.");
     } catch (error) {
       setSyncStatus({
         state: "error",
@@ -1457,6 +1484,7 @@ function App() {
       setBatchScanMode(false);
       setRefreshToken((currentValue) => currentValue + 1);
       setActiveView("booking");
+      showActionSuccess("Lokale Daten wurden zurückgesetzt.");
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Lokale Daten konnten nicht zurückgesetzt werden.");
     }
@@ -1470,6 +1498,7 @@ function App() {
     try {
       await renameLocation({ id: currentLocation.id, name: locationEditName });
       setRefreshToken((current) => current + 1);
+      showActionSuccess(`Ort "${locationEditName}" wurde aktualisiert.`);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Ort konnte nicht aktualisiert werden.");
     }
@@ -1481,10 +1510,12 @@ function App() {
     }
 
     try {
+      const deletedName = detailLocation.name;
       await deleteLocation(detailLocation.id);
       setSelectedLocationId("");
       setLocationDetailId(null);
       setRefreshToken((current) => current + 1);
+      showActionSuccess(`Ort "${deletedName}" wurde gelöscht.`);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Ort konnte nicht gelöscht werden.");
     }
@@ -1494,6 +1525,7 @@ function App() {
     try {
       await deleteStorageSlot(slotId);
       setRefreshToken((current) => current + 1);
+      showActionSuccess("Slot wurde gelöscht.");
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Slot konnte nicht gelöscht werden.");
     }
@@ -1508,6 +1540,7 @@ function App() {
 
     try {
       const itemBarcodes = parseBarcodeDraft(itemBarcodeDraft);
+      const isExistingItem = Boolean(currentItem && currentItem.id === selectedItemId);
       if (currentItem && currentItem.id === selectedItemId) {
         await updateItem({
           id: currentItem.id,
@@ -1536,6 +1569,7 @@ function App() {
       }
 
       setRefreshToken((current) => current + 1);
+      showActionSuccess(isExistingItem ? `Artikel "${itemNameDraft}" wurde gespeichert.` : `Artikel "${itemNameDraft}" wurde angelegt.`);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Artikel konnte nicht gespeichert werden.");
     }
@@ -1562,6 +1596,7 @@ function App() {
       setBatchHasNoCode(false);
       setBatchExpiryDateDraft("");
       setRefreshToken((current) => current + 1);
+      showActionSuccess(`Charge für "${currentItem.name}" wurde angelegt.`);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Charge konnte nicht gespeichert werden.");
     }
@@ -1721,7 +1756,7 @@ function App() {
       setBookingNewItemNameDraft("");
       setBookingNewItemBarcodeDraft("");
       setBookingNewItemLowStockThresholdDraft("5");
-      setActionSuccess(`Buchung gespeichert: ${quantity} x ${successItemName} bei ${successLocationName}.`);
+      showActionSuccess(`Buchung gespeichert: ${quantity} x ${successItemName} bei ${successLocationName}.`);
       setRefreshToken((current) => current + 1);
       if (locationScanMode === "single") {
         closeLocationScanFlow();
@@ -1736,8 +1771,10 @@ function App() {
   async function handleSaveSlotType() {
     try {
       await addSlotType(slotTypeDraft);
+      const createdName = slotTypeDraft;
       setSlotTypeDraft("");
       setRefreshToken((current) => current + 1);
+      showActionSuccess(`Slot-Typ "${createdName}" wurde angelegt.`);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Slot-Typ konnte nicht gespeichert werden.");
     }
@@ -1756,6 +1793,7 @@ function App() {
         number: bookingTargetSlots.length + 1
       });
       setRefreshToken((current) => current + 1);
+      showActionSuccess(`${slotKind} wurde für die Buchung angelegt.`);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Slot konnte nicht angelegt werden.");
     }
@@ -1771,6 +1809,7 @@ function App() {
       setSlotTypeEditDraft("");
       setSlotKind((current) => (current === slotTypeEditSource ? slotTypeEditDraft : current));
       setRefreshToken((current) => current + 1);
+      showActionSuccess(`Slot-Typ wurde in "${slotTypeEditDraft}" umbenannt.`);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Slot-Typ konnte nicht umbenannt werden.");
     }
@@ -1783,6 +1822,7 @@ function App() {
         setSlotKind(snapshotState?.settings.slotTypeNames.find((entry) => entry !== name) ?? "Regal");
       }
       setRefreshToken((current) => current + 1);
+      showActionSuccess(`Slot-Typ "${name}" wurde gelöscht.`);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Slot-Typ konnte nicht gelöscht werden.");
     }
@@ -1802,6 +1842,7 @@ function App() {
     try {
       await deleteUnitType(unitTypeId);
       setRefreshToken((current) => current + 1);
+      showActionSuccess("Einheit wurde gelöscht.");
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Einheit konnte nicht gelöscht werden.");
     }
@@ -1813,12 +1854,14 @@ function App() {
     }
 
     try {
+      const deletedItemName = snapshotState?.items.find((item) => item.id === pendingDeleteItemId)?.name ?? "Artikel";
       await deleteItem(pendingDeleteItemId);
       setPendingDeleteItemId(null);
       setItemDetailId(null);
       setSelectedItemId("");
       setBookingItemId("");
       setRefreshToken((current) => current + 1);
+      showActionSuccess(`Artikel "${deletedItemName}" wurde gelöscht.`);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Artikel konnte nicht gelöscht werden.");
     }
@@ -2515,6 +2558,17 @@ function App() {
                                         onIonInput={(event) => setBookingQuantityDraft(String(event.detail.value ?? ""))}
                                       />
                                     </IonItem>
+                                    {bookingBatchMode === "new" ? (
+                                      <label className="form-field">
+                                        <span>Ablaufdatum optional</span>
+                                        <input
+                                          className="app-input"
+                                          type="date"
+                                          value={bookingNewBatchExpiryDraft}
+                                          onChange={(event) => setBookingNewBatchExpiryDraft(event.target.value)}
+                                        />
+                                      </label>
+                                    ) : null}
                                   </div>
 
                                   {bookingTargetSlots.length > 0 ? (
@@ -2552,15 +2606,6 @@ function App() {
                                           onIonInput={(event) => setBookingNewBatchCodeDraft(String(event.detail.value ?? ""))}
                                         />
                                       </IonItem>
-                                      <label className="form-field">
-                                        <span>Ablaufdatum optional</span>
-                                        <input
-                                          className="app-input"
-                                          type="date"
-                                          value={bookingNewBatchExpiryDraft}
-                                          onChange={(event) => setBookingNewBatchExpiryDraft(event.target.value)}
-                                        />
-                                      </label>
                                     </div>
                                   ) : null}
                                 </div>
@@ -3207,6 +3252,18 @@ function App() {
                           />
                         </IonItem>
 
+                        {bookingBatchMode === "new" && !mustUseExistingBookingBatch ? (
+                          <label className="form-field">
+                            <span>Ablaufdatum optional</span>
+                            <input
+                              className="app-input"
+                              type="date"
+                              value={bookingNewBatchExpiryDraft}
+                              onChange={(event) => setBookingNewBatchExpiryDraft(event.target.value)}
+                            />
+                          </label>
+                        ) : null}
+
                         <label className="form-field">
                           <span>Ort</span>
                           <select
@@ -3300,15 +3357,6 @@ function App() {
                                 }}
                               />
                             </IonItem>
-                            <label className="form-field">
-                              <span>Ablaufdatum optional</span>
-                              <input
-                                className="app-input"
-                                type="date"
-                                value={bookingNewBatchExpiryDraft}
-                                onChange={(event) => setBookingNewBatchExpiryDraft(event.target.value)}
-                              />
-                            </label>
                           </div>
                         ) : null}
 

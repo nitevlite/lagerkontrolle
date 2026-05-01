@@ -91,9 +91,10 @@ npm run build
 - Artikel mit Einheit, mehreren Barcodes, Ablaufpflicht und bevorzugtem Ort koennen angelegt, bearbeitet, gescannt und geloescht werden
 - Chargen mit Ablaufdatum koennen pro Artikel gepflegt werden; ohne Chargencode gibt es die Auswahl `Keine Charge`
 - Buchung speichert echte lokale Bewegungen fuer Zugang, Abgang, Umbuchung und Korrektur und zeigt danach eine sichtbare Speicherbestaetigung
+- Speicher-, Loesch-, Import-, Export-, Reset- und Sync-Aktionen zeigen sichtbare Erfolgsbestaetigungen
 - Abgang, Umbuchung und Minuskorrektur koennen von Slot-Bestand oder direkt vom gewaehlten Ort buchen
 - Buchung zeigt bei bestehenden Artikeln sofort den Gesamtbestand und den Bestand am gewaehlten Ort
-- Buchung fuehrt mobil direkt ueber Buchungsdaten mit Artikel-Dropdown, Menge, kompakter Orts- und Slot-Auswahl und danach optionalem Chargencode mit optionalem Ablaufdatum
+- Buchung fuehrt mobil direkt ueber Buchungsdaten mit Artikel-Dropdown, Menge, Ablaufdatum, kompakter Orts- und Slot-Auswahl und danach optionalem Chargencode
 - im Zugang kann direkt ein neuer Artikel mit Minimalstammdaten ohne Mindestbestand-Feld und ohne Ablauf-Schalter angelegt und sofort eingebucht werden; unbekannte Barcodes werden direkt unter dem Artikelnamen uebernommen, ein leeres Ablaufdatum bedeutet ohne Ablauf
 - Scan ist im Buchungsflow, im Ort-Detail, im Artikelbereich und im Artikel-Barcodefeld aktiv, normalisiert erkannte Codes und bietet manuelle Eingabe als Fallback
 - Orte koennen als Scan-Kontext vorausgewaehlt werden; fuer mehrere Produkte gibt es einen Sammel-Scan-Workflow
