@@ -84,16 +84,16 @@ npm run build
 
 - modernes mobiles Frontend mit kompakter Navigation ohne Hero-Header
 - App startet direkt in der Buchung; die mobile Navigation ist standardmaessig eingeklappt
-- Orte und Artikel sind als Listen mit Filtersuche und separatem Detailscreen aufgebaut
+- Orte und Artikel sind als mobil scanbare Listen mit Filtersuche und separatem Detailscreen aufgebaut
 - neue Installationen starten ohne Testorte, Testartikel, Chargen oder Bewegungen
 - Standard-Einheiten und sinnvolle Slot-Typen sind weiterhin vorbereitet
-- Orte, Slots und freie Slot-Typen koennen lokal angelegt, umbenannt und leere Eintraege geloescht werden
+- Orte, Slots und freie Slot-Typen koennen lokal angelegt, umbenannt und leere Eintraege geloescht werden; Slots werden im Ort-Editor als kompakte Handy-Karten angezeigt
 - Artikel mit Einheit, mehreren Barcodes, Ablaufpflicht und bevorzugtem Ort koennen angelegt, bearbeitet, gescannt und geloescht werden
 - Chargen mit Ablaufdatum koennen pro Artikel gepflegt werden; ohne Chargencode gibt es die Auswahl `Keine Charge`
 - Buchung speichert echte lokale Bewegungen fuer Zugang, Abgang, Umbuchung und Korrektur und zeigt danach eine sichtbare Speicherbestaetigung
 - Abgang, Umbuchung und Minuskorrektur koennen von Slot-Bestand oder direkt vom gewaehlten Ort buchen
 - Buchung zeigt bei bestehenden Artikeln sofort den Gesamtbestand und den Bestand am gewaehlten Ort
-- Buchung fuehrt mobil direkt ueber Buchungsdaten mit Artikel-Dropdown, Ort-Dropdown, optionalem Slot, Charge und Menge
+- Buchung fuehrt mobil direkt ueber Buchungsdaten mit Artikel-Dropdown, Ort-Dropdown, optionalem Slot, optionalem Chargencode, Ablaufdatum und Menge
 - im Zugang kann direkt ein neuer Artikel mit Minimalstammdaten angelegt und sofort eingebucht werden; unbekannte Barcodes werden dabei uebernommen
 - Scan ist im Buchungsflow, im Ort-Detail, im Artikelbereich und im Artikel-Barcodefeld aktiv, normalisiert erkannte Codes und bietet manuelle Eingabe als Fallback
 - Orte koennen als Scan-Kontext vorausgewaehlt werden; fuer mehrere Produkte gibt es einen Sammel-Scan-Workflow

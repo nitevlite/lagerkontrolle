@@ -44,3 +44,5 @@
 - Sync, lokale Daten, Backup, Restore und Export in eigenen Tab `Einstellungen` verschoben
 - Scanner-Fokus fuer Handy-Kameras verbessert
 - Einheitenliste visuell neu und besser scanbar gestaltet
+- Slot-Karten im Ort-Editor und Artikelliste fuer Handy-Ansicht verbessert
+- Chargencode-Umschaltung aus den Buchungsdaten entfernt
