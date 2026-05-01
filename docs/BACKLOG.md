@@ -48,3 +48,4 @@
 - Chargencode-Umschaltung aus den Buchungsdaten entfernt
 - Buchungsdaten weiter verdichtet: Mindestbestand beim schnellen neuen Artikel entfernt, Orts- und Slot-Auswahl unter die Menge geschoben und kompakter gestaltet
 - Einheitenliste ohne linke Badges mit kleinem Loesch-Icon rechts umgesetzt, Bewegungen in Analyse als horizontale Balken dargestellt und Slot-Typen kompakter gemacht
+- Buchungsdaten erneut sortiert: Barcode steht beim schnellen neuen Artikel direkt unter dem Namen, Chargencode und optionales Ablaufdatum stehen unter Slot optional, ein leeres Ablaufdatum speichert neue Artikel ohne Ablauf, und das Dashboard priorisiert Ablauf-Filter vor niedrigen Bestaenden.

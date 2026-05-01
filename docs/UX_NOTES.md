@@ -8,7 +8,8 @@
 - Nach einer Warnung braucht es eine Wiedervorlage in `X Tagen`, damit kritische Ware nicht einmal aufpoppt und dann vergessen wird.
 - Einheitentypen duerfen nicht hart codiert sein. Neue Typen wie `Sack`, `Dose` oder `Tray` muessen direkt anlegbar sein.
 - Einheitentypen brauchen eine eigenstaendige, kompakte Liste ohne grosse Badges; Loeschen gehoert als kleines Icon rechts neben den Namen.
-- Die Buchung bleibt bewusst kurz: keine Chargenauswahl, keine Chargencode-Umschaltung, keine redundante Zusammenfassung unter der Menge, Bestand klar vor den Buchungsdaten, Menge vor Ort und optionalem Slot.
+- Die Buchung bleibt bewusst kurz: keine Chargenauswahl, keine Chargencode-Umschaltung, kein Ablauf-Schalter beim schnellen neuen Artikel, keine redundante Zusammenfassung unter der Menge, Bestand klar vor den Buchungsdaten, Menge vor Ort und optionalem Slot, Chargencode erst unter dem optionalen Slot.
+- Im Dashboard stehen Ablauf-Filter und niedrige Bestaende vor den weiteren Kennzahlen, weil sie die dringendsten operativen Entscheidungen steuern.
 - Administrative Funktionen wie Sync, lokale Daten, Backup, Restore und Export gehoeren in `Einstellungen`, nicht ins operative Dashboard.
 - Verwaltungslisten in `Einstellungen`, besonders Slot-Typen, muessen dichter sein als operative Kartenlisten.
 - Im Ort-Editor soll `Slot hinzufuegen` als klare Aktion neben dem Speichern stehen; `Ort loeschen` gehoert ans Seitenende.

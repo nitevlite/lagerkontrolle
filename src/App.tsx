@@ -74,6 +74,7 @@ const viewMeta: Array<{ key: ViewKey; label: string; icon: string }> = [
 ];
 
 const expiryFilters = [7, 10, 30, 60] as const;
+const noExpiryDate = "2099-12-31";
 const displayDateFormatter = new Intl.DateTimeFormat("de-AT", {
   day: "2-digit",
   month: "2-digit",
@@ -221,7 +222,6 @@ function App() {
   const [bookingNewItemBarcodeDraft, setBookingNewItemBarcodeDraft] = useState("");
   const [bookingNewItemUnitTypeId, setBookingNewItemUnitTypeId] = useState("");
   const [bookingNewItemLowStockThresholdDraft, setBookingNewItemLowStockThresholdDraft] = useState("5");
-  const [bookingNewItemTrackExpiry, setBookingNewItemTrackExpiry] = useState(true);
   const [bookingLocationId, setBookingLocationId] = useState("");
   const [bookingTargetLocationId, setBookingTargetLocationId] = useState("");
   const [bookingSourceSlotId, setBookingSourceSlotId] = useState("");
@@ -230,7 +230,6 @@ function App() {
   const [bookingQuantityDraft, setBookingQuantityDraft] = useState("1");
   const [bookingBatchMode, setBookingBatchMode] = useState<"existing" | "new">("existing");
   const [bookingNewBatchCodeDraft, setBookingNewBatchCodeDraft] = useState("");
-  const [bookingBatchHasNoCode, setBookingBatchHasNoCode] = useState(false);
   const [bookingNewBatchExpiryDraft, setBookingNewBatchExpiryDraft] = useState("");
   const [bookingAdjustmentDirection, setBookingAdjustmentDirection] = useState<"increase" | "decrease">("increase");
   const [scanMode, setScanMode] = useState<"booking-item" | "item-barcode" | "booking-new-item-barcode" | "item-search" | null>(null);
@@ -715,6 +714,7 @@ function App() {
           const nextExpiry = item.trackExpiry
             ? relatedBatches
                 .map((batch) => batch.expiryDate)
+                .filter((expiryDate) => expiryDate !== noExpiryDate)
                 .sort((left, right) => left.localeCompare(right))[0]
             : null;
           const unitType = snapshotState?.unitTypes.find((unit) => unit.id === item.unitTypeId);
@@ -918,7 +918,6 @@ function App() {
   const bookingDisplayItemName = bookingUsesNewItem
     ? bookingNewItemNameDraft.trim() || "Neuer Artikel"
     : bookingItem?.name ?? "Artikel wählen";
-  const bookingTrackExpiry = bookingUsesNewItem ? bookingNewItemTrackExpiry : (bookingItem?.trackExpiry ?? true);
   const bookingLocation = viewModel?.locations.find((location) => location.id === bookingLocationId) ?? null;
   const scanSupported = Boolean(getBarcodeDetector() && navigator.mediaDevices?.getUserMedia);
 
@@ -988,7 +987,7 @@ function App() {
       .map((batch) => ({
         id: batch.id,
         batchCode: batch.batchCode,
-        expiryLabel: displayDateFormatter.format(new Date(batch.expiryDate))
+        expiryLabel: batch.expiryDate === noExpiryDate ? "ohne Ablauf" : displayDateFormatter.format(new Date(batch.expiryDate))
       }))
       .sort((left, right) => left.expiryLabel.localeCompare(right.expiryLabel));
   }, [bookingItem, snapshotState]);
@@ -1047,7 +1046,7 @@ function App() {
       .map((batch) => ({
         id: batch.id,
         batchCode: batch.batchCode,
-        expiryLabel: currentItem.trackExpiry
+        expiryLabel: currentItem.trackExpiry && batch.expiryDate !== noExpiryDate
           ? displayDateFormatter.format(new Date(batch.expiryDate))
           : "ohne Ablauf",
         quantity: Math.max(0, batchQuantityById.get(batch.id) ?? 0),
@@ -1651,7 +1650,7 @@ function App() {
             unitTypeId: bookingNewItemUnitTypeId,
             barcode: newBarcode,
             barcodes: newBarcode ? [newBarcode] : [],
-            trackExpiry: bookingNewItemTrackExpiry,
+            trackExpiry: Boolean(bookingNewBatchExpiryDraft),
             preferredLocationId: bookingLocationId || undefined,
             lowStockThreshold: Math.max(0, Number(bookingNewItemLowStockThresholdDraft || "0"))
           });
@@ -1722,7 +1721,6 @@ function App() {
       setBookingNewItemNameDraft("");
       setBookingNewItemBarcodeDraft("");
       setBookingNewItemLowStockThresholdDraft("5");
-      setBookingNewItemTrackExpiry(true);
       setActionSuccess(`Buchung gespeichert: ${quantity} x ${successItemName} bei ${successLocationName}.`);
       setRefreshToken((current) => current + 1);
       if (locationScanMode === "single") {
@@ -2020,102 +2018,7 @@ function App() {
                           Zur Buchung
                         </IonButton>
                       </header>
-                      <div className="metric-grid metric-grid--dashboard">
-                        {viewModel.dashboardStats.map((stat) => (
-                          <button
-                            key={stat.id}
-                            type="button"
-                            className={
-                              dashboardDetail === stat.id
-                                ? "metric-card metric-card--button metric-card--active"
-                                : "metric-card metric-card--button"
-                            }
-                            onClick={() => {
-                              if (stat.id === "critical" || stat.id === "warning" || stat.id === "low-stock") {
-                                const detailId = stat.id as "critical" | "warning" | "low-stock";
-                                setDashboardDetail((current) => (current === detailId ? null : detailId));
-                                return;
-                              }
-                              if (stat.id === "movements") {
-                                setActiveView("log");
-                              }
-                            }}
-                          >
-                            <span>{stat.label}</span>
-                            <strong>{stat.value}</strong>
-                            <small>{stat.detail}</small>
-                          </button>
-                        ))}
-                      </div>
                     </section>
-
-                    {dashboardDetail ? (
-                      <section className="surface">
-                        <header className="section-header">
-                          <div>
-                            <h2>
-                              {dashboardDetail === "critical"
-                                ? "Kritische Abläufe"
-                                : dashboardDetail === "warning"
-                                  ? "Warnfenster"
-                                  : "Niedrige Bestände"}
-                            </h2>
-                            <span>
-                              {dashboardDetail === "low-stock"
-                                ? `${viewModel.lowStockAlerts.length} Treffer`
-                                : `${dashboardDetailAlerts.length} Treffer`}
-                            </span>
-                          </div>
-                          <IonButton fill="clear" className="back-button" onClick={() => setDashboardDetail(null)}>
-                            Schließen
-                          </IonButton>
-                        </header>
-                        <div className="list list--mobile-cards">
-                          {dashboardDetail === "low-stock" ? (
-                            viewModel.lowStockAlerts.length > 0 ? (
-                              viewModel.lowStockAlerts.map((alert) => (
-                                <article key={alert.id} className="list-row list-row--mobile-card">
-                                  <div className="list-row__main">
-                                    <strong>{alert.itemName}</strong>
-                                    <span>{alert.locationName}</span>
-                                  </div>
-                                  <div className="list-row__meta">
-                                    <b>
-                                      {alert.quantity} / {alert.minimumQuantity} {alert.unitShortCode}
-                                    </b>
-                                    <small>Bestand unter Grenze</small>
-                                  </div>
-                                </article>
-                              ))
-                            ) : (
-                              <div className="empty-state">Keine niedrigen Bestände.</div>
-                            )
-                          ) : dashboardDetailAlerts.length > 0 ? (
-                            dashboardDetailAlerts.map((alert) => (
-                              <article key={alert.id} className="list-row list-row--mobile-card">
-                                <div className="list-row__main">
-                                  <strong>{alert.itemName}</strong>
-                                  <span>
-                                    {alert.locationName} · {alert.slotName}
-                                  </span>
-                                  <span>Charge {alert.batchCode}</span>
-                                </div>
-                                <div className="list-row__meta">
-                                  <b className={`status-text ${toneClass(alert.daysUntilExpiry <= 5 ? "critical" : "warning")}`}>
-                                    {alert.daysUntilExpiry} Tage
-                                  </b>
-                                  <small>
-                                    {alert.quantity} {alert.unitShortCode}
-                                  </small>
-                                </div>
-                              </article>
-                            ))
-                          ) : (
-                            <div className="empty-state">Keine Treffer.</div>
-                          )}
-                        </div>
-                      </section>
-                    ) : null}
 
                     <section className="surface">
                       <header className="section-header">
@@ -2189,6 +2092,104 @@ function App() {
                               </b>
                             </div>
                           </article>
+                        ))}
+                      </div>
+                    </section>
+
+                    {dashboardDetail ? (
+                      <section className="surface">
+                        <header className="section-header">
+                          <div>
+                            <h2>
+                              {dashboardDetail === "critical"
+                                ? "Kritische Abläufe"
+                                : dashboardDetail === "warning"
+                                  ? "Warnfenster"
+                                  : "Niedrige Bestände"}
+                            </h2>
+                            <span>
+                              {dashboardDetail === "low-stock"
+                                ? `${viewModel.lowStockAlerts.length} Treffer`
+                                : `${dashboardDetailAlerts.length} Treffer`}
+                            </span>
+                          </div>
+                          <IonButton fill="clear" className="back-button" onClick={() => setDashboardDetail(null)}>
+                            Schließen
+                          </IonButton>
+                        </header>
+                        <div className="list list--mobile-cards">
+                          {dashboardDetail === "low-stock" ? (
+                            viewModel.lowStockAlerts.length > 0 ? (
+                              viewModel.lowStockAlerts.map((alert) => (
+                                <article key={alert.id} className="list-row list-row--mobile-card">
+                                  <div className="list-row__main">
+                                    <strong>{alert.itemName}</strong>
+                                    <span>{alert.locationName}</span>
+                                  </div>
+                                  <div className="list-row__meta">
+                                    <b>
+                                      {alert.quantity} / {alert.minimumQuantity} {alert.unitShortCode}
+                                    </b>
+                                    <small>Bestand unter Grenze</small>
+                                  </div>
+                                </article>
+                              ))
+                            ) : (
+                              <div className="empty-state">Keine niedrigen Bestände.</div>
+                            )
+                          ) : dashboardDetailAlerts.length > 0 ? (
+                            dashboardDetailAlerts.map((alert) => (
+                              <article key={alert.id} className="list-row list-row--mobile-card">
+                                <div className="list-row__main">
+                                  <strong>{alert.itemName}</strong>
+                                  <span>
+                                    {alert.locationName} · {alert.slotName}
+                                  </span>
+                                  <span>Charge {alert.batchCode}</span>
+                                </div>
+                                <div className="list-row__meta">
+                                  <b className={`status-text ${toneClass(alert.daysUntilExpiry <= 5 ? "critical" : "warning")}`}>
+                                    {alert.daysUntilExpiry} Tage
+                                  </b>
+                                  <small>
+                                    {alert.quantity} {alert.unitShortCode}
+                                  </small>
+                                </div>
+                              </article>
+                            ))
+                          ) : (
+                            <div className="empty-state">Keine Treffer.</div>
+                          )}
+                        </div>
+                      </section>
+                    ) : null}
+
+                    <section className="surface">
+                      <div className="metric-grid metric-grid--dashboard">
+                        {viewModel.dashboardStats.map((stat) => (
+                          <button
+                            key={stat.id}
+                            type="button"
+                            className={
+                              dashboardDetail === stat.id
+                                ? "metric-card metric-card--button metric-card--active"
+                                : "metric-card metric-card--button"
+                            }
+                            onClick={() => {
+                              if (stat.id === "critical" || stat.id === "warning" || stat.id === "low-stock") {
+                                const detailId = stat.id as "critical" | "warning" | "low-stock";
+                                setDashboardDetail((current) => (current === detailId ? null : detailId));
+                                return;
+                              }
+                              if (stat.id === "movements") {
+                                setActiveView("log");
+                              }
+                            }}
+                          >
+                            <span>{stat.label}</span>
+                            <strong>{stat.value}</strong>
+                            <small>{stat.detail}</small>
+                          </button>
                         ))}
                       </div>
                     </section>
@@ -2408,6 +2409,18 @@ function App() {
                                           onIonInput={(event) => setBookingNewItemNameDraft(String(event.detail.value ?? ""))}
                                         />
                                       </IonItem>
+                                      <IonItem className="compact-field">
+                                        <IonLabel position="stacked">Barcode</IonLabel>
+                                        <IonInput
+                                          value={bookingNewItemBarcodeDraft}
+                                          onIonInput={(event) => setBookingNewItemBarcodeDraft(String(event.detail.value ?? ""))}
+                                        />
+                                      </IonItem>
+                                      {bookingNewItemBarcodeDraft.trim() ? (
+                                        <div className="barcode-confirmation">
+                                          Übernommener Barcode: <strong>{bookingNewItemBarcodeDraft.trim()}</strong>
+                                        </div>
+                                      ) : null}
                                       <label className="form-field">
                                         <span>Einheit</span>
                                         <select
@@ -2422,34 +2435,6 @@ function App() {
                                           ))}
                                         </select>
                                       </label>
-                                      <IonItem className="compact-field">
-                                        <IonLabel position="stacked">Barcode</IonLabel>
-                                        <IonInput
-                                          value={bookingNewItemBarcodeDraft}
-                                          onIonInput={(event) => setBookingNewItemBarcodeDraft(String(event.detail.value ?? ""))}
-                                        />
-                                      </IonItem>
-                                      {bookingNewItemBarcodeDraft.trim() ? (
-                                        <div className="barcode-confirmation">
-                                          Übernommener Barcode: <strong>{bookingNewItemBarcodeDraft.trim()}</strong>
-                                        </div>
-                                      ) : null}
-                                      <div className="toggle-pills booking-toggle-row">
-                                        <button
-                                          type="button"
-                                          className={bookingNewItemTrackExpiry ? "toggle-pill toggle-pill--active" : "toggle-pill"}
-                                          onClick={() => setBookingNewItemTrackExpiry(true)}
-                                        >
-                                          Ablauf aktiv
-                                        </button>
-                                        <button
-                                          type="button"
-                                          className={!bookingNewItemTrackExpiry ? "toggle-pill toggle-pill--active" : "toggle-pill"}
-                                          onClick={() => setBookingNewItemTrackExpiry(false)}
-                                        >
-                                          Ohne Ablauf
-                                        </button>
-                                      </div>
                                     </div>
                                   ) : (
                                     <>
@@ -2521,53 +2506,7 @@ function App() {
                                       ) : (
                                         <div className="empty-state">Keine bestehende Charge verfügbar.</div>
                                       )
-                                    ) : (
-                                      <>
-                                        <label className="form-field batch-code-choice">
-                                          <span>Chargencode</span>
-                                          <div className="toggle-pills toggle-pills--full">
-                                            <button
-                                              type="button"
-                                              className={!bookingBatchHasNoCode ? "toggle-pill toggle-pill--active" : "toggle-pill"}
-                                              onClick={() => setBookingBatchHasNoCode(false)}
-                                            >
-                                              Code vorhanden
-                                            </button>
-                                            <button
-                                              type="button"
-                                              className={bookingBatchHasNoCode ? "toggle-pill toggle-pill--active" : "toggle-pill"}
-                                              onClick={() => {
-                                                setBookingBatchHasNoCode(true);
-                                                setBookingNewBatchCodeDraft("");
-                                              }}
-                                            >
-                                              Keine Charge
-                                            </button>
-                                          </div>
-                                        </label>
-                                        {bookingBatchHasNoCode ? (
-                                          <div className="empty-state empty-state--compact">Die Buchung wird unter „Keine Charge“ gespeichert.</div>
-                                        ) : (
-                                          <IonItem className="compact-field">
-                                            <IonLabel position="stacked">Chargencode</IonLabel>
-                                            <IonInput
-                                              value={bookingNewBatchCodeDraft}
-                                              placeholder="z. B. CH-2026-01"
-                                              onIonInput={(event) => setBookingNewBatchCodeDraft(String(event.detail.value ?? ""))}
-                                            />
-                                          </IonItem>
-                                        )}
-                                        <label className="form-field">
-                                          <span>{bookingTrackExpiry ? "Ablaufdatum" : "Datum optional"}</span>
-                                          <input
-                                            className="app-input"
-                                            type="date"
-                                            value={bookingNewBatchExpiryDraft}
-                                            onChange={(event) => setBookingNewBatchExpiryDraft(event.target.value)}
-                                          />
-                                        </label>
-                                      </>
-                                    )}
+                                    ) : null}
                                     <IonItem className="compact-field">
                                       <IonLabel position="stacked">Menge</IonLabel>
                                       <IonInput
@@ -2602,6 +2541,28 @@ function App() {
                                       </IonButton>
                                     </div>
                                   )}
+
+                                  {bookingBatchMode === "new" ? (
+                                    <div className="unit-form booking-batch-fields">
+                                      <IonItem className="compact-field">
+                                        <IonLabel position="stacked">Chargencode optional</IonLabel>
+                                        <IonInput
+                                          value={bookingNewBatchCodeDraft}
+                                          placeholder="leer lassen für Keine Charge"
+                                          onIonInput={(event) => setBookingNewBatchCodeDraft(String(event.detail.value ?? ""))}
+                                        />
+                                      </IonItem>
+                                      <label className="form-field">
+                                        <span>Ablaufdatum optional</span>
+                                        <input
+                                          className="app-input"
+                                          type="date"
+                                          value={bookingNewBatchExpiryDraft}
+                                          onChange={(event) => setBookingNewBatchExpiryDraft(event.target.value)}
+                                        />
+                                      </label>
+                                    </div>
+                                  ) : null}
                                 </div>
                                 <div className="form-actions">
                                   <IonButton fill="outline" className="primary-button" onClick={() => openScan("booking-item")}>
@@ -2848,6 +2809,16 @@ function App() {
                               />
                             </IonItem>
                             <label className="form-field">
+                              <span>Barcodes</span>
+                              <textarea
+                                className="app-input app-textarea"
+                                value={itemBarcodeDraft}
+                                placeholder="ein Code pro Zeile"
+                                rows={3}
+                                onChange={(event) => setItemBarcodeDraft(event.target.value)}
+                              />
+                            </label>
+                            <label className="form-field">
                               <span>Einheit</span>
                               <select
                                 className="app-select"
@@ -2883,16 +2854,6 @@ function App() {
                                 onIonInput={(event) => setItemLowStockThresholdDraft(String(event.detail.value ?? ""))}
                               />
                             </IonItem>
-                            <label className="form-field">
-                              <span>Barcodes</span>
-                              <textarea
-                                className="app-input app-textarea"
-                                value={itemBarcodeDraft}
-                                placeholder="ein Code pro Zeile"
-                                rows={3}
-                                onChange={(event) => setItemBarcodeDraft(event.target.value)}
-                              />
-                            </label>
                           </div>
                           <div className="form-actions">
                             <IonButton
@@ -3137,20 +3098,6 @@ function App() {
                                 onIonInput={(event) => setBookingNewItemNameDraft(String(event.detail.value ?? ""))}
                               />
                             </IonItem>
-                            <label className="form-field">
-                              <span>Einheit</span>
-                              <select
-                                className="app-select app-select--compact"
-                                value={bookingNewItemUnitTypeId}
-                                onChange={(event) => setBookingNewItemUnitTypeId(event.target.value)}
-                              >
-                                {viewModel.unitTypes.map((unitType) => (
-                                  <option key={unitType.id} value={unitType.id}>
-                                    {unitType.name} ({unitType.shortCode})
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
                             <IonItem className="compact-field">
                               <IonLabel position="stacked">Barcode</IonLabel>
                               <IonInput
@@ -3168,22 +3115,20 @@ function App() {
                                 Barcode scannen
                               </IonButton>
                             </div>
-                            <div className="toggle-pills booking-toggle-row">
-                              <button
-                                type="button"
-                                className={bookingNewItemTrackExpiry ? "toggle-pill toggle-pill--active" : "toggle-pill"}
-                                onClick={() => setBookingNewItemTrackExpiry(true)}
+                            <label className="form-field">
+                              <span>Einheit</span>
+                              <select
+                                className="app-select app-select--compact"
+                                value={bookingNewItemUnitTypeId}
+                                onChange={(event) => setBookingNewItemUnitTypeId(event.target.value)}
                               >
-                                Ablauf aktiv
-                              </button>
-                              <button
-                                type="button"
-                                className={!bookingNewItemTrackExpiry ? "toggle-pill toggle-pill--active" : "toggle-pill"}
-                                onClick={() => setBookingNewItemTrackExpiry(false)}
-                              >
-                                Ohne Ablauf
-                              </button>
-                            </div>
+                                {viewModel.unitTypes.map((unitType) => (
+                                  <option key={unitType.id} value={unitType.id}>
+                                    {unitType.name} ({unitType.shortCode})
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
                           </div>
                         ) : (
                           <>
@@ -3250,30 +3195,7 @@ function App() {
                           ) : (
                             <div className="empty-state">Keine passende bestehende Charge verfügbar.</div>
                           )
-                        ) : (
-                          <div className="unit-form booking-batch-fields">
-                            <IonItem className="compact-field">
-                              <IonLabel position="stacked">Chargencode optional</IonLabel>
-                              <IonInput
-                                value={bookingNewBatchCodeDraft}
-                                placeholder="leer lassen für Keine Charge"
-                                onIonInput={(event) => setBookingNewBatchCodeDraft(String(event.detail.value ?? ""))}
-                                ref={(element) => {
-                                  bookingBatchCodeRef.current = element?.querySelector("input") ?? null;
-                                }}
-                              />
-                            </IonItem>
-                            <label className="form-field">
-                              <span>{bookingTrackExpiry ? "Ablaufdatum" : "Datum optional"}</span>
-                              <input
-                                className="app-input"
-                                type="date"
-                                value={bookingNewBatchExpiryDraft}
-                                onChange={(event) => setBookingNewBatchExpiryDraft(event.target.value)}
-                              />
-                            </label>
-                          </div>
-                        )}
+                        ) : null}
 
                         <IonItem className="compact-field">
                           <IonLabel position="stacked">Menge</IonLabel>
@@ -3363,6 +3285,31 @@ function App() {
                               </IonButton>
                             </div>
                           )
+                        ) : null}
+
+                        {bookingBatchMode === "new" && !mustUseExistingBookingBatch ? (
+                          <div className="unit-form booking-batch-fields">
+                            <IonItem className="compact-field">
+                              <IonLabel position="stacked">Chargencode optional</IonLabel>
+                              <IonInput
+                                value={bookingNewBatchCodeDraft}
+                                placeholder="leer lassen für Keine Charge"
+                                onIonInput={(event) => setBookingNewBatchCodeDraft(String(event.detail.value ?? ""))}
+                                ref={(element) => {
+                                  bookingBatchCodeRef.current = element?.querySelector("input") ?? null;
+                                }}
+                              />
+                            </IonItem>
+                            <label className="form-field">
+                              <span>Ablaufdatum optional</span>
+                              <input
+                                className="app-input"
+                                type="date"
+                                value={bookingNewBatchExpiryDraft}
+                                onChange={(event) => setBookingNewBatchExpiryDraft(event.target.value)}
+                              />
+                            </label>
+                          </div>
                         ) : null}
 
                         {bookingAction === "transfer" ? (

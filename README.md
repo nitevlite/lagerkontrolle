@@ -93,15 +93,15 @@ npm run build
 - Buchung speichert echte lokale Bewegungen fuer Zugang, Abgang, Umbuchung und Korrektur und zeigt danach eine sichtbare Speicherbestaetigung
 - Abgang, Umbuchung und Minuskorrektur koennen von Slot-Bestand oder direkt vom gewaehlten Ort buchen
 - Buchung zeigt bei bestehenden Artikeln sofort den Gesamtbestand und den Bestand am gewaehlten Ort
-- Buchung fuehrt mobil direkt ueber Buchungsdaten mit Artikel-Dropdown, optionalem Chargencode, Ablaufdatum, Menge und danach kompakter Orts- und Slot-Auswahl
-- im Zugang kann direkt ein neuer Artikel mit Minimalstammdaten ohne Mindestbestand-Feld angelegt und sofort eingebucht werden; unbekannte Barcodes werden dabei uebernommen
+- Buchung fuehrt mobil direkt ueber Buchungsdaten mit Artikel-Dropdown, Menge, kompakter Orts- und Slot-Auswahl und danach optionalem Chargencode mit optionalem Ablaufdatum
+- im Zugang kann direkt ein neuer Artikel mit Minimalstammdaten ohne Mindestbestand-Feld und ohne Ablauf-Schalter angelegt und sofort eingebucht werden; unbekannte Barcodes werden direkt unter dem Artikelnamen uebernommen, ein leeres Ablaufdatum bedeutet ohne Ablauf
 - Scan ist im Buchungsflow, im Ort-Detail, im Artikelbereich und im Artikel-Barcodefeld aktiv, normalisiert erkannte Codes und bietet manuelle Eingabe als Fallback
 - Orte koennen als Scan-Kontext vorausgewaehlt werden; fuer mehrere Produkte gibt es einen Sammel-Scan-Workflow
 - Favoriten fuer Orte und Artikel bleiben lokal gespeichert
 - Buchung und Dashboard priorisieren Favoriten und zuletzt genutzte Eintraege
 - Dashboard bietet operative Lagerinformationen; Sync, lokale Datenbereinigung, JSON-Backup/Restore und CSV-Bestandsexport liegen im eigenen Tab `Einstellungen`
 - Analyse zeigt mobile Balken fuer Bewegungen, Ablauf-Verteilung, Top-Orte und Top-Artikel plus priorisierte Risiko-Liste
-- Dashboard zeigt Ablaufwarnungen getrennt
+- Dashboard zeigt den Ablauf-Filter ganz oben und niedrige Bestaende direkt darunter
 - mobile Listen und Analysekarten sind fuer Handy dichter und lesbarer nachgezogen
 - echtes Domain-Modell fuer `Location`, `StorageSlot`, `UnitType`, `Item`, `Batch`, `Movement`, `AppSettings`
 - lokale Offline-Persistenz ueber `IndexedDB` mit `Dexie`

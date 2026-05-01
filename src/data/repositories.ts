@@ -5,6 +5,7 @@ import { createDefaultSyncConfig, markEntityChanged, markEntityDeleted } from ".
 
 const defaultSlotTypeNames = ["Regal", "Lade", "Schrank", "Fach", "Kiste", "Box", "Kühlschrank", "Gefrierschrank", "Palette"];
 const noBatchCode = "Keine Charge";
+const noExpiryDate = "2099-12-31";
 
 function normalizeBarcode(value: string) {
   const compact = value.trim().replace(/\s+/g, "");
@@ -565,11 +566,7 @@ export async function createMovement(input: {
   await db.transaction("rw", db.batches, db.movements, async () => {
     if (!batchId) {
       const batchCode = input.batchCode?.trim() || noBatchCode;
-      const expiryDate = item.trackExpiry ? input.expiryDate?.trim() : input.expiryDate?.trim() || "2099-12-31";
-
-      if (item.trackExpiry && !expiryDate) {
-        throw new Error("Bitte ein Ablaufdatum für die neue Charge setzen.");
-      }
+      const expiryDate = input.expiryDate?.trim() || noExpiryDate;
 
       const duplicateBatch = await db.batches
         .filter(
@@ -587,7 +584,7 @@ export async function createMovement(input: {
           id: batchId,
           itemId: item.id,
           batchCode,
-          expiryDate: expiryDate ?? "2099-12-31"
+          expiryDate
         });
         changedEntityIds.push({ type: "batch", id: batchId });
       }

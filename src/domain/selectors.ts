@@ -91,6 +91,7 @@ const fullDateFormatter = new Intl.DateTimeFormat("de-AT", {
   month: "2-digit",
   year: "numeric"
 });
+const noExpiryDate = "2099-12-31";
 
 function startOfToday() {
   const today = new Date();
@@ -188,7 +189,7 @@ export function buildViewModel(snapshot: DomainSnapshot): AppViewModel {
       const batch = batchById.get(entry.batchId)!;
       const item = itemById.get(batch.itemId)!;
       const unit = unitById.get(item.unitTypeId)!;
-      const remainingDays = item.trackExpiry ? daysUntil(batch.expiryDate) : null;
+      const remainingDays = item.trackExpiry && batch.expiryDate !== noExpiryDate ? daysUntil(batch.expiryDate) : null;
 
       return {
         id: `${entry.locationId}:${entry.slotId ?? "ort"}:${entry.batchId}`,
@@ -199,7 +200,7 @@ export function buildViewModel(snapshot: DomainSnapshot): AppViewModel {
         itemName: item.name,
         quantity: entry.quantity,
         unitShortCode: unit.shortCode,
-        expiryDate: fullDateFormatter.format(new Date(batch.expiryDate)),
+        expiryDate: batch.expiryDate === noExpiryDate ? "ohne Ablauf" : fullDateFormatter.format(new Date(batch.expiryDate)),
         status: getTone(remainingDays, snapshot.settings.expiryWarningDays),
         daysUntilExpiry: remainingDays
       };
