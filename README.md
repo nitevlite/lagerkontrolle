@@ -86,8 +86,8 @@ npm run build
 - App startet direkt in der Buchung; die mobile Navigation ist standardmaessig eingeklappt
 - Orte und Artikel sind als mobil scanbare Listen mit Filtersuche und separatem Detailscreen aufgebaut
 - neue Installationen starten ohne Testorte, Testartikel, Chargen oder Bewegungen
-- Standard-Einheiten und sinnvolle Slot-Typen sind weiterhin vorbereitet
-- Orte, Slots und freie Slot-Typen koennen lokal angelegt, umbenannt und leere Eintraege geloescht werden; Slots werden im Ort-Editor als kompakte Handy-Karten angezeigt
+- Standard-Einheiten und sinnvolle Slot-Typen sind weiterhin vorbereitet; Einheiten werden kompakt ohne Badge mit Icon-Loeschen angezeigt
+- Orte, Slots und freie Slot-Typen koennen lokal angelegt, umbenannt und leere Eintraege geloescht werden; Slots und Slot-Typen werden kompakt angezeigt
 - Artikel mit Einheit, mehreren Barcodes, Ablaufpflicht und bevorzugtem Ort koennen angelegt, bearbeitet, gescannt und geloescht werden
 - Chargen mit Ablaufdatum koennen pro Artikel gepflegt werden; ohne Chargencode gibt es die Auswahl `Keine Charge`
 - Buchung speichert echte lokale Bewegungen fuer Zugang, Abgang, Umbuchung und Korrektur und zeigt danach eine sichtbare Speicherbestaetigung
@@ -100,7 +100,7 @@ npm run build
 - Favoriten fuer Orte und Artikel bleiben lokal gespeichert
 - Buchung und Dashboard priorisieren Favoriten und zuletzt genutzte Eintraege
 - Dashboard bietet operative Lagerinformationen; Sync, lokale Datenbereinigung, JSON-Backup/Restore und CSV-Bestandsexport liegen im eigenen Tab `Einstellungen`
-- Analyse zeigt mobile Charts fuer Bewegungen, Ablauf-Verteilung, Top-Orte und Top-Artikel plus priorisierte Risiko-Liste
+- Analyse zeigt mobile Balken fuer Bewegungen, Ablauf-Verteilung, Top-Orte und Top-Artikel plus priorisierte Risiko-Liste
 - Dashboard zeigt Ablaufwarnungen getrennt
 - mobile Listen und Analysekarten sind fuer Handy dichter und lesbarer nachgezogen
 - echtes Domain-Modell fuer `Location`, `StorageSlot`, `UnitType`, `Item`, `Batch`, `Movement`, `AppSettings`

@@ -3534,16 +3534,22 @@ function App() {
                       <div className="unit-list">
                         {viewModel.unitTypes.map((unitType) => (
                           <article key={unitType.id} className="unit-card">
-                            <div className="unit-card__code">{unitType.shortCode}</div>
                             <div className="unit-card__main">
-                              <strong>{unitType.name}</strong>
+                              <strong>
+                                {unitType.name}
+                                <span>{unitType.shortCode}</span>
+                              </strong>
                               <span>{unitType.description}</span>
                             </div>
-                            <div className="unit-card__actions">
-                              <IonButton size="small" fill="clear" className="danger-button" onClick={() => void handleDeleteUnitType(unitType.id)}>
-                                Löschen
-                              </IonButton>
-                            </div>
+                            <IonButton
+                              aria-label={`${unitType.name} löschen`}
+                              size="small"
+                              fill="clear"
+                              className="danger-button unit-card__delete"
+                              onClick={() => void handleDeleteUnitType(unitType.id)}
+                            >
+                              <IonIcon slot="icon-only" icon={trashOutline} />
+                            </IonButton>
                           </article>
                         ))}
                       </div>
@@ -3607,9 +3613,9 @@ function App() {
                           Typ speichern
                         </IonButton>
                       </div>
-                      <div className="list list--slot-types">
+                      <div className="list list--slot-types compact-row-list">
                         {(snapshotState?.settings.slotTypeNames ?? []).map((slotTypeName) => (
-                          <article key={slotTypeName} className="list-row list-row--mobile-card">
+                          <article key={slotTypeName} className="list-row list-row--mobile-card compact-row">
                             <div className="list-row__main">
                               {slotTypeEditSource === slotTypeName ? (
                                 <IonInput
@@ -3620,7 +3626,7 @@ function App() {
                                 <strong>{slotTypeName}</strong>
                               )}
                             </div>
-                            <div className="list-row__meta list-row__meta--actions">
+                            <div className="list-row__meta list-row__meta--actions compact-row__actions">
                               {slotTypeEditSource === slotTypeName ? (
                                 <IonButton size="small" fill="clear" onClick={handleRenameSlotType}>
                                   Speichern
@@ -3783,17 +3789,16 @@ function App() {
                           <h2>Bewegungen 7 Tage</h2>
                         </div>
                       </header>
-                      <div className="mini-chart mini-chart--columns mini-chart--scroll-mobile">
+                      <div className="bar-list movement-bar-list">
                         {analyticsMovementSeries.map((entry) => (
-                          <div key={entry.key} className="mini-chart__column">
-                            <div className="mini-chart__track">
-                              <div
-                                className="mini-chart__bar mini-chart__bar--primary"
-                                style={{ height: `${Math.max(entry.percent, entry.count > 0 ? 14 : 6)}%` }}
-                              />
+                          <div key={entry.key} className="bar-list__row movement-bar">
+                            <div className="bar-list__head">
+                              <strong>{entry.label}</strong>
+                              <span>{entry.count}</span>
                             </div>
-                            <strong>{entry.count}</strong>
-                            <span>{entry.label}</span>
+                            <div className="bar-list__track">
+                              <div className="bar-list__fill bar-list__fill--primary" style={{ width: `${Math.max(entry.percent, entry.count > 0 ? 8 : 3)}%` }} />
+                            </div>
                           </div>
                         ))}
                       </div>

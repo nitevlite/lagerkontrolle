@@ -7,9 +7,10 @@
 - Warnungen vor Ablauf muessen vor dem eigentlichen Verfall sichtbar werden, nicht erst am Stichtag. Standard ist `10 Tage vorher`.
 - Nach einer Warnung braucht es eine Wiedervorlage in `X Tagen`, damit kritische Ware nicht einmal aufpoppt und dann vergessen wird.
 - Einheitentypen duerfen nicht hart codiert sein. Neue Typen wie `Sack`, `Dose` oder `Tray` muessen direkt anlegbar sein.
-- Einheitentypen brauchen eine eigenstaendige, gut scanbare Liste statt einer engen Verwaltungsansicht.
+- Einheitentypen brauchen eine eigenstaendige, kompakte Liste ohne grosse Badges; Loeschen gehoert als kleines Icon rechts neben den Namen.
 - Die Buchung bleibt bewusst kurz: keine Chargenauswahl, keine Chargencode-Umschaltung, keine redundante Zusammenfassung unter der Menge, Bestand klar vor den Buchungsdaten, Menge vor Ort und optionalem Slot.
 - Administrative Funktionen wie Sync, lokale Daten, Backup, Restore und Export gehoeren in `Einstellungen`, nicht ins operative Dashboard.
+- Verwaltungslisten in `Einstellungen`, besonders Slot-Typen, muessen dichter sein als operative Kartenlisten.
 - Im Ort-Editor soll `Slot hinzufuegen` als klare Aktion neben dem Speichern stehen; `Ort loeschen` gehoert ans Seitenende.
 - Scan braucht immer einen Fallback, falls Kamera, Licht oder Barcode schlecht sind.
 - Der Scanner soll die Rueckkamera und verfuegbare Fokusoptionen bevorzugen, damit Barcodes am Handy scharf erkannt werden.
