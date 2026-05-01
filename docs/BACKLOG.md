@@ -35,3 +35,12 @@
 - Inventurmodus
 - Excel-Import
 - QR-Code-Druck fuer Orte und Slots
+
+## Umgesetzt
+
+- Buchungsmaske ohne Chargenauswahl und ohne Mengen-Zusammenfassung gestrafft
+- Bestand als eigene Section oberhalb der Buchungsdaten angezeigt
+- Ort-Editor mit `Slot hinzufuegen` statt dauerhaft sichtbarer Slot-Typ-Verwaltung umgesetzt
+- Sync, lokale Daten, Backup, Restore und Export in eigenen Tab `Einstellungen` verschoben
+- Scanner-Fokus fuer Handy-Kameras verbessert
+- Einheitenliste visuell neu und besser scanbar gestaltet

@@ -94,6 +94,11 @@ Ergebnis: Das MVP ist bereit fuer den echten Einsatz.
 25. `#25` Add item barcode scan to open or create article
 26. `#26` Allow stock correction from item edit as traceable movement
 27. `#27` Collect useful next improvements for daily warehouse use
+28. `#28` UI 05: Buchungsmaske auf echte Pflichtfelder reduzieren
+29. `#29` UI 06: Ort bearbeiten mit Slot-hinzufuegen Flow und Loeschen am Seitenende
+30. `#30` UI 07: Sync und lokale Daten in neuen Einstellungen-Tab verschieben
+31. `#31` Scan: Kamera-Fokus und Erkennungsqualitaet verbessern
+32. `#32` UI 08: Einheitenliste neu und uebersichtlicher gestalten
 
 ## Technische Leitlinien
 
@@ -125,3 +130,4 @@ Ergebnis: Das MVP ist bereit fuer den echten Einsatz.
 - `#16` bis `#26` sind umgesetzt: Seed ohne Testdaten, Buchungsstart, Scan-Workflows, mobile Klappnavigation, Sync-Hilfe, Layout-Abstaende und nachvollziehbare Bestandskorrektur sind eingebaut
 - aus `#27` sind erste Nice-to-haves umgesetzt: lokale Datenbereinigung, JSON-Backup/Restore, CSV-Bestandsexport, Artikelfilter, letzte Scans und Vibrationsfeedback nach Scan
 - Buchungs- und Scan-Flow wurden nachgezogen: direkte Ortsbestände sind als Quelle gültig, bestehende Artikel zeigen Bestand vor der Buchung, Barcodes werden stabilisiert und mehrere Codes pro Artikel sind möglich
+- `#28` bis `#32` sind umgesetzt: Buchungsmaske reduziert, Bestand vor die Buchungsdaten gezogen, Ort-Editor auf `Slot hinzufuegen` umgestellt, Einstellungen-Tab eingefuehrt, Kamera-Fokus verbessert und Einheitenliste neu gestaltet.

@@ -22,6 +22,7 @@ Wir bauen zuerst ein extrem schnelles MVP fuer mobile Erfassung. Prioritaet habe
 ## Phase 3: Kernworkflows
 
 - schnelle Buchung fuer Zugang, Abgang und Umbuchung
+- Buchung weiter vereinfachen: ohne Chargenauswahl, ohne redundante Zusammenfassung, mit Bestand oberhalb der Buchungsdaten
 - Ablaufdaten und Chargen erfassen
 - Vorwarnungen vor Ablauf konfigurieren und anzeigen
 - Suche, Filter, Favoriten und letzte Aktionen einbauen
@@ -45,7 +46,7 @@ Wir bauen zuerst ein extrem schnelles MVP fuer mobile Erfassung. Prioritaet habe
 ## Phase 6: Erweiterungen
 
 - Excel-Import, sobald echte Quelldateien vorliegen
-- Warnungen fuer Mindestbestand und Ablaufdatum
+- Warnungen fuer Ablaufdatum
 - Inventurmodus
 - Export und Auswertungen
 

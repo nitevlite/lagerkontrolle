@@ -26,6 +26,7 @@ import {
   pricetagOutline,
   refreshOutline,
   searchOutline,
+  settingsOutline,
   star,
   starOutline,
   timeOutline,
@@ -68,6 +69,7 @@ const viewMeta: Array<{ key: ViewKey; label: string; icon: string }> = [
   { key: "booking", label: "Buchung", icon: barcodeOutline },
   { key: "units", label: "Einheiten", icon: layersOutline },
   { key: "analytics", label: "Analyse", icon: analyticsOutline },
+  { key: "settings", label: "Einstellungen", icon: settingsOutline },
   { key: "log", label: "Log", icon: listOutline }
 ];
 
@@ -97,8 +99,39 @@ type BarcodeDetectorCtor = new (options?: { formats?: string[] }) => {
   detect: (source: ImageBitmapSource) => Promise<Array<{ rawValue?: string }>>;
 };
 
+type CameraFocusConstraints = MediaTrackConstraints & {
+  advanced?: Array<{
+    focusMode?: "continuous" | "single-shot" | "manual";
+    exposureMode?: "continuous";
+    whiteBalanceMode?: "continuous";
+  }>;
+};
+
 function getBarcodeDetector() {
   return (globalThis as unknown as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector;
+}
+
+async function applyScanFocus(track: MediaStreamTrack) {
+  const capabilities = track.getCapabilities() as MediaTrackCapabilities & {
+    focusMode?: string[];
+    exposureMode?: string[];
+    whiteBalanceMode?: string[];
+  };
+  const advanced: NonNullable<CameraFocusConstraints["advanced"]> = [];
+
+  if (capabilities.focusMode?.includes("continuous")) {
+    advanced.push({ focusMode: "continuous" });
+  }
+  if (capabilities.exposureMode?.includes("continuous")) {
+    advanced.push({ exposureMode: "continuous" });
+  }
+  if (capabilities.whiteBalanceMode?.includes("continuous")) {
+    advanced.push({ whiteBalanceMode: "continuous" });
+  }
+
+  if (advanced.length > 0) {
+    await track.applyConstraints({ advanced } as CameraFocusConstraints);
+  }
 }
 
 function normalizeBarcode(value: string) {
@@ -167,6 +200,7 @@ function App() {
   const [slotTypeDraft, setSlotTypeDraft] = useState("");
   const [slotTypeEditSource, setSlotTypeEditSource] = useState("");
   const [slotTypeEditDraft, setSlotTypeEditDraft] = useState("");
+  const [slotFormVisible, setSlotFormVisible] = useState(false);
   const [itemDetailId, setItemDetailId] = useState<string | null>(null);
   const [itemFilterDraft, setItemFilterDraft] = useState("");
   const [itemQuickFilter, setItemQuickFilter] = useState<"all" | "no-barcode" | "low" | "expiry">("all");
@@ -466,7 +500,9 @@ function App() {
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: false,
           video: {
-            facingMode: { ideal: "environment" }
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
           }
         });
 
@@ -476,6 +512,9 @@ function App() {
         }
 
         scanStreamRef.current = stream;
+        void applyScanFocus(stream.getVideoTracks()[0]).catch(() => {
+          setScanMessage("Kamera ist aktiv. Falls der Code unscharf bleibt, kurz weiter weg halten.");
+        });
 
         const video = videoRef.current;
         if (!video) {
@@ -1304,17 +1343,18 @@ function App() {
   }
 
   async function handleSaveSlot() {
-    if (!currentLocation) {
+    if (!detailLocation) {
       return;
     }
 
     try {
       await addStorageSlot({
-        locationId: currentLocation.id,
+        locationId: detailLocation.id,
         kind: slotKind,
         number: Math.max(1, Number(slotNumber || "1"))
       });
       setSlotNumber("1");
+      setSlotFormVisible(false);
       setRefreshToken((current) => current + 1);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Slot konnte nicht gespeichert werden.");
@@ -1803,6 +1843,7 @@ function App() {
   function handleOpenLocationDetail(locationId: string) {
     setSelectedLocationId(locationId);
     setLocationDetailId(locationId);
+    setSlotFormVisible(false);
   }
 
   function handleOpenItemDetail(itemId: string) {
@@ -2219,156 +2260,6 @@ function App() {
                       </div>
                     </section>
 
-                    <section className="surface">
-                      <header className="section-header">
-                        <div>
-                          <h2>Warnungen</h2>
-                          <span>Globale Vorgaben für Ablaufhinweise</span>
-                        </div>
-                      </header>
-                      <div className="settings-row">
-                        <IonItem className="compact-field">
-                          <IonLabel position="stacked">Warnung ab</IonLabel>
-                          <IonInput
-                            type="number"
-                            value={warningDaysDraft}
-                            onIonInput={(event) => setWarningDaysDraft(String(event.detail.value ?? ""))}
-                            onIonBlur={() => void handlePersistSettings()}
-                          />
-                        </IonItem>
-                        <IonItem className="compact-field">
-                          <IonLabel position="stacked">Erneut erinnern</IonLabel>
-                          <IonInput
-                            type="number"
-                            value={reminderDaysDraft}
-                            onIonInput={(event) => setReminderDaysDraft(String(event.detail.value ?? ""))}
-                            onIonBlur={() => void handlePersistSettings()}
-                          />
-                        </IonItem>
-                      </div>
-                    </section>
-
-                    <section className="surface">
-                      <header className="section-header">
-                        <div>
-                          <h2>Sync</h2>
-                          <span>{syncStatus.message}</span>
-                        </div>
-                        <IonBadge color="light">
-                          {syncStatus.state === "syncing"
-                            ? "läuft"
-                            : syncStatus.state === "success"
-                              ? "ok"
-                              : syncStatus.state === "error"
-                                ? "Fehler"
-                                : "lokal"}
-                        </IonBadge>
-                      </header>
-                      <div className="settings-row">
-                        <label className="form-field">
-                          <span>CouchDB-URL</span>
-                          <input
-                            className="app-input"
-                            value={syncUrlDraft}
-                            placeholder="https://couch.example.com"
-                            onChange={(event) => setSyncUrlDraft(event.target.value)}
-                          />
-                        </label>
-                        <IonItem className="compact-field">
-                          <IonLabel position="stacked">Datenbank</IonLabel>
-                          <IonInput
-                            value={syncDatabaseDraft}
-                            onIonInput={(event) => setSyncDatabaseDraft(String(event.detail.value ?? ""))}
-                          />
-                        </IonItem>
-                        <IonItem className="compact-field">
-                          <IonLabel position="stacked">Benutzer</IonLabel>
-                          <IonInput
-                            value={syncUsernameDraft}
-                            onIonInput={(event) => setSyncUsernameDraft(String(event.detail.value ?? ""))}
-                          />
-                        </IonItem>
-                        <IonItem className="compact-field">
-                          <IonLabel position="stacked">Passwort</IonLabel>
-                          <IonInput
-                            type="password"
-                            value={syncPasswordDraft}
-                            onIonInput={(event) => setSyncPasswordDraft(String(event.detail.value ?? ""))}
-                          />
-                        </IonItem>
-                        <IonItem className="compact-field">
-                          <IonLabel position="stacked">Gerätename</IonLabel>
-                          <IonInput
-                            value={syncDeviceLabelDraft}
-                            onIonInput={(event) => setSyncDeviceLabelDraft(String(event.detail.value ?? ""))}
-                          />
-                        </IonItem>
-                        <label className="form-field">
-                          <span>Sync aktiv</span>
-                          <select
-                            className="app-select"
-                            value={syncEnabledDraft ? "ja" : "nein"}
-                            onChange={(event) => setSyncEnabledDraft(event.target.value === "ja")}
-                          >
-                            <option value="ja">Ja</option>
-                            <option value="nein">Nein</option>
-                          </select>
-                        </label>
-                      </div>
-                      <div className="help-box">
-                        <strong>Was hier hineingehört</strong>
-                        <span>
-                          Ohne CouchDB bleibt jedes Handy lokal. Die URL ist die Adresse deines CouchDB-Servers, die Datenbank
-                          ist meistens `lagerkontrolle`, Benutzer und Passwort kommen aus CouchDB, der Gerätename ist frei wählbar.
-                        </span>
-                      </div>
-                      <div className="form-actions">
-                        <IonButton fill="outline" className="primary-button" onClick={() => void handleSaveSyncConfig()}>
-                          Sync speichern
-                        </IonButton>
-                        <IonButton className="primary-button" onClick={() => void handleRunSync()}>
-                          Jetzt synchronisieren
-                        </IonButton>
-                      </div>
-                    </section>
-
-                    <section className="surface">
-                      <header className="section-header">
-                        <div>
-                          <h2>Lokale Daten</h2>
-                          <span>Dieses Gerät zurücksetzen</span>
-                        </div>
-                      </header>
-                      <div className="help-box">
-                        <span>
-                          Löscht nur die Daten auf diesem Handy oder Browser. Standard-Einheiten und Slot-Typen bleiben erhalten.
-                        </span>
-                      </div>
-                      <div className="form-actions">
-                        <IonButton fill="outline" className="primary-button" onClick={handleExportBackup}>
-                          <IonIcon slot="start" icon={downloadOutline} />
-                          Backup exportieren
-                        </IonButton>
-                        <IonButton fill="outline" className="primary-button" onClick={() => backupInputRef.current?.click()}>
-                          Backup importieren
-                        </IonButton>
-                        <IonButton fill="outline" className="primary-button" onClick={handleExportStockCsv}>
-                          <IonIcon slot="start" icon={downloadOutline} />
-                          Bestand CSV
-                        </IonButton>
-                        <IonButton fill="outline" className="danger-button" onClick={() => setPendingReset(true)}>
-                          <IonIcon slot="start" icon={trashOutline} />
-                          Lokale Daten löschen
-                        </IonButton>
-                        <input
-                          ref={backupInputRef}
-                          type="file"
-                          accept="application/json,.json"
-                          className="visually-hidden"
-                          onChange={(event) => void handleRestoreBackup(event.target.files?.[0])}
-                        />
-                      </div>
-                    </section>
                   </div>
                 ) : null}
 
@@ -2446,14 +2337,12 @@ function App() {
                             <IonButton className="primary-button" onClick={handleSaveLocation}>
                               {detailLocation ? "Ort aktualisieren" : "Ort speichern"}
                             </IonButton>
-                            {detailLocation ? (
-                              <IonButton className="danger-button" fill="outline" onClick={handleDeleteLocation}>
-                                Ort löschen
-                              </IonButton>
-                            ) : null}
                           </div>
                           {detailLocation ? (
                             <div className="form-actions">
+                              <IonButton fill="outline" className="primary-button" onClick={() => setSlotFormVisible((current) => !current)}>
+                                Slot hinzufügen
+                              </IonButton>
                               <IonButton className="primary-button" onClick={() => handleLocationScan(detailLocation.id)}>
                                 <IonIcon slot="start" icon={barcodeOutline} />
                                 Einmal scannen
@@ -2739,92 +2628,39 @@ function App() {
                               </section>
                             ) : null}
 
-                            <section className="surface">
-                              <header className="section-header">
-                                <div>
-                                  <h2>Slot anlegen</h2>
-                                  <span>{detailLocation.name}</span>
+                            {slotFormVisible ? (
+                              <section className="surface">
+                                <header className="section-header">
+                                  <div>
+                                    <h2>Slot hinzufügen</h2>
+                                    <span>{detailLocation.name}</span>
+                                  </div>
+                                </header>
+                                <div className="unit-form">
+                                  <label className="form-field">
+                                    <span>Typ</span>
+                                    <select className="app-select" value={slotKind} onChange={(event) => setSlotKind(event.target.value)}>
+                                      {(snapshotState?.settings.slotTypeNames ?? []).map((slotTypeName) => (
+                                        <option key={slotTypeName} value={slotTypeName}>
+                                          {slotTypeName}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                  <IonItem className="compact-field">
+                                    <IonLabel position="stacked">Nummer</IonLabel>
+                                    <IonInput
+                                      type="number"
+                                      value={slotNumber}
+                                      onIonInput={(event) => setSlotNumber(String(event.detail.value ?? ""))}
+                                    />
+                                  </IonItem>
+                                  <IonButton className="primary-button" onClick={handleSaveSlot}>
+                                    {slotKind} speichern
+                                  </IonButton>
                                 </div>
-                              </header>
-                              <div className="unit-form">
-                                <label className="form-field">
-                                  <span>Typ</span>
-                                  <select className="app-select" value={slotKind} onChange={(event) => setSlotKind(event.target.value)}>
-                                    {(snapshotState?.settings.slotTypeNames ?? []).map((slotTypeName) => (
-                                      <option key={slotTypeName} value={slotTypeName}>
-                                        {slotTypeName}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </label>
-                                <IonItem className="compact-field">
-                                  <IonLabel position="stacked">Nummer</IonLabel>
-                                  <IonInput
-                                    type="number"
-                                    value={slotNumber}
-                                    onIonInput={(event) => setSlotNumber(String(event.detail.value ?? ""))}
-                                  />
-                                </IonItem>
-                                <IonButton className="primary-button" onClick={handleSaveSlot}>
-                                  {slotKind} speichern
-                                </IonButton>
-                              </div>
-                            </section>
-
-                            <section className="surface">
-                              <header className="section-header">
-                                <div>
-                                  <h2>Slot-Typen</h2>
-                                  <span>Anlegen, umbenennen, löschen</span>
-                                </div>
-                              </header>
-                              <div className="unit-form">
-                                <IonItem className="compact-field">
-                                  <IonLabel position="stacked">Neuer Typ</IonLabel>
-                                  <IonInput value={slotTypeDraft} onIonInput={(event) => setSlotTypeDraft(String(event.detail.value ?? ""))} />
-                                </IonItem>
-                                <IonButton className="primary-button" onClick={handleSaveSlotType}>
-                                  Typ speichern
-                                </IonButton>
-                              </div>
-                              <div className="list list--slot-types">
-                                {(snapshotState?.settings.slotTypeNames ?? []).map((slotTypeName) => (
-                                  <article key={slotTypeName} className="list-row list-row--mobile-card">
-                                    <div className="list-row__main">
-                                      {slotTypeEditSource === slotTypeName ? (
-                                        <IonInput
-                                          value={slotTypeEditDraft}
-                                          onIonInput={(event) => setSlotTypeEditDraft(String(event.detail.value ?? ""))}
-                                        />
-                                      ) : (
-                                        <strong>{slotTypeName}</strong>
-                                      )}
-                                    </div>
-                                    <div className="list-row__meta list-row__meta--actions">
-                                      {slotTypeEditSource === slotTypeName ? (
-                                        <IonButton size="small" fill="clear" onClick={handleRenameSlotType}>
-                                          Speichern
-                                        </IonButton>
-                                      ) : (
-                                        <IonButton
-                                          size="small"
-                                          fill="clear"
-                                          onClick={() => {
-                                            setSlotTypeEditSource(slotTypeName);
-                                            setSlotTypeEditDraft(slotTypeName);
-                                          }}
-                                        >
-                                          Umbenennen
-                                        </IonButton>
-                                      )}
-                                      <IonButton size="small" fill="clear" className="danger-button" onClick={() => void handleDeleteSlotType(slotTypeName)}>
-                                        Löschen
-                                      </IonButton>
-                                    </div>
-                                  </article>
-                                ))}
-                              </div>
-                            </section>
+                              </section>
+                            ) : null}
 
                             <section className="surface">
                               <header className="section-header">
@@ -2887,6 +2723,19 @@ function App() {
                                   </article>
                                 ))}
                               </div>
+                            </section>
+
+                            <section className="surface danger-zone">
+                              <header className="section-header">
+                                <div>
+                                  <h2>Ort löschen</h2>
+                                  <span>Nur möglich, wenn keine Slots und Bewegungen mehr daran hängen</span>
+                                </div>
+                              </header>
+                              <IonButton className="danger-button" fill="outline" onClick={handleDeleteLocation}>
+                                <IonIcon slot="start" icon={trashOutline} />
+                                Ort löschen
+                              </IonButton>
                             </section>
                           </>
                         ) : null}
@@ -3225,6 +3074,25 @@ function App() {
                       </div>
                     </section>
 
+                    {bookingItem ? (
+                      <section className="surface">
+                        <header className="section-header">
+                          <div>
+                            <h2>Bestand</h2>
+                            <span>{bookingItem.name}</span>
+                          </div>
+                        </header>
+                        <div className="stock-feedback">
+                          <strong>
+                            Gesamt: {bookingSelectedItemQuantity} {bookingItem.unitLabel}
+                          </strong>
+                          <span>
+                            Am gewählten Ort: {bookingSelectedLocationQuantity} {bookingItem.unitLabel}
+                          </span>
+                        </div>
+                      </section>
+                    ) : null}
+
                     <section className="surface booking-form-anchor">
                       <header className="section-header">
                         <div>
@@ -3334,16 +3202,6 @@ function App() {
                                 ))}
                               </select>
                             </label>
-                            {bookingItem ? (
-                              <div className="stock-feedback">
-                                <strong>
-                                  Bestand: {bookingSelectedItemQuantity} {bookingItem.unitLabel}
-                                </strong>
-                                <span>
-                                  Am gewählten Ort: {bookingSelectedLocationQuantity} {bookingItem.unitLabel}
-                                </span>
-                              </div>
-                            ) : null}
                           </>
                         )}
                         <label className="form-field">
@@ -3487,33 +3345,11 @@ function App() {
                           </>
                         ) : null}
 
-                        {canCreateNewBookingBatch && !bookingUsesNewItem ? (
-                          <label className="form-field">
-                            <span>Charge</span>
-                            <div className="toggle-pills">
-                              <button
-                                type="button"
-                                className={bookingBatchMode === "existing" ? "toggle-pill toggle-pill--active" : "toggle-pill"}
-                                onClick={() => setBookingBatchMode("existing")}
-                              >
-                                Bestehend
-                              </button>
-                              <button
-                                type="button"
-                                className={bookingBatchMode === "new" ? "toggle-pill toggle-pill--active" : "toggle-pill"}
-                                onClick={() => setBookingBatchMode("new")}
-                              >
-                                Neu
-                              </button>
-                            </div>
-                          </label>
-                        ) : null}
-
                         {bookingBatchMode === "existing" || mustUseExistingBookingBatch ? (
-                          bookingExistingBatchOptions.length > 0 ? (
+                          bookingExistingBatchOptions.length > 1 ? (
                             <>
                               <label className="form-field">
-                                <span>Bestehende Charge</span>
+                                <span>Charge</span>
                                 <select
                                   ref={bookingBatchSelectRef}
                                   className="app-select"
@@ -3527,17 +3363,12 @@ function App() {
                                   ))}
                                 </select>
                               </label>
-                              {selectedBookingBatch ? (
-                                <div className="booking-feedback">
-                                  <strong>Charge gewählt: {selectedBookingBatch.batchCode}</strong>
-                                  <span>
-                                    {"quantity" in selectedBookingBatch
-                                      ? `${selectedBookingBatch.quantity} am gewählten Ort verfügbar`
-                                      : "Bestehende Charge wird verwendet"}
-                                  </span>
-                                </div>
-                              ) : null}
                             </>
+                          ) : bookingExistingBatchOptions.length === 1 ? (
+                            <div className="booking-feedback">
+                              <strong>Charge: {bookingExistingBatchOptions[0].batchCode}</strong>
+                              <span>automatisch gewählt</span>
+                            </div>
                           ) : (
                             <div className="empty-state">Keine passende bestehende Charge verfügbar.</div>
                           )
@@ -3603,51 +3434,6 @@ function App() {
                         </IonItem>
                       </div>
 
-                      <div className="booking-preview">
-                        <div className="booking-preview__row">
-                          <span>Aktion</span>
-                          <b>
-                            {bookingAction === "in"
-                              ? "Zugang"
-                              : bookingAction === "out"
-                                ? "Abgang"
-                                : bookingAction === "transfer"
-                                  ? "Umbuchung"
-                                  : "Korrektur"}
-                          </b>
-                        </div>
-                        <div className="booking-preview__row">
-                          <span>Artikel</span>
-                          <b>{bookingDisplayItemName}</b>
-                        </div>
-                        <div className="booking-preview__row">
-                          <span>Ort</span>
-                          <b>{bookingLocation?.name ?? "bitte wählen"}</b>
-                        </div>
-                        {bookingAction === "transfer" ? (
-                          <div className="booking-preview__row">
-                            <span>Zielort</span>
-                            <b>
-                              {viewModel.locations.find((location) => location.id === bookingTargetLocationId)?.name ??
-                                "bitte wählen"}
-                            </b>
-                          </div>
-                        ) : null}
-                        <div className="booking-preview__row">
-                          <span>Charge</span>
-                          <b>
-                            {bookingBatchMode === "existing" || mustUseExistingBookingBatch
-                              ? selectedBookingBatch?.batchCode ?? "bitte wählen"
-                              : bookingBatchHasNoCode
-                                ? "Keine Charge"
-                                : bookingNewBatchCodeDraft || "neu anlegen"}
-                          </b>
-                        </div>
-                        <div className="booking-preview__row">
-                          <span>Menge</span>
-                          <b>{bookingQuantityDraft || "0"}</b>
-                        </div>
-                      </div>
                       <div className="form-actions">
                         <IonButton className="primary-button" onClick={handleSaveBooking}>
                           Buchung speichern
@@ -3771,21 +3557,222 @@ function App() {
                     </section>
 
                     <section className="surface">
-                      <div className="list">
+                      <div className="unit-list">
                         {viewModel.unitTypes.map((unitType) => (
-                          <article key={unitType.id} className="list-row">
-                            <div className="list-row__main">
+                          <article key={unitType.id} className="unit-card">
+                            <div className="unit-card__code">{unitType.shortCode}</div>
+                            <div className="unit-card__main">
                               <strong>{unitType.name}</strong>
                               <span>{unitType.description}</span>
                             </div>
-                            <div className="list-row__meta list-row__meta--actions">
-                              <IonBadge color="light">{unitType.shortCode}</IonBadge>
+                            <div className="unit-card__actions">
                               <IonButton size="small" fill="clear" className="danger-button" onClick={() => void handleDeleteUnitType(unitType.id)}>
                                 Löschen
                               </IonButton>
                             </div>
                           </article>
                         ))}
+                      </div>
+                    </section>
+                  </div>
+                ) : null}
+
+                {activeView === "settings" ? (
+                  <div className="stack">
+                    <section className="surface">
+                      <header className="section-header">
+                        <div>
+                          <h1>Einstellungen</h1>
+                          <span>Sync, lokale Daten und globale Vorgaben</span>
+                        </div>
+                      </header>
+                    </section>
+
+                    <section className="surface">
+                      <header className="section-header">
+                        <div>
+                          <h2>Warnungen</h2>
+                          <span>Globale Vorgaben für Ablaufhinweise</span>
+                        </div>
+                      </header>
+                      <div className="settings-row">
+                        <IonItem className="compact-field">
+                          <IonLabel position="stacked">Warnung ab</IonLabel>
+                          <IonInput
+                            type="number"
+                            value={warningDaysDraft}
+                            onIonInput={(event) => setWarningDaysDraft(String(event.detail.value ?? ""))}
+                            onIonBlur={() => void handlePersistSettings()}
+                          />
+                        </IonItem>
+                        <IonItem className="compact-field">
+                          <IonLabel position="stacked">Erneut erinnern</IonLabel>
+                          <IonInput
+                            type="number"
+                            value={reminderDaysDraft}
+                            onIonInput={(event) => setReminderDaysDraft(String(event.detail.value ?? ""))}
+                            onIonBlur={() => void handlePersistSettings()}
+                          />
+                        </IonItem>
+                      </div>
+                    </section>
+
+                    <section className="surface">
+                      <header className="section-header">
+                        <div>
+                          <h2>Slot-Typen</h2>
+                          <span>Vorlagen für neue Slots</span>
+                        </div>
+                      </header>
+                      <div className="unit-form">
+                        <IonItem className="compact-field">
+                          <IonLabel position="stacked">Neuer Typ</IonLabel>
+                          <IonInput value={slotTypeDraft} onIonInput={(event) => setSlotTypeDraft(String(event.detail.value ?? ""))} />
+                        </IonItem>
+                        <IonButton className="primary-button" onClick={handleSaveSlotType}>
+                          Typ speichern
+                        </IonButton>
+                      </div>
+                      <div className="list list--slot-types">
+                        {(snapshotState?.settings.slotTypeNames ?? []).map((slotTypeName) => (
+                          <article key={slotTypeName} className="list-row list-row--mobile-card">
+                            <div className="list-row__main">
+                              {slotTypeEditSource === slotTypeName ? (
+                                <IonInput
+                                  value={slotTypeEditDraft}
+                                  onIonInput={(event) => setSlotTypeEditDraft(String(event.detail.value ?? ""))}
+                                />
+                              ) : (
+                                <strong>{slotTypeName}</strong>
+                              )}
+                            </div>
+                            <div className="list-row__meta list-row__meta--actions">
+                              {slotTypeEditSource === slotTypeName ? (
+                                <IonButton size="small" fill="clear" onClick={handleRenameSlotType}>
+                                  Speichern
+                                </IonButton>
+                              ) : (
+                                <IonButton
+                                  size="small"
+                                  fill="clear"
+                                  onClick={() => {
+                                    setSlotTypeEditSource(slotTypeName);
+                                    setSlotTypeEditDraft(slotTypeName);
+                                  }}
+                                >
+                                  Umbenennen
+                                </IonButton>
+                              )}
+                              <IonButton size="small" fill="clear" className="danger-button" onClick={() => void handleDeleteSlotType(slotTypeName)}>
+                                Löschen
+                              </IonButton>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className="surface">
+                      <header className="section-header">
+                        <div>
+                          <h2>Sync</h2>
+                          <span>{syncStatus.message}</span>
+                        </div>
+                        <IonBadge color="light">
+                          {syncStatus.state === "syncing"
+                            ? "läuft"
+                            : syncStatus.state === "success"
+                              ? "ok"
+                              : syncStatus.state === "error"
+                                ? "Fehler"
+                                : "lokal"}
+                        </IonBadge>
+                      </header>
+                      <div className="settings-row">
+                        <label className="form-field">
+                          <span>CouchDB-URL</span>
+                          <input
+                            className="app-input"
+                            value={syncUrlDraft}
+                            placeholder="https://couch.example.com"
+                            onChange={(event) => setSyncUrlDraft(event.target.value)}
+                          />
+                        </label>
+                        <IonItem className="compact-field">
+                          <IonLabel position="stacked">Datenbank</IonLabel>
+                          <IonInput value={syncDatabaseDraft} onIonInput={(event) => setSyncDatabaseDraft(String(event.detail.value ?? ""))} />
+                        </IonItem>
+                        <IonItem className="compact-field">
+                          <IonLabel position="stacked">Benutzer</IonLabel>
+                          <IonInput value={syncUsernameDraft} onIonInput={(event) => setSyncUsernameDraft(String(event.detail.value ?? ""))} />
+                        </IonItem>
+                        <IonItem className="compact-field">
+                          <IonLabel position="stacked">Passwort</IonLabel>
+                          <IonInput
+                            type="password"
+                            value={syncPasswordDraft}
+                            onIonInput={(event) => setSyncPasswordDraft(String(event.detail.value ?? ""))}
+                          />
+                        </IonItem>
+                        <IonItem className="compact-field">
+                          <IonLabel position="stacked">Gerätename</IonLabel>
+                          <IonInput
+                            value={syncDeviceLabelDraft}
+                            onIonInput={(event) => setSyncDeviceLabelDraft(String(event.detail.value ?? ""))}
+                          />
+                        </IonItem>
+                        <label className="form-field">
+                          <span>Sync aktiv</span>
+                          <select
+                            className="app-select"
+                            value={syncEnabledDraft ? "ja" : "nein"}
+                            onChange={(event) => setSyncEnabledDraft(event.target.value === "ja")}
+                          >
+                            <option value="ja">Ja</option>
+                            <option value="nein">Nein</option>
+                          </select>
+                        </label>
+                      </div>
+                      <div className="form-actions">
+                        <IonButton fill="outline" className="primary-button" onClick={() => void handleSaveSyncConfig()}>
+                          Sync speichern
+                        </IonButton>
+                        <IonButton className="primary-button" onClick={() => void handleRunSync()}>
+                          Jetzt synchronisieren
+                        </IonButton>
+                      </div>
+                    </section>
+
+                    <section className="surface">
+                      <header className="section-header">
+                        <div>
+                          <h2>Lokale Daten</h2>
+                          <span>Backup, Export und Zurücksetzen</span>
+                        </div>
+                      </header>
+                      <div className="form-actions">
+                        <IonButton fill="outline" className="primary-button" onClick={handleExportBackup}>
+                          <IonIcon slot="start" icon={downloadOutline} />
+                          Backup exportieren
+                        </IonButton>
+                        <IonButton fill="outline" className="primary-button" onClick={() => backupInputRef.current?.click()}>
+                          Backup importieren
+                        </IonButton>
+                        <IonButton fill="outline" className="primary-button" onClick={handleExportStockCsv}>
+                          <IonIcon slot="start" icon={downloadOutline} />
+                          Bestand CSV
+                        </IonButton>
+                        <IonButton fill="outline" className="danger-button" onClick={() => setPendingReset(true)}>
+                          <IonIcon slot="start" icon={trashOutline} />
+                          Lokale Daten löschen
+                        </IonButton>
+                        <input
+                          ref={backupInputRef}
+                          type="file"
+                          accept="application/json,.json"
+                          className="visually-hidden"
+                          onChange={(event) => void handleRestoreBackup(event.target.files?.[0])}
+                        />
                       </div>
                     </section>
                   </div>

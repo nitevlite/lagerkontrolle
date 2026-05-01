@@ -33,8 +33,8 @@ Warum das sinnvoll ist:
 - Regale oder Laden pro Ort optional nummerieren, z. B. `Regal 1`, `Lade 4`
 - Artikel, Behaelter, Gebinde und Verbrauchsmaterial erfassen
 - freie Einheitentypen wie `Stk`, `Packung`, `Kiste`, `Flasche` anlegen
-- pro Artikel einen Mindestbestand definieren
 - Mengen schnell buchen: `+`, `-`, Umbuchung
+- Buchung ohne Chargenauswahl und ohne redundante Zusammenfassung unter der Menge
 - Ablaufdaten und Chargen fuer fast alle Artikel verwalten
 - Vorwarnungen vor Ablauf anzeigen, Standard `10 Tage vorher`
 - Wiedervorlage nach Warnung in `X Tagen`
@@ -42,6 +42,7 @@ Warum das sinnvoll ist:
 - Barcode- oder QR-Scan direkt im MVP
 - Mehrgeraete-Sync direkt im MVP
 - Dashboard mit Status, Warnungen und Auswertung
+- eigener Einstellungen-Tab fuer Sync, lokale Daten, Backup, Restore und Export
 - spaeter zusaetzlich Analyse-Charts fuer Trends und Verteilungen
 - Favoriten, letzte Eintraege und schnelle Wiederholung
 - Suche und Filter nach Ort, Artikel, Status
@@ -98,17 +99,17 @@ npm run build
 - Orte koennen als Scan-Kontext vorausgewaehlt werden; fuer mehrere Produkte gibt es einen Sammel-Scan-Workflow
 - Favoriten fuer Orte und Artikel bleiben lokal gespeichert
 - Buchung und Dashboard priorisieren Favoriten und zuletzt genutzte Eintraege
-- Dashboard bietet lokale Datenbereinigung, JSON-Backup/Restore und CSV-Bestandsexport
+- Dashboard bietet operative Lagerinformationen; Sync, lokale Datenbereinigung, JSON-Backup/Restore und CSV-Bestandsexport liegen im eigenen Tab `Einstellungen`
 - Analyse zeigt mobile Charts fuer Bewegungen, Ablauf-Verteilung, Top-Orte und Top-Artikel plus priorisierte Risiko-Liste
-- Dashboard zeigt Ablaufwarnungen und niedrige Bestaende getrennt
+- Dashboard zeigt Ablaufwarnungen getrennt
 - mobile Listen und Analysekarten sind fuer Handy dichter und lesbarer nachgezogen
 - echtes Domain-Modell fuer `Location`, `StorageSlot`, `UnitType`, `Item`, `Batch`, `Movement`, `AppSettings`
 - lokale Offline-Persistenz ueber `IndexedDB` mit `Dexie`
 - Bestandsableitung aus Bewegungen statt aus fixen Direktwerten
 - erste Pilot-Haertung gestartet: Build-Splitting fuer Storage und UI-Bloecke ist vorbereitet
 - GitHub-Pages-Deploy fuer HTTPS-Verteilung und PWA-Installation ist vorbereitet
-- CouchDB-Sync-Konfiguration, sichtbarer Sync-Status und kurze Feld-Erklaerung sind im Dashboard eingebaut
+- CouchDB-Sync-Konfiguration und sichtbarer Sync-Status sind in `Einstellungen` eingebaut
 
 ## Naechster technischer Schritt
 
-Frontend, Domain-Modell, lokale Persistenz, schnelle Orts-, Artikel- und Buchungsfluesse sowie CouchDB-Sync sind vorbereitet. Als Naechstes sollte der Sync mit echten Geraeten und einer echten CouchDB-Instanz getestet werden.
+Frontend, Domain-Modell, lokale Persistenz, schnelle Orts-, Artikel- und Buchungsfluesse sowie CouchDB-Sync sind vorbereitet. Als Naechstes sollte die aktuelle mobile UI inklusive Scanner und Sync mit echten Geraeten getestet werden.

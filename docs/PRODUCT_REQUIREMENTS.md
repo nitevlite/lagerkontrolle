@@ -28,6 +28,8 @@ Eine mobile App, mit der Mitarbeitende Lagerorte und Inhalte in Sekunden pflegen
 - Mengen je Ort verwalten
 - Zu- und Abgaenge buchen
 - Umbuchungen zwischen Orten buchen
+- Buchungen ohne Chargenauswahl und ohne redundante Zusammenfassung abschliessen
+- aktuellen Bestand vor der Buchung klar oberhalb der Buchungsdaten anzeigen
 - Ablaufdatum und Charge fuer fast alle Artikel pflegen
 - Vorwarnung vor Ablauf vor dem eigentlichen Ablaufdatum, Standard `10 Tage vorher`
 - Wiedervorlage nach Warnung in konfigurierbarem Abstand
@@ -35,9 +37,11 @@ Eine mobile App, mit der Mitarbeitende Lagerorte und Inhalte in Sekunden pflegen
 - Suche ueber Orte und Artikel
 - offline nutzbar
 - Barcode- oder QR-Scan
+- Kamera-Scan mit moeglichst guter Rueckkamera- und Fokus-Einstellung plus manueller Eingabe als Fallback
 - Synchronisation zwischen mehreren Geraeten
 - frueh testbares mobiles Frontend
 - Dashboard mit Warnungen und Auswertung
+- eigener Einstellungen-Tab fuer Sync, lokale Daten, Backup, Restore und Export
 
 ## Soll-Anforderungen
 

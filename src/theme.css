@@ -390,6 +390,56 @@ ion-content.shell::part(scroll) {
   color: var(--muted);
 }
 
+.unit-list {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+.unit-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #f9fbfd;
+}
+
+.unit-card__code {
+  display: grid;
+  place-items: center;
+  min-width: 3.1rem;
+  min-height: 3.1rem;
+  padding: 0.35rem;
+  border-radius: 12px;
+  background: #16212b;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.unit-card__main {
+  min-width: 0;
+}
+
+.unit-card__main strong,
+.unit-card__main span {
+  display: block;
+}
+
+.unit-card__main span {
+  margin-top: 0.15rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.unit-card__actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+}
+
 .icon-toggle {
   display: inline-grid;
   place-items: center;
@@ -968,7 +1018,7 @@ ion-content.shell::part(scroll) {
 
 .bottom-nav__row {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 0.35rem;
 }
 
@@ -1012,7 +1062,7 @@ ion-content.shell::part(scroll) {
   }
 
   .bottom-nav__row {
-    max-width: 520px;
+    max-width: 720px;
     margin: 0 auto;
   }
 
@@ -1172,6 +1222,10 @@ ion-content.shell::part(scroll) {
 
   .mini-chart--columns {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .unit-list {
+    grid-template-columns: 1fr;
   }
 }
 
