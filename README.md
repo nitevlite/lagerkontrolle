@@ -93,8 +93,8 @@ npm run build
 - Buchung speichert echte lokale Bewegungen fuer Zugang, Abgang, Umbuchung und Korrektur und zeigt danach eine sichtbare Speicherbestaetigung
 - Abgang, Umbuchung und Minuskorrektur koennen von Slot-Bestand oder direkt vom gewaehlten Ort buchen
 - Buchung zeigt bei bestehenden Artikeln sofort den Gesamtbestand und den Bestand am gewaehlten Ort
-- Buchung fuehrt mobil direkt ueber Buchungsdaten mit Artikel-Dropdown, Ort-Dropdown, optionalem Slot, optionalem Chargencode, Ablaufdatum und Menge
-- im Zugang kann direkt ein neuer Artikel mit Minimalstammdaten angelegt und sofort eingebucht werden; unbekannte Barcodes werden dabei uebernommen
+- Buchung fuehrt mobil direkt ueber Buchungsdaten mit Artikel-Dropdown, optionalem Chargencode, Ablaufdatum, Menge und danach kompakter Orts- und Slot-Auswahl
+- im Zugang kann direkt ein neuer Artikel mit Minimalstammdaten ohne Mindestbestand-Feld angelegt und sofort eingebucht werden; unbekannte Barcodes werden dabei uebernommen
 - Scan ist im Buchungsflow, im Ort-Detail, im Artikelbereich und im Artikel-Barcodefeld aktiv, normalisiert erkannte Codes und bietet manuelle Eingabe als Fallback
 - Orte koennen als Scan-Kontext vorausgewaehlt werden; fuer mehrere Produkte gibt es einen Sammel-Scan-Workflow
 - Favoriten fuer Orte und Artikel bleiben lokal gespeichert

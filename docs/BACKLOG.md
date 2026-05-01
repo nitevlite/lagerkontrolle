@@ -46,3 +46,4 @@
 - Einheitenliste visuell neu und besser scanbar gestaltet
 - Slot-Karten im Ort-Editor und Artikelliste fuer Handy-Ansicht verbessert
 - Chargencode-Umschaltung aus den Buchungsdaten entfernt
+- Buchungsdaten weiter verdichtet: Mindestbestand beim schnellen neuen Artikel entfernt, Orts- und Slot-Auswahl unter die Menge geschoben und kompakter gestaltet

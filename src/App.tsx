@@ -2411,7 +2411,7 @@ function App() {
                                       <label className="form-field">
                                         <span>Einheit</span>
                                         <select
-                                          className="app-select"
+                                          className="app-select app-select--compact"
                                           value={bookingNewItemUnitTypeId}
                                           onChange={(event) => setBookingNewItemUnitTypeId(event.target.value)}
                                         >
@@ -2434,14 +2434,6 @@ function App() {
                                           Übernommener Barcode: <strong>{bookingNewItemBarcodeDraft.trim()}</strong>
                                         </div>
                                       ) : null}
-                                      <IonItem className="compact-field">
-                                        <IonLabel position="stacked">Niedriger Bestand ab</IonLabel>
-                                        <IonInput
-                                          type="number"
-                                          value={bookingNewItemLowStockThresholdDraft}
-                                          onIonInput={(event) => setBookingNewItemLowStockThresholdDraft(String(event.detail.value ?? ""))}
-                                        />
-                                      </IonItem>
                                       <div className="toggle-pills booking-toggle-row">
                                         <button
                                           type="button"
@@ -2485,31 +2477,6 @@ function App() {
                                         </div>
                                       ) : null}
                                     </>
-                                  )}
-
-                                  {bookingTargetSlots.length > 0 ? (
-                                    <label className="form-field">
-                                      <span>Slot optional in {detailLocation.name}</span>
-                                      <select
-                                        className="app-select"
-                                        value={bookingTargetSlotId}
-                                        onChange={(event) => setBookingTargetSlotId(event.target.value)}
-                                      >
-                                        <option value="">Ohne Slot direkt auf Ort</option>
-                                        {bookingTargetSlots.map((slot) => (
-                                          <option key={slot.id} value={slot.id}>
-                                            {slot.label}
-                                          </option>
-                                        ))}
-                                      </select>
-                                    </label>
-                                  ) : (
-                                    <div className="empty-state empty-state--action">
-                                      <span>In diesem Ort ist kein Slot angelegt. Es wird direkt auf den Ort gebucht.</span>
-                                      <IonButton size="small" className="primary-button" onClick={() => void handleCreateBookingSlot()}>
-                                        Optional Slot anlegen
-                                      </IonButton>
-                                    </div>
                                   )}
 
                                   {canCreateNewBookingBatch && !bookingUsesNewItem ? (
@@ -2610,6 +2577,31 @@ function App() {
                                       />
                                     </IonItem>
                                   </div>
+
+                                  {bookingTargetSlots.length > 0 ? (
+                                    <label className="form-field">
+                                      <span>Slot optional in {detailLocation.name}</span>
+                                      <select
+                                        className="app-select app-select--compact"
+                                        value={bookingTargetSlotId}
+                                        onChange={(event) => setBookingTargetSlotId(event.target.value)}
+                                      >
+                                        <option value="">Ohne Slot direkt auf Ort</option>
+                                        {bookingTargetSlots.map((slot) => (
+                                          <option key={slot.id} value={slot.id}>
+                                            {slot.label}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </label>
+                                  ) : (
+                                    <div className="empty-state empty-state--action">
+                                      <span>In diesem Ort ist kein Slot angelegt. Es wird direkt auf den Ort gebucht.</span>
+                                      <IonButton size="small" className="primary-button" onClick={() => void handleCreateBookingSlot()}>
+                                        Optional Slot anlegen
+                                      </IonButton>
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="form-actions">
                                   <IonButton fill="outline" className="primary-button" onClick={() => openScan("booking-item")}>
@@ -3148,7 +3140,7 @@ function App() {
                             <label className="form-field">
                               <span>Einheit</span>
                               <select
-                                className="app-select"
+                                className="app-select app-select--compact"
                                 value={bookingNewItemUnitTypeId}
                                 onChange={(event) => setBookingNewItemUnitTypeId(event.target.value)}
                               >
@@ -3176,14 +3168,6 @@ function App() {
                                 Barcode scannen
                               </IonButton>
                             </div>
-                            <IonItem className="compact-field">
-                              <IonLabel position="stacked">Niedriger Bestand ab</IonLabel>
-                              <IonInput
-                                type="number"
-                                value={bookingNewItemLowStockThresholdDraft}
-                                onIonInput={(event) => setBookingNewItemLowStockThresholdDraft(String(event.detail.value ?? ""))}
-                              />
-                            </IonItem>
                             <div className="toggle-pills booking-toggle-row">
                               <button
                                 type="button"
@@ -3219,27 +3203,6 @@ function App() {
                             </label>
                           </>
                         )}
-                        <label className="form-field">
-                          <span>Ort</span>
-                          <select
-                            className="app-select"
-                            value={bookingLocationId}
-                            onChange={(event) => handleBookingLocationChange(event.target.value)}
-                          >
-                            {(viewModel.locations ?? []).map((location) => (
-                              <option key={location.id} value={location.id}>
-                                {location.name}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        {bookingPinnedLocationId ? (
-                          <div className="help-box help-box--compact">
-                            <span>
-                              Ort wurde aus dem Ort-Scan vorausgewählt. Beim Wechsel fragt die App zur Sicherheit nach.
-                            </span>
-                          </div>
-                        ) : null}
 
                         {bookingAction === "adjustment" ? (
                           <div className="toggle-pills">
@@ -3258,106 +3221,6 @@ function App() {
                               Minuskorrektur
                             </button>
                           </div>
-                        ) : null}
-
-                        {(bookingAction === "out" || bookingAction === "transfer" || (bookingAction === "adjustment" && bookingAdjustmentDirection === "decrease")) ? (
-                          bookingSourceSlotOptions.length > 0 ? (
-                            <>
-                              <label className="form-field">
-                                <span>Quellort / Slot</span>
-                                <select
-                                  ref={bookingSourceSlotRef}
-                                  className="app-select"
-                                  value={bookingSourceSlotId}
-                                  onChange={(event) => setBookingSourceSlotId(event.target.value)}
-                                >
-                                  {bookingSourceSlotOptions.map((slot) => (
-                                    <option key={slot.id} value={slot.id}>
-                                      {slot.label}
-                                    </option>
-                                  ))}
-                                </select>
-                              </label>
-                              <div className="booking-feedback">
-                                <strong>Quelle: {selectedSourceOption?.label ?? "Direkt am Ort"}</strong>
-                                <span>
-                                  {bookingSelectedLocationQuantity} {bookingItem?.unitLabel ?? ""} am gewählten Ort verfügbar
-                                </span>
-                              </div>
-                            </>
-                          ) : (
-                            <div className="empty-state">Kein Bestand für diesen Artikel im gewählten Ort.</div>
-                          )
-                        ) : null}
-
-                        {(bookingAction === "in" || (bookingAction === "adjustment" && bookingAdjustmentDirection === "increase")) ? (
-                          bookingTargetSlots.length > 0 ? (
-                            <label className="form-field">
-                              <span>Slot optional</span>
-                              <select
-                                ref={bookingTargetSlotRef}
-                                className="app-select"
-                                value={bookingTargetSlotId}
-                                onChange={(event) => setBookingTargetSlotId(event.target.value)}
-                              >
-                                <option value="">Ohne Slot direkt auf Ort</option>
-                                {bookingTargetSlots.map((slot) => (
-                                  <option key={slot.id} value={slot.id}>
-                                    {slot.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                          ) : (
-                            <div className="empty-state empty-state--action">
-                              <span>Keine Slots angelegt. Die Buchung läuft direkt auf den Ort.</span>
-                              <IonButton size="small" className="primary-button" onClick={() => void handleCreateBookingSlot()}>
-                                Optional Slot anlegen
-                              </IonButton>
-                            </div>
-                          )
-                        ) : null}
-
-                        {bookingAction === "transfer" ? (
-                          <>
-                            <label className="form-field">
-                              <span>Zielort</span>
-                              <select
-                                className="app-select"
-                                value={bookingTargetLocationId}
-                                onChange={(event) => setBookingTargetLocationId(event.target.value)}
-                              >
-                                {(viewModel.locations ?? []).map((location) => (
-                                  <option key={location.id} value={location.id}>
-                                    {location.name}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                            {bookingTargetSlots.length > 0 ? (
-                              <label className="form-field">
-                                <span>Zielslot</span>
-                                <select
-                                  className="app-select"
-                                  value={bookingTargetSlotId}
-                                  onChange={(event) => setBookingTargetSlotId(event.target.value)}
-                                >
-                                  <option value="">Ohne Slot direkt auf Zielort</option>
-                                  {bookingTargetSlots.map((slot) => (
-                                    <option key={slot.id} value={slot.id}>
-                                      {slot.label}
-                                    </option>
-                                  ))}
-                                </select>
-                              </label>
-                            ) : (
-                              <div className="empty-state">Im Zielort sind keine Slots angelegt. Die Umbuchung kann direkt auf den Zielort laufen.</div>
-                            )}
-                            <div className="booking-feedback">
-                              <strong>Ziel: {selectedTargetLocation?.name ?? bookingLocation?.name ?? "Ort"}</strong>
-                              <span>{selectedTargetSlot?.label ?? "Direkt auf den Ort"}</span>
-                            </div>
-                          </>
                         ) : null}
 
                         {bookingBatchMode === "existing" || mustUseExistingBookingBatch ? (
@@ -3421,6 +3284,128 @@ function App() {
                             ref={bookingQuantityInputRef}
                           />
                         </IonItem>
+
+                        <label className="form-field">
+                          <span>Ort</span>
+                          <select
+                            className="app-select app-select--compact"
+                            value={bookingLocationId}
+                            onChange={(event) => handleBookingLocationChange(event.target.value)}
+                          >
+                            {(viewModel.locations ?? []).map((location) => (
+                              <option key={location.id} value={location.id}>
+                                {location.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        {bookingPinnedLocationId ? (
+                          <div className="help-box help-box--compact">
+                            <span>
+                              Ort wurde aus dem Ort-Scan vorausgewählt. Beim Wechsel fragt die App zur Sicherheit nach.
+                            </span>
+                          </div>
+                        ) : null}
+
+                        {(bookingAction === "out" || bookingAction === "transfer" || (bookingAction === "adjustment" && bookingAdjustmentDirection === "decrease")) ? (
+                          bookingSourceSlotOptions.length > 0 ? (
+                            <>
+                              <label className="form-field">
+                                <span>Quellort / Slot</span>
+                                <select
+                                  ref={bookingSourceSlotRef}
+                                  className="app-select app-select--compact"
+                                  value={bookingSourceSlotId}
+                                  onChange={(event) => setBookingSourceSlotId(event.target.value)}
+                                >
+                                  {bookingSourceSlotOptions.map((slot) => (
+                                    <option key={slot.id} value={slot.id}>
+                                      {slot.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <div className="booking-feedback">
+                                <strong>Quelle: {selectedSourceOption?.label ?? "Direkt am Ort"}</strong>
+                                <span>
+                                  {bookingSelectedLocationQuantity} {bookingItem?.unitLabel ?? ""} am gewählten Ort verfügbar
+                                </span>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="empty-state">Kein Bestand für diesen Artikel im gewählten Ort.</div>
+                          )
+                        ) : null}
+
+                        {(bookingAction === "in" || (bookingAction === "adjustment" && bookingAdjustmentDirection === "increase")) ? (
+                          bookingTargetSlots.length > 0 ? (
+                            <label className="form-field">
+                              <span>Slot optional</span>
+                              <select
+                                ref={bookingTargetSlotRef}
+                                className="app-select app-select--compact"
+                                value={bookingTargetSlotId}
+                                onChange={(event) => setBookingTargetSlotId(event.target.value)}
+                              >
+                                <option value="">Ohne Slot direkt auf Ort</option>
+                                {bookingTargetSlots.map((slot) => (
+                                  <option key={slot.id} value={slot.id}>
+                                    {slot.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          ) : (
+                            <div className="empty-state empty-state--action">
+                              <span>Keine Slots angelegt. Die Buchung läuft direkt auf den Ort.</span>
+                              <IonButton size="small" className="primary-button" onClick={() => void handleCreateBookingSlot()}>
+                                Optional Slot anlegen
+                              </IonButton>
+                            </div>
+                          )
+                        ) : null}
+
+                        {bookingAction === "transfer" ? (
+                          <>
+                            <label className="form-field">
+                              <span>Zielort</span>
+                              <select
+                                className="app-select app-select--compact"
+                                value={bookingTargetLocationId}
+                                onChange={(event) => setBookingTargetLocationId(event.target.value)}
+                              >
+                                {(viewModel.locations ?? []).map((location) => (
+                                  <option key={location.id} value={location.id}>
+                                    {location.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            {bookingTargetSlots.length > 0 ? (
+                              <label className="form-field">
+                                <span>Zielslot</span>
+                                <select
+                                  className="app-select app-select--compact"
+                                  value={bookingTargetSlotId}
+                                  onChange={(event) => setBookingTargetSlotId(event.target.value)}
+                                >
+                                  <option value="">Ohne Slot direkt auf Zielort</option>
+                                  {bookingTargetSlots.map((slot) => (
+                                    <option key={slot.id} value={slot.id}>
+                                      {slot.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                            ) : (
+                              <div className="empty-state">Im Zielort sind keine Slots angelegt. Die Umbuchung kann direkt auf den Zielort laufen.</div>
+                            )}
+                            <div className="booking-feedback">
+                              <strong>Ziel: {selectedTargetLocation?.name ?? bookingLocation?.name ?? "Ort"}</strong>
+                              <span>{selectedTargetSlot?.label ?? "Direkt auf den Ort"}</span>
+                            </div>
+                          </>
+                        ) : null}
                       </div>
 
                       <div className="form-actions">

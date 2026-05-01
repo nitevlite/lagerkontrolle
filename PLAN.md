@@ -22,7 +22,7 @@ Wir bauen zuerst ein extrem schnelles MVP fuer mobile Erfassung. Prioritaet habe
 ## Phase 3: Kernworkflows
 
 - schnelle Buchung fuer Zugang, Abgang und Umbuchung
-- Buchung weiter vereinfachen: ohne Chargenauswahl, ohne redundante Zusammenfassung, mit Bestand oberhalb der Buchungsdaten
+- Buchung weiter vereinfachen: ohne Chargenauswahl, ohne redundante Zusammenfassung, mit Bestand oberhalb der Buchungsdaten und kompakter Ortswahl unter der Menge
 - Ablaufdaten und Chargen erfassen
 - Vorwarnungen vor Ablauf konfigurieren und anzeigen
 - Suche, Filter, Favoriten und letzte Aktionen einbauen
