@@ -26,7 +26,7 @@ Optional:
 
 ## Regeln
 
-- `ablaufdatum` im Format `YYYY-MM-DD`
+- `ablaufdatum` bevorzugt als `MM/JJ`, z. B. `11/27`; alte Werte im Format `YYYY-MM-DD` werden beim Einlesen oder Migrieren auf den Ablaufmonat umgerechnet
 - `menge` als Zahl ohne Einheit im Feld
 - `slot_typ` frei, aber konsistent, z. B. `Regal`, `Lade`
 - `mindestbestand` als Zahl pro Artikel

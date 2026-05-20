@@ -11,6 +11,7 @@ import type {
   SyncMetadata,
   UnitType
 } from "../domain/model";
+import { normalizeExpiryMonth } from "../domain/expiry";
 
 type SyncState = "idle" | "syncing" | "success" | "error";
 
@@ -241,13 +242,23 @@ async function applyRemoteDoc(doc: RemoteEntityDoc) {
       await db.items.put(payload as Item);
       break;
     case "batch":
-      await db.batches.put(payload as Batch);
+      await db.batches.put({
+        ...(payload as Batch),
+        expiryDate: normalizeExpiryMonth((payload as Batch).expiryDate)
+      });
       break;
     case "movement":
       await db.movements.put(payload as Movement);
       break;
     case "settings":
-      await db.settings.put(payload as AppSettings);
+      await db.settings.put({
+        ...(payload as AppSettings),
+        expiryWarningDays: (payload as AppSettings).expiryWarningDays ?? 31,
+        reminderRepeatDays: (payload as AppSettings).reminderRepeatDays ?? 14,
+        favoriteLocationIds: (payload as AppSettings).favoriteLocationIds ?? [],
+        favoriteItemIds: (payload as AppSettings).favoriteItemIds ?? [],
+        slotTypeNames: (payload as AppSettings).slotTypeNames ?? ["Regal", "Lade"]
+      });
       break;
   }
 

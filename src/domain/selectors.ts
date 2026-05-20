@@ -1,4 +1,5 @@
 import type { AppSettings, Batch, DomainSnapshot, Item, Location, Movement, StorageSlot, UnitType } from "./model";
+import { expiryMonthToMonthEndIso, formatExpiryMonth, noExpiryDate } from "./expiry";
 
 export type ViewKey = "dashboard" | "locations" | "items" | "booking" | "units" | "analytics" | "settings" | "log";
 
@@ -85,13 +86,6 @@ export type AppViewModel = {
   dashboardStats: DashboardStat[];
   analyticsMetrics: AnalyticsMetric[];
 };
-
-const fullDateFormatter = new Intl.DateTimeFormat("de-AT", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric"
-});
-const noExpiryDate = "2099-12-31";
 
 function startOfToday() {
   const today = new Date();
@@ -189,7 +183,7 @@ export function buildViewModel(snapshot: DomainSnapshot): AppViewModel {
       const batch = batchById.get(entry.batchId)!;
       const item = itemById.get(batch.itemId)!;
       const unit = unitById.get(item.unitTypeId)!;
-      const remainingDays = item.trackExpiry && batch.expiryDate !== noExpiryDate ? daysUntil(batch.expiryDate) : null;
+      const remainingDays = item.trackExpiry && batch.expiryDate !== noExpiryDate ? daysUntil(expiryMonthToMonthEndIso(batch.expiryDate)) : null;
 
       return {
         id: `${entry.locationId}:${entry.slotId ?? "ort"}:${entry.batchId}`,
@@ -200,7 +194,7 @@ export function buildViewModel(snapshot: DomainSnapshot): AppViewModel {
         itemName: item.name,
         quantity: entry.quantity,
         unitShortCode: unit.shortCode,
-        expiryDate: batch.expiryDate === noExpiryDate ? "ohne Ablauf" : fullDateFormatter.format(new Date(batch.expiryDate)),
+        expiryDate: formatExpiryMonth(batch.expiryDate),
         status: getTone(remainingDays, snapshot.settings.expiryWarningDays),
         daysUntilExpiry: remainingDays
       };
@@ -343,20 +337,6 @@ export function buildViewModel(snapshot: DomainSnapshot): AppViewModel {
       label: "Niedrige Bestände",
       value: String(lowStockCount),
       detail: "unter Artikelgrenze",
-      tone: "neutral"
-    },
-    {
-      id: "movements",
-      label: "Bewegungen",
-      value: String(snapshot.movements.filter((movement) => localDateKey(new Date(movement.createdAt)) === localDateKey()).length),
-      detail: "heute",
-      tone: "good"
-    },
-    {
-      id: "scans",
-      label: "Scans",
-      value: "24",
-      detail: "heute",
       tone: "neutral"
     }
   ];

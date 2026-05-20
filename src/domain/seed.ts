@@ -23,8 +23,8 @@ const movements: Movement[] = [];
 
 const settings: AppSettings = {
   id: "default",
-  expiryWarningDays: 10,
-  reminderRepeatDays: 3,
+  expiryWarningDays: 31,
+  reminderRepeatDays: 14,
   favoriteLocationIds: [],
   favoriteItemIds: [],
   slotTypeNames: ["Regal", "Lade", "Schrank", "Fach", "Kiste", "Box", "Kühlschrank", "Gefrierschrank", "Palette"],

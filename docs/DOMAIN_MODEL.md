@@ -36,7 +36,7 @@ Slot: `Regal 3` oder `Ohne Slot`
 Artikel: `Kamillentee 20er`  
 Barcodes: `123456789012`, `998877665544`  
 Charge: `KT-2026-04` oder `Keine Charge`  
-Ablaufdatum: `2027-04-30`
+Ablaufmonat: `04/27` in der Oberflaeche, intern als `2027-04`
 
 Moegliche Bewegungen:
 

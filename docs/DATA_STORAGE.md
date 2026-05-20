@@ -36,6 +36,12 @@ Ein normales App-Update löscht lokale Daten nicht automatisch. Bereits weiterge
 
 Unter `Dashboard -> Lokale Daten` kann außerdem ein JSON-Backup exportiert und wieder importiert werden. Der CSV-Export ist für den aktuellen Bestand gedacht und nicht als Wiederherstellungsformat.
 
+## Update-Regel fuer produktive Nutzung
+
+Die App wird bereits mit echten Nutzerdaten verwendet. Deshalb muessen alle weiteren Aenderungen als kompatible Updates eingespielt werden. Bestehende Daten in `IndexedDB` oder in einer spaeter angebundenen Sync-Datenbank duerfen durch App-Updates nicht geloescht, ueberschrieben oder stillschweigend neu initialisiert werden.
+
+Wenn sich das Datenmodell aendert, muss die Aenderung als Migration umgesetzt werden. Migrationen muessen vorhandene Orte, Slots, Artikel, Chargen, Bewegungen, Einstellungen, Favoriten und Warnwerte erhalten und fehlende neue Felder mit sicheren Standardwerten ergaenzen. Ein Datenreset darf nur ueber die ausdrueckliche Reset-Funktion in der App erfolgen und muss fuer Nutzer klar erkennbar sein.
+
 ## Aktueller Sync-Stand
 
 Mehrgeräte-Synchronisation ist jetzt für `CouchDB` vorbereitet. Dafür wird ein zentraler Server benötigt, und jedes Gerät synchronisiert seine lokalen Daten per Pull/Push. Ohne konfigurierte CouchDB bleibt die App weiter rein lokal.

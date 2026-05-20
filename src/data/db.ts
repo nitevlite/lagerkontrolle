@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from "dexie";
 import type { AppSettings, Batch, Item, Location, Movement, StorageSlot, SyncMetadata, UnitType } from "../domain/model";
+import { normalizeExpiryMonth } from "../domain/expiry";
 
 class LagerkontrolleDatabase extends Dexie {
   locations!: EntityTable<Location, "id">;
@@ -240,6 +241,38 @@ class LagerkontrolleDatabase extends Dexie {
             ...item,
             barcode: barcodes[0],
             barcodes
+          });
+        }
+      });
+    this.version(8)
+      .stores({
+        locations: "id, name",
+        slots: "id, locationId, sortOrder",
+        unitTypes: "id, name, shortCode",
+        items: "id, name, unitTypeId, barcode, *barcodes, preferredLocationId, lowStockThreshold",
+        batches: "id, itemId, expiryDate",
+        movements: "id, batchId, kind, createdAt, fromSlotId, toSlotId, fromLocationId, toLocationId",
+        settings: "id",
+        syncMeta: "id, entityType, entityId, dirty, updatedAt"
+      })
+      .upgrade(async (tx) => {
+        const batchesTable = tx.table<Batch, "id">("batches");
+        const batches = await batchesTable.toArray();
+        for (const batch of batches) {
+          await batchesTable.put({
+            ...batch,
+            expiryDate: normalizeExpiryMonth(batch.expiryDate)
+          });
+        }
+
+        const settingsTable = tx.table("settings");
+        const current = (await settingsTable.get("default")) as AppSettings | undefined;
+        if (current) {
+          await settingsTable.put({
+            ...current,
+            expiryWarningDays: !current.expiryWarningDays || current.expiryWarningDays === 10 ? 31 : current.expiryWarningDays,
+            reminderRepeatDays: !current.reminderRepeatDays || current.reminderRepeatDays === 3 ? 14 : current.reminderRepeatDays,
+            expiryReminderSnoozedUntil: current.expiryReminderSnoozedUntil
           });
         }
       });

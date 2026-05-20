@@ -822,6 +822,26 @@ ion-content.shell::part(scroll) {
   margin-top: 0;
 }
 
+.details-toggle {
+  width: 100%;
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #f7f9fc;
+  color: var(--text);
+  font: inherit;
+  font-weight: 800;
+}
+
+.details-toggle ion-icon {
+  font-size: 1rem;
+}
+
 .booking-form-stack .unit-form,
 .booking-form-stack .compact-field,
 .booking-form-stack .empty-state {

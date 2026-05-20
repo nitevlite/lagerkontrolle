@@ -36,8 +36,8 @@ Warum das sinnvoll ist:
 - Mengen schnell buchen: `+`, `-`, Umbuchung
 - Buchung ohne Chargenauswahl und ohne redundante Zusammenfassung unter der Menge
 - Ablaufdaten und Chargen fuer fast alle Artikel verwalten
-- Vorwarnungen vor Ablauf anzeigen, Standard `10 Tage vorher`
-- Wiedervorlage nach Warnung in `X Tagen`
+- Vorwarnungen vor Ablauf anzeigen, Standard `31 Tage vorher`
+- Wiedervorlage nach Warnung in `14 Tagen`
 - Ablauf im frei waehlbaren Zeitraum filtern
 - Barcode- oder QR-Scan direkt im MVP
 - Mehrgeraete-Sync direkt im MVP
@@ -58,7 +58,7 @@ Warum das sinnvoll ist:
 - `docs/DOMAIN_MODEL.md`: fachliches Datenmodell
 - `docs/UX_NOTES.md`: wichtige Produkt- und Bedienprinzipien
 - `docs/INSTALLATION_GUIDE.md`: Weitergabe und Installation auf anderen Geraeten
-- `docs/DATA_STORAGE.md`: wo Daten liegen und was lokal bleibt
+- `docs/DATA_STORAGE.md`: wo Daten liegen, was lokal bleibt und welche Update-Regeln Datenverlust verhindern
 - `docs/PILOT_CHECKLIST.md`: Pilotfreigabe und Testbetrieb
 - `docs/IMPORT_FORMAT.md`: Zielstruktur fuer spaetere Excel-Dateien
 - `docs/SYNC_SETUP.md`: CouchDB-Einrichtung und Mehrgeraete-Sync
@@ -94,18 +94,20 @@ npm run build
 - Speicher-, Loesch-, Import-, Export-, Reset- und Sync-Aktionen zeigen sichtbare Erfolgsbestaetigungen
 - Abgang, Umbuchung und Minuskorrektur koennen von Slot-Bestand oder direkt vom gewaehlten Ort buchen
 - Buchung zeigt bei bestehenden Artikeln sofort den Gesamtbestand und den Bestand am gewaehlten Ort
-- Buchung fuehrt mobil direkt ueber Buchungsdaten mit Artikel-Dropdown, Menge, Ablaufdatum, kompakter Orts- und Slot-Auswahl und danach optionalem Chargencode
-- im Zugang kann direkt ein neuer Artikel mit Minimalstammdaten ohne Mindestbestand-Feld und ohne Ablauf-Schalter angelegt und sofort eingebucht werden; unbekannte Barcodes werden direkt unter dem Artikelnamen uebernommen, ein leeres Ablaufdatum bedeutet ohne Ablauf
-- Scan ist im Buchungsflow, im Ort-Detail, im Artikelbereich und im Artikel-Barcodefeld aktiv, normalisiert erkannte Codes und bietet manuelle Eingabe als Fallback
+- Ablaufdaten werden als Monat/Jahr gefuehrt, z. B. `11/27`; alte Tagesdaten werden kompatibel auf dieses Schema migriert
+- Buchung fuehrt mobil direkt ueber Buchungsdaten mit Artikel-Dropdown, Menge, Ablaufmonat, kompakter Orts- und Slot-Auswahl und danach optionalem Chargencode
+- im Zugang kann direkt ein neuer Artikel mit Minimalstammdaten ohne Mindestbestand-Feld und ohne Ablauf-Schalter angelegt und sofort eingebucht werden; die schnelle Reihenfolge ist Name, Menge, Einheit, Ablaufdatum, Barcode, weitere Einstellungen klappen Ort, Slot und Charge aus
+- Scan ist im Buchungsflow, im Ort-Detail, im Artikelbereich und im Artikel-Barcodefeld aktiv, liest Barcode- und QR-Formate, normalisiert erkannte Codes und bietet manuelle Eingabe als Fallback
 - Orte koennen als Scan-Kontext vorausgewaehlt werden; fuer mehrere Produkte gibt es einen Sammel-Scan-Workflow
 - Favoriten fuer Orte und Artikel bleiben lokal gespeichert
 - Buchung und Dashboard priorisieren Favoriten und zuletzt genutzte Eintraege
-- Dashboard bietet operative Lagerinformationen; Sync, lokale Datenbereinigung, JSON-Backup/Restore und CSV-Bestandsexport liegen im eigenen Tab `Einstellungen`
+- Dashboard bietet operative Lagerinformationen ohne separate Bewegungs- und Scan-Kacheln; Sync, lokale Datenbereinigung, JSON-Backup/Restore und CSV-Bestandsexport liegen im eigenen Tab `Einstellungen`
 - Analyse zeigt mobile Balken fuer Bewegungen, Ablauf-Verteilung, Top-Orte und Top-Artikel plus priorisierte Risiko-Liste
 - Dashboard zeigt den Ablauf-Filter ganz oben und niedrige Bestaende direkt darunter
 - mobile Listen und Analysekarten sind fuer Handy dichter und lesbarer nachgezogen
 - echtes Domain-Modell fuer `Location`, `StorageSlot`, `UnitType`, `Item`, `Batch`, `Movement`, `AppSettings`
 - lokale Offline-Persistenz ueber `IndexedDB` mit `Dexie`
+- die App wird bereits produktiv genutzt; weitere Aenderungen muessen als kompatible Updates oder Migrationen erfolgen und vorhandene Nutzerdaten erhalten
 - Bestandsableitung aus Bewegungen statt aus fixen Direktwerten
 - erste Pilot-Haertung gestartet: Build-Splitting fuer Storage und UI-Bloecke ist vorbereitet
 - GitHub-Pages-Deploy fuer HTTPS-Verteilung und PWA-Installation ist vorbereitet

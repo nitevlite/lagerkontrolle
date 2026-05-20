@@ -58,6 +58,7 @@ export type AppSettings = {
   id: "default";
   expiryWarningDays: number;
   reminderRepeatDays: number;
+  expiryReminderSnoozedUntil?: string;
   favoriteLocationIds: EntityId[];
   favoriteItemIds: EntityId[];
   slotTypeNames: string[];

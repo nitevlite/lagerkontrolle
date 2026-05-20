@@ -99,6 +99,22 @@ Ergebnis: Das MVP ist bereit fuer den echten Einsatz.
 30. `#30` UI 07: Sync und lokale Daten in neuen Einstellungen-Tab verschieben
 31. `#31` Scan: Kamera-Fokus und Erkennungsqualitaet verbessern
 32. `#32` UI 08: Einheitenliste neu und uebersichtlicher gestalten
+33. `#33` Ablaufwarnungen auf 31 Tage und Erinnerung auf 14 Tage umstellen
+34. `#34` Ablaufdatum auf Monat/Jahr umstellen und bestehende Daten migrieren
+35. `#35` Neuen Artikel in Buchung und Ort vereinfacht erfassen
+36. `#36` Ort-Detail Aktionen und Slots neu ordnen
+37. `#37` Scanner fuer QR-Codes, Zoom und enge Barcodes verbessern
+38. `#38` Dashboard-Anzeigen Bewegungen und Scans entfernen
+
+## Implementierungsplan fuer `#33` bis `#38`
+
+1. Ablaufdaten zuerst technisch absichern: Hilfsfunktionen fuer Monat/Jahr normalisieren, bestehende Tagesdaten in der lokalen Datenbank kompatibel migrieren und Warnberechnungen ueber das Monatsende laufen lassen.
+2. Einstellungen danach erweitern: neue Standardwerte `31` und `14` nur fuer neue oder unvollstaendige Einstellungen setzen, vorhandene Nutzereinstellungen nicht ungefragt ueberschreiben, und eine gespeicherte Wiedervorlage fuer das Start-Pop-up einfuehren.
+3. Buchungs- und Ort-Artikel-Flows umbauen: Pflichtfelder direkt sichtbar in der Reihenfolge Name, Menge, Einheit, Ablaufdatum, Barcode; Ort, Slot und Charge in `Weitere Einstellungen`.
+4. Ort-Detail umsortieren: Scan-Aktionen voranstellen und `Slot hinzufuegen` in den Slots-Bereich verschieben.
+5. Scanner verbessern: QR-Formate aktivieren, Rueckkamera mit hoeherer Aufloesung bevorzugen, unterstuetzten Zoom/Fokus anwenden und den manuellen Fallback behalten.
+6. Dashboard bereinigen: Kacheln und Klicklogik fuer Bewegungen und Scans entfernen.
+7. Dokumentation aktualisieren und `npm run build` als Mindestpruefung ausfuehren.
 
 ## Technische Leitlinien
 

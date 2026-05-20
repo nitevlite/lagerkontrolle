@@ -1,11 +1,11 @@
 import { db } from "./db";
 import type { AppSettings, DomainSnapshot, MovementKind } from "../domain/model";
 import { seedSnapshot } from "../domain/seed";
+import { isValidExpiryMonth, noExpiryDate, normalizeExpiryMonth } from "../domain/expiry";
 import { createDefaultSyncConfig, markEntityChanged, markEntityDeleted } from "./sync";
 
 const defaultSlotTypeNames = ["Regal", "Lade", "Schrank", "Fach", "Kiste", "Box", "Kühlschrank", "Gefrierschrank", "Palette"];
 const noBatchCode = "Keine Charge";
-const noExpiryDate = "2099-12-31";
 
 function normalizeBarcode(value: string) {
   const compact = value.trim().replace(/\s+/g, "");
@@ -22,8 +22,8 @@ function uniqueBarcodes(values: Array<string | undefined>) {
 function buildDefaultSettings(): AppSettings {
   return {
     id: "default",
-    expiryWarningDays: 10,
-    reminderRepeatDays: 3,
+    expiryWarningDays: 31,
+    reminderRepeatDays: 14,
     favoriteLocationIds: [],
     favoriteItemIds: [],
     slotTypeNames: defaultSlotTypeNames,
@@ -69,9 +69,10 @@ export async function restoreSnapshot(input: DomainSnapshot) {
     await db.slots.bulkPut(input.slots);
     await db.unitTypes.bulkPut(input.unitTypes);
     await db.items.bulkPut(input.items);
-    await db.batches.bulkPut(input.batches);
+    await db.batches.bulkPut(input.batches.map((batch) => ({ ...batch, expiryDate: normalizeExpiryMonth(batch.expiryDate) })));
     await db.movements.bulkPut(input.movements);
     await db.settings.put({
+      ...buildDefaultSettings(),
       ...input.settings,
       sync: {
         ...input.settings.sync,
@@ -122,14 +123,29 @@ export async function loadSnapshot(): Promise<DomainSnapshot> {
     db.settings.get("default")
   ]);
 
+  const defaultSettings = buildDefaultSettings();
+  const resolvedSettings = settings
+    ? {
+        ...defaultSettings,
+        ...settings,
+        favoriteLocationIds: settings.favoriteLocationIds ?? [],
+        favoriteItemIds: settings.favoriteItemIds ?? [],
+        slotTypeNames: settings.slotTypeNames ?? defaultSlotTypeNames,
+        sync: {
+          ...defaultSettings.sync,
+          ...settings.sync
+        }
+      }
+    : defaultSettings;
+
   return {
     locations,
     slots,
     unitTypes,
     items,
-    batches,
+    batches: batches.map((batch) => ({ ...batch, expiryDate: normalizeExpiryMonth(batch.expiryDate) })),
     movements,
-    settings: settings ?? buildDefaultSettings()
+    settings: resolvedSettings
   };
 }
 
@@ -275,8 +291,12 @@ export async function addBatch(input: {
   expiryDate: string;
 }) {
   const batchCode = input.batchCode.trim() || noBatchCode;
-  if (!input.expiryDate) {
+  const expiryDate = normalizeExpiryMonth(input.expiryDate);
+  if (!expiryDate) {
     return;
+  }
+  if (!isValidExpiryMonth(expiryDate)) {
+    throw new Error("Bitte Ablaufdatum als MM/JJ eingeben.");
   }
 
   const existing = await db.batches
@@ -296,7 +316,7 @@ export async function addBatch(input: {
     id,
     itemId: input.itemId,
     batchCode,
-    expiryDate: input.expiryDate
+    expiryDate
   });
   await markEntityChanged("batch", id);
 }
@@ -566,7 +586,10 @@ export async function createMovement(input: {
   await db.transaction("rw", db.batches, db.movements, async () => {
     if (!batchId) {
       const batchCode = input.batchCode?.trim() || noBatchCode;
-      const expiryDate = input.expiryDate?.trim() || noExpiryDate;
+      const expiryDate = normalizeExpiryMonth(input.expiryDate) || noExpiryDate;
+      if (!isValidExpiryMonth(expiryDate)) {
+        throw new Error("Bitte Ablaufdatum als MM/JJ eingeben.");
+      }
 
       const duplicateBatch = await db.batches
         .filter(

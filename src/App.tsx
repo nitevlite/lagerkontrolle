@@ -60,6 +60,7 @@ import {
 import { runCouchSync, type SyncStatus } from "./data/sync";
 import { seedSnapshot } from "./domain/seed";
 import { buildViewModel, type ViewKey } from "./domain/selectors";
+import { formatExpiryMonth, isValidExpiryMonth, noExpiryDate, normalizeExpiryMonth } from "./domain/expiry";
 import "./theme.css";
 
 const viewMeta: Array<{ key: ViewKey; label: string; icon: string }> = [
@@ -73,13 +74,7 @@ const viewMeta: Array<{ key: ViewKey; label: string; icon: string }> = [
   { key: "log", label: "Log", icon: listOutline }
 ];
 
-const expiryFilters = [7, 10, 30, 60] as const;
-const noExpiryDate = "2099-12-31";
-const displayDateFormatter = new Intl.DateTimeFormat("de-AT", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric"
-});
+const expiryFilters = [7, 31, 60, 90] as const;
 const shortDayFormatter = new Intl.DateTimeFormat("de-AT", {
   day: "2-digit",
   month: "2-digit"
@@ -105,6 +100,7 @@ type CameraFocusConstraints = MediaTrackConstraints & {
     focusMode?: "continuous" | "single-shot" | "manual";
     exposureMode?: "continuous";
     whiteBalanceMode?: "continuous";
+    zoom?: number;
   }>;
 };
 
@@ -117,6 +113,7 @@ async function applyScanFocus(track: MediaStreamTrack) {
     focusMode?: string[];
     exposureMode?: string[];
     whiteBalanceMode?: string[];
+    zoom?: { min: number; max: number; step?: number };
   };
   const advanced: NonNullable<CameraFocusConstraints["advanced"]> = [];
 
@@ -129,10 +126,22 @@ async function applyScanFocus(track: MediaStreamTrack) {
   if (capabilities.whiteBalanceMode?.includes("continuous")) {
     advanced.push({ whiteBalanceMode: "continuous" });
   }
+  if (capabilities.zoom && capabilities.zoom.max > capabilities.zoom.min) {
+    advanced.push({ zoom: Math.min(capabilities.zoom.max, Math.max(capabilities.zoom.min, 1.6)) });
+  }
 
   if (advanced.length > 0) {
     await track.applyConstraints({ advanced } as CameraFocusConstraints);
   }
+}
+
+function handleExpiryDraftChange(value: string, setter: (nextValue: string) => void) {
+  const compact = value.trim().replace(/\D/g, "");
+  if (compact.length === 4) {
+    setter(`${compact.slice(0, 2)}/${compact.slice(2)}`);
+    return;
+  }
+  setter(value);
 }
 
 function normalizeBarcode(value: string) {
@@ -190,9 +199,11 @@ function App() {
   const [dashboardDetail, setDashboardDetail] = useState<"critical" | "warning" | "low-stock" | null>(null);
   const [pendingReset, setPendingReset] = useState(false);
   const [pendingDeleteItemId, setPendingDeleteItemId] = useState<string | null>(null);
-  const [expiryFilterDays, setExpiryFilterDays] = useState<number>(10);
-  const [warningDaysDraft, setWarningDaysDraft] = useState("10");
-  const [reminderDaysDraft, setReminderDaysDraft] = useState("3");
+  const [expiryFilterDays, setExpiryFilterDays] = useState<number>(31);
+  const [warningDaysDraft, setWarningDaysDraft] = useState("31");
+  const [reminderDaysDraft, setReminderDaysDraft] = useState("14");
+  const [expiryReminderVisible, setExpiryReminderVisible] = useState(false);
+  const [expiryReminderDismissed, setExpiryReminderDismissed] = useState(false);
   const [locationDetailId, setLocationDetailId] = useState<string | null>(null);
   const [locationFilterDraft, setLocationFilterDraft] = useState("");
   const [locationEditName, setLocationEditName] = useState("");
@@ -222,6 +233,7 @@ function App() {
   const [bookingNewItemBarcodeDraft, setBookingNewItemBarcodeDraft] = useState("");
   const [bookingNewItemUnitTypeId, setBookingNewItemUnitTypeId] = useState("");
   const [bookingNewItemLowStockThresholdDraft, setBookingNewItemLowStockThresholdDraft] = useState("5");
+  const [bookingMoreSettingsVisible, setBookingMoreSettingsVisible] = useState(false);
   const [bookingLocationId, setBookingLocationId] = useState("");
   const [bookingTargetLocationId, setBookingTargetLocationId] = useState("");
   const [bookingSourceSlotId, setBookingSourceSlotId] = useState("");
@@ -505,8 +517,8 @@ function App() {
           audio: false,
           video: {
             facingMode: { ideal: "environment" },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 }
+            width: { ideal: 2560 },
+            height: { ideal: 1440 }
           }
         });
 
@@ -516,9 +528,12 @@ function App() {
         }
 
         scanStreamRef.current = stream;
-        void applyScanFocus(stream.getVideoTracks()[0]).catch(() => {
-          setScanMessage("Kamera ist aktiv. Falls der Code unscharf bleibt, kurz weiter weg halten.");
-        });
+        const videoTrack = stream.getVideoTracks()[0];
+        if (videoTrack) {
+          void applyScanFocus(videoTrack).catch(() => {
+            setScanMessage("Kamera ist aktiv. Falls der Code unscharf bleibt, kurz weiter weg halten.");
+          });
+        }
 
         const video = videoRef.current;
         if (!video) {
@@ -529,7 +544,7 @@ function App() {
         await video.play();
 
         const detector = new BarcodeDetectorApi({
-          formats: ["qr_code", "code_128", "ean_13", "ean_8", "upc_a", "upc_e"]
+          formats: ["qr_code", "code_128", "code_39", "code_93", "codabar", "ean_13", "ean_8", "itf", "upc_a", "upc_e"]
         });
 
         const tick = async () => {
@@ -591,6 +606,25 @@ function App() {
       viewModel?.expiryAlerts.filter((alert) => alert.daysUntilExpiry <= expiryFilterDays) ?? [],
     [expiryFilterDays, viewModel]
   );
+
+  const reminderAlerts = useMemo(
+    () =>
+      viewModel?.expiryAlerts
+        .filter((alert) => alert.daysUntilExpiry <= viewModel.settings.expiryWarningDays)
+        .slice(0, 5) ?? [],
+    [viewModel]
+  );
+
+  useEffect(() => {
+    if (!viewModel || expiryReminderDismissed || reminderAlerts.length === 0) {
+      return;
+    }
+    const snoozedUntil = viewModel.settings.expiryReminderSnoozedUntil;
+    if (snoozedUntil && snoozedUntil >= localDateKey()) {
+      return;
+    }
+    setExpiryReminderVisible(true);
+  }, [expiryReminderDismissed, reminderAlerts.length, viewModel]);
 
   const dashboardDetailAlerts = useMemo(() => {
     if (!viewModel || dashboardDetail === "low-stock") {
@@ -733,7 +767,7 @@ function App() {
             batchCount: relatedBatches.length,
             totalQuantity,
             trackExpiry: item.trackExpiry,
-            nextExpiry: nextExpiry ? displayDateFormatter.format(new Date(nextExpiry)) : "ohne Ablauf",
+            nextExpiry: nextExpiry ? formatExpiryMonth(nextExpiry) : "ohne Ablauf",
             unitLabel: unitType?.shortCode ?? "?",
             preferredLocationName: preferredLocation?.name ?? "kein Ort",
             lowStockThreshold: item.lowStockThreshold
@@ -992,7 +1026,7 @@ function App() {
       .map((batch) => ({
         id: batch.id,
         batchCode: batch.batchCode,
-        expiryLabel: batch.expiryDate === noExpiryDate ? "ohne Ablauf" : displayDateFormatter.format(new Date(batch.expiryDate))
+        expiryLabel: formatExpiryMonth(batch.expiryDate)
       }))
       .sort((left, right) => left.expiryLabel.localeCompare(right.expiryLabel));
   }, [bookingItem, snapshotState]);
@@ -1051,9 +1085,7 @@ function App() {
       .map((batch) => ({
         id: batch.id,
         batchCode: batch.batchCode,
-        expiryLabel: currentItem.trackExpiry && batch.expiryDate !== noExpiryDate
-          ? displayDateFormatter.format(new Date(batch.expiryDate))
-          : "ohne Ablauf",
+        expiryLabel: currentItem.trackExpiry ? formatExpiryMonth(batch.expiryDate) : "ohne Ablauf",
         quantity: Math.max(0, batchQuantityById.get(batch.id) ?? 0),
         unitShortCode: unitType?.shortCode ?? "?"
       }))
@@ -1110,6 +1142,12 @@ function App() {
       setBookingItemMode("existing");
     }
   }, [bookingAction]);
+
+  useEffect(() => {
+    if (!bookingUsesNewItem) {
+      setBookingMoreSettingsVisible(false);
+    }
+  }, [bookingUsesNewItem]);
 
   useEffect(() => {
     if (bookingAction === "in" && bookingItemMode === "new") {
@@ -1393,8 +1431,8 @@ function App() {
   }
 
   async function handlePersistSettings() {
-    const warningDays = Math.max(1, Number(warningDaysDraft || "10"));
-    const reminderDays = Math.max(1, Number(reminderDaysDraft || "3"));
+    const warningDays = Math.max(1, Number(warningDaysDraft || "31"));
+    const reminderDays = Math.max(1, Number(reminderDaysDraft || "14"));
 
     try {
       await updateSettings({
@@ -1406,6 +1444,18 @@ function App() {
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Einstellungen konnten nicht gespeichert werden.");
     }
+  }
+
+  async function handleSnoozeExpiryReminder() {
+    const reminderDays = Math.max(1, viewModel?.settings.reminderRepeatDays ?? 14);
+    const nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() + reminderDays);
+    await updateSettings({
+      expiryReminderSnoozedUntil: localDateKey(nextDate)
+    });
+    setExpiryReminderVisible(false);
+    setExpiryReminderDismissed(true);
+    setRefreshToken((current) => current + 1);
   }
 
   async function handleSaveSyncConfig() {
@@ -1581,8 +1631,13 @@ function App() {
       return;
     }
 
-    if (currentItem.trackExpiry && !batchExpiryDateDraft) {
+    const expiryDate = normalizeExpiryMonth(batchExpiryDateDraft);
+    if (currentItem.trackExpiry && !expiryDate) {
       setActionError("Bitte ein Ablaufdatum für die Charge setzen.");
+      return;
+    }
+    if (expiryDate && !isValidExpiryMonth(expiryDate)) {
+      setActionError("Bitte Ablaufdatum als MM/JJ eingeben, z. B. 11/27.");
       return;
     }
 
@@ -1590,7 +1645,7 @@ function App() {
       await addBatch({
         itemId: currentItem.id,
         batchCode: batchHasNoCode ? "" : batchCodeDraft,
-        expiryDate: currentItem.trackExpiry ? batchExpiryDateDraft : batchExpiryDateDraft || "2099-12-31"
+        expiryDate: currentItem.trackExpiry ? expiryDate : expiryDate || noExpiryDate
       });
       setBatchCodeDraft("");
       setBatchHasNoCode(false);
@@ -1623,6 +1678,12 @@ function App() {
 
     if (!wantsExistingBatch && !canCreateNewBookingBatch) {
       setActionError("Diese Buchung benötigt eine bestehende Charge.");
+      return;
+    }
+
+    const bookingNewBatchExpiry = normalizeExpiryMonth(bookingNewBatchExpiryDraft);
+    if (bookingNewBatchExpiry && !isValidExpiryMonth(bookingNewBatchExpiry)) {
+      setActionError("Bitte Ablaufdatum als MM/JJ eingeben, z. B. 11/27.");
       return;
     }
 
@@ -1685,7 +1746,7 @@ function App() {
             unitTypeId: bookingNewItemUnitTypeId,
             barcode: newBarcode,
             barcodes: newBarcode ? [newBarcode] : [],
-            trackExpiry: Boolean(bookingNewBatchExpiryDraft),
+            trackExpiry: Boolean(bookingNewBatchExpiry),
             preferredLocationId: bookingLocationId || undefined,
             lowStockThreshold: Math.max(0, Number(bookingNewItemLowStockThresholdDraft || "0"))
           });
@@ -1706,7 +1767,7 @@ function App() {
           toSlotId: bookingTargetSlotId || undefined,
           batchId: wantsExistingBatch ? effectiveBookingBatchId : undefined,
           batchCode: wantsExistingBatch ? undefined : bookingNewBatchCodeDraft,
-          expiryDate: wantsExistingBatch ? undefined : bookingNewBatchExpiryDraft
+          expiryDate: wantsExistingBatch ? undefined : bookingNewBatchExpiry
         });
       } else if (bookingAction === "out") {
         await createMovement({
@@ -1742,7 +1803,7 @@ function App() {
           toSlotId: bookingAdjustmentDirection === "increase" ? bookingTargetSlotId || undefined : undefined,
           batchId: wantsExistingBatch ? effectiveBookingBatchId : undefined,
           batchCode: wantsExistingBatch ? undefined : bookingNewBatchCodeDraft,
-          expiryDate: wantsExistingBatch ? undefined : bookingNewBatchExpiryDraft
+          expiryDate: wantsExistingBatch ? undefined : bookingNewBatchExpiry
         });
       }
 
@@ -1967,6 +2028,30 @@ function App() {
               text: "OK",
               role: "cancel",
               handler: () => setActionError(null)
+            }
+          ]}
+        />
+        <IonAlert
+          isOpen={expiryReminderVisible}
+          header="Ablaufwarnung"
+          message={
+            reminderAlerts.length > 0
+              ? `${reminderAlerts.length} Charge${reminderAlerts.length === 1 ? "" : "n"} liegen im Warnfenster. Naechster Ablauf: ${reminderAlerts[0].itemName} in ${reminderAlerts[0].daysUntilExpiry} Tagen.`
+              : ""
+          }
+          buttons={[
+            {
+              text: `Erneut in ${viewModel?.settings.reminderRepeatDays ?? 14} Tagen`,
+              role: "cancel",
+              handler: () => void handleSnoozeExpiryReminder()
+            },
+            {
+              text: "Anzeigen",
+              handler: () => {
+                setActiveView("dashboard");
+                setDashboardDetail("warning");
+                void handleSnoozeExpiryReminder();
+              }
             }
           ]}
         />
@@ -2222,10 +2307,6 @@ function App() {
                               if (stat.id === "critical" || stat.id === "warning" || stat.id === "low-stock") {
                                 const detailId = stat.id as "critical" | "warning" | "low-stock";
                                 setDashboardDetail((current) => (current === detailId ? null : detailId));
-                                return;
-                              }
-                              if (stat.id === "movements") {
-                                setActiveView("log");
                               }
                             }}
                           >
@@ -2382,9 +2463,6 @@ function App() {
                           </div>
                           {detailLocation ? (
                             <div className="form-actions">
-                              <IonButton fill="outline" className="primary-button" onClick={() => setSlotFormVisible((current) => !current)}>
-                                Slot hinzufügen
-                              </IonButton>
                               <IonButton className="primary-button" onClick={() => handleLocationScan(detailLocation.id)}>
                                 <IonIcon slot="start" icon={barcodeOutline} />
                                 Einmal scannen
@@ -2445,7 +2523,7 @@ function App() {
                                   {bookingUsesNewItem ? (
                                     <div className="editor-grid booking-inline-grid">
                                       <IonItem className="compact-field">
-                                        <IonLabel position="stacked">Artikelname</IonLabel>
+                                        <IonLabel position="stacked">Name</IonLabel>
                                         <IonInput
                                           value={bookingNewItemNameDraft}
                                           placeholder="z. B. Artikelname"
@@ -2453,17 +2531,13 @@ function App() {
                                         />
                                       </IonItem>
                                       <IonItem className="compact-field">
-                                        <IonLabel position="stacked">Barcode</IonLabel>
+                                        <IonLabel position="stacked">Menge</IonLabel>
                                         <IonInput
-                                          value={bookingNewItemBarcodeDraft}
-                                          onIonInput={(event) => setBookingNewItemBarcodeDraft(String(event.detail.value ?? ""))}
+                                          type="number"
+                                          value={bookingQuantityDraft}
+                                          onIonInput={(event) => setBookingQuantityDraft(String(event.detail.value ?? ""))}
                                         />
                                       </IonItem>
-                                      {bookingNewItemBarcodeDraft.trim() ? (
-                                        <div className="barcode-confirmation">
-                                          Übernommener Barcode: <strong>{bookingNewItemBarcodeDraft.trim()}</strong>
-                                        </div>
-                                      ) : null}
                                       <label className="form-field">
                                         <span>Einheit</span>
                                         <select
@@ -2478,6 +2552,28 @@ function App() {
                                           ))}
                                         </select>
                                       </label>
+                                      <label className="form-field">
+                                        <span>Ablaufdatum optional</span>
+                                        <input
+                                          className="app-input"
+                                          inputMode="numeric"
+                                          placeholder="MM/JJ"
+                                          value={bookingNewBatchExpiryDraft}
+                                          onChange={(event) => handleExpiryDraftChange(event.target.value, setBookingNewBatchExpiryDraft)}
+                                        />
+                                      </label>
+                                      <IonItem className="compact-field">
+                                        <IonLabel position="stacked">Barcode</IonLabel>
+                                        <IonInput
+                                          value={bookingNewItemBarcodeDraft}
+                                          onIonInput={(event) => setBookingNewItemBarcodeDraft(String(event.detail.value ?? ""))}
+                                        />
+                                      </IonItem>
+                                      {bookingNewItemBarcodeDraft.trim() ? (
+                                        <div className="barcode-confirmation">
+                                          Übernommener Barcode: <strong>{bookingNewItemBarcodeDraft.trim()}</strong>
+                                        </div>
+                                      ) : null}
                                     </div>
                                   ) : (
                                     <>
@@ -2550,6 +2646,7 @@ function App() {
                                         <div className="empty-state">Keine bestehende Charge verfügbar.</div>
                                       )
                                     ) : null}
+                                    {!bookingUsesNewItem ? (
                                     <IonItem className="compact-field">
                                       <IonLabel position="stacked">Menge</IonLabel>
                                       <IonInput
@@ -2558,19 +2655,34 @@ function App() {
                                         onIonInput={(event) => setBookingQuantityDraft(String(event.detail.value ?? ""))}
                                       />
                                     </IonItem>
-                                    {bookingBatchMode === "new" ? (
+                                    ) : null}
+                                    {bookingBatchMode === "new" && !bookingUsesNewItem ? (
                                       <label className="form-field">
                                         <span>Ablaufdatum optional</span>
                                         <input
                                           className="app-input"
-                                          type="date"
+                                          inputMode="numeric"
+                                          placeholder="MM/JJ"
                                           value={bookingNewBatchExpiryDraft}
-                                          onChange={(event) => setBookingNewBatchExpiryDraft(event.target.value)}
+                                          onChange={(event) => handleExpiryDraftChange(event.target.value, setBookingNewBatchExpiryDraft)}
                                         />
                                       </label>
                                     ) : null}
                                   </div>
 
+                                  {bookingUsesNewItem ? (
+                                    <button
+                                      type="button"
+                                      className="details-toggle"
+                                      onClick={() => setBookingMoreSettingsVisible((current) => !current)}
+                                    >
+                                      Weitere Einstellungen
+                                      <IonIcon icon={chevronDownOutline} />
+                                    </button>
+                                  ) : null}
+
+                                  {bookingUsesNewItem && !bookingMoreSettingsVisible ? null : (
+                                  <>
                                   {bookingTargetSlots.length > 0 ? (
                                     <label className="form-field">
                                       <span>Slot optional in {detailLocation.name}</span>
@@ -2608,6 +2720,8 @@ function App() {
                                       </IonItem>
                                     </div>
                                   ) : null}
+                                  </>
+                                  )}
                                 </div>
                                 <div className="form-actions">
                                   <IonButton fill="outline" className="primary-button" onClick={() => openScan("booking-item")}>
@@ -2624,14 +2738,17 @@ function App() {
                               </section>
                             ) : null}
 
-                            {slotFormVisible ? (
-                              <section className="surface">
-                                <header className="section-header">
-                                  <div>
-                                    <h2>Slot hinzufügen</h2>
-                                    <span>{detailLocation.name}</span>
-                                  </div>
-                                </header>
+                            <section className="surface">
+                              <header className="section-header">
+                                <div>
+                                  <h2>Slots</h2>
+                                  <span>{currentSlots.length} angelegt</span>
+                                </div>
+                                <IonButton fill="outline" className="primary-button" onClick={() => setSlotFormVisible((current) => !current)}>
+                                  Slot hinzufügen
+                                </IonButton>
+                              </header>
+                              {slotFormVisible ? (
                                 <div className="unit-form">
                                   <label className="form-field">
                                     <span>Typ</span>
@@ -2655,16 +2772,7 @@ function App() {
                                     {slotKind} speichern
                                   </IonButton>
                                 </div>
-                              </section>
-                            ) : null}
-
-                            <section className="surface">
-                              <header className="section-header">
-                                <div>
-                                  <h2>Slots</h2>
-                                  <span>{currentSlots.length} angelegt</span>
-                                </div>
-                              </header>
+                              ) : null}
                               <div className="slot-card-grid">
                                 {currentSlots.map((slot) => (
                                   <article key={slot.id} className="slot-card">
@@ -3004,9 +3112,10 @@ function App() {
                                   <span>{currentItem.trackExpiry ? "Ablaufdatum" : "Datum optional"}</span>
                                   <input
                                     className="app-input"
-                                    type="date"
+                                    inputMode="numeric"
+                                    placeholder="MM/JJ"
                                     value={batchExpiryDateDraft}
-                                    onChange={(event) => setBatchExpiryDateDraft(event.target.value)}
+                                    onChange={(event) => handleExpiryDraftChange(event.target.value, setBatchExpiryDateDraft)}
                                   />
                                 </label>
                                 <IonButton className="primary-button" onClick={handleSaveBatch}>
@@ -3136,13 +3245,46 @@ function App() {
                         {bookingUsesNewItem ? (
                           <div className="editor-grid booking-inline-grid">
                             <IonItem className="compact-field">
-                              <IonLabel position="stacked">Artikelname</IonLabel>
+                              <IonLabel position="stacked">Name</IonLabel>
                               <IonInput
                                 value={bookingNewItemNameDraft}
                                 placeholder="z. B. Früchtetee 20er"
                                 onIonInput={(event) => setBookingNewItemNameDraft(String(event.detail.value ?? ""))}
                               />
                             </IonItem>
+                            <IonItem className="compact-field">
+                              <IonLabel position="stacked">Menge</IonLabel>
+                              <IonInput
+                                type="number"
+                                value={bookingQuantityDraft}
+                                onIonInput={(event) => setBookingQuantityDraft(String(event.detail.value ?? ""))}
+                                ref={bookingQuantityInputRef}
+                              />
+                            </IonItem>
+                            <label className="form-field">
+                              <span>Einheit</span>
+                              <select
+                                className="app-select app-select--compact"
+                                value={bookingNewItemUnitTypeId}
+                                onChange={(event) => setBookingNewItemUnitTypeId(event.target.value)}
+                              >
+                                {viewModel.unitTypes.map((unitType) => (
+                                  <option key={unitType.id} value={unitType.id}>
+                                    {unitType.name} ({unitType.shortCode})
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <label className="form-field">
+                              <span>Ablaufdatum optional</span>
+                              <input
+                                className="app-input"
+                                inputMode="numeric"
+                                placeholder="MM/JJ"
+                                value={bookingNewBatchExpiryDraft}
+                                onChange={(event) => handleExpiryDraftChange(event.target.value, setBookingNewBatchExpiryDraft)}
+                              />
+                            </label>
                             <IonItem className="compact-field">
                               <IonLabel position="stacked">Barcode</IonLabel>
                               <IonInput
@@ -3160,20 +3302,6 @@ function App() {
                                 Barcode scannen
                               </IonButton>
                             </div>
-                            <label className="form-field">
-                              <span>Einheit</span>
-                              <select
-                                className="app-select app-select--compact"
-                                value={bookingNewItemUnitTypeId}
-                                onChange={(event) => setBookingNewItemUnitTypeId(event.target.value)}
-                              >
-                                {viewModel.unitTypes.map((unitType) => (
-                                  <option key={unitType.id} value={unitType.id}>
-                                    {unitType.name} ({unitType.shortCode})
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
                           </div>
                         ) : (
                           <>
@@ -3242,6 +3370,7 @@ function App() {
                           )
                         ) : null}
 
+                        {!bookingUsesNewItem ? (
                         <IonItem className="compact-field">
                           <IonLabel position="stacked">Menge</IonLabel>
                           <IonInput
@@ -3251,19 +3380,34 @@ function App() {
                             ref={bookingQuantityInputRef}
                           />
                         </IonItem>
+                        ) : null}
 
-                        {bookingBatchMode === "new" && !mustUseExistingBookingBatch ? (
+                        {bookingBatchMode === "new" && !mustUseExistingBookingBatch && !bookingUsesNewItem ? (
                           <label className="form-field">
                             <span>Ablaufdatum optional</span>
                             <input
                               className="app-input"
-                              type="date"
+                              inputMode="numeric"
+                              placeholder="MM/JJ"
                               value={bookingNewBatchExpiryDraft}
-                              onChange={(event) => setBookingNewBatchExpiryDraft(event.target.value)}
+                              onChange={(event) => handleExpiryDraftChange(event.target.value, setBookingNewBatchExpiryDraft)}
                             />
                           </label>
                         ) : null}
 
+                        {bookingUsesNewItem ? (
+                          <button
+                            type="button"
+                            className="details-toggle"
+                            onClick={() => setBookingMoreSettingsVisible((current) => !current)}
+                          >
+                            Weitere Einstellungen
+                            <IonIcon icon={chevronDownOutline} />
+                          </button>
+                        ) : null}
+
+                        {bookingUsesNewItem && !bookingMoreSettingsVisible ? null : (
+                        <>
                         <label className="form-field">
                           <span>Ort</span>
                           <select
@@ -3401,6 +3545,8 @@ function App() {
                             </div>
                           </>
                         ) : null}
+                        </>
+                        )}
                       </div>
 
                       <div className="form-actions">
