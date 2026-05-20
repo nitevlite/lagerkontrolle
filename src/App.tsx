@@ -95,6 +95,10 @@ type BarcodeDetectorCtor = new (options?: { formats?: string[] }) => {
   detect: (source: ImageBitmapSource) => Promise<Array<{ rawValue?: string }>>;
 };
 
+type BarcodeDetectorGlobal = BarcodeDetectorCtor & {
+  getSupportedFormats?: () => Promise<string[]>;
+};
+
 type CameraFocusConstraints = MediaTrackConstraints & {
   advanced?: Array<{
     focusMode?: "continuous" | "single-shot" | "manual";
@@ -105,7 +109,18 @@ type CameraFocusConstraints = MediaTrackConstraints & {
 };
 
 function getBarcodeDetector() {
-  return (globalThis as unknown as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector;
+  return (globalThis as unknown as { BarcodeDetector?: BarcodeDetectorGlobal }).BarcodeDetector;
+}
+
+async function getSupportedScanFormats(BarcodeDetectorApi: BarcodeDetectorGlobal) {
+  const requestedFormats = ["qr_code", "code_128", "code_39", "code_93", "codabar", "ean_13", "ean_8", "itf", "upc_a", "upc_e"];
+  if (!BarcodeDetectorApi.getSupportedFormats) {
+    return requestedFormats;
+  }
+  const supportedFormats = await BarcodeDetectorApi.getSupportedFormats();
+  const supportedSet = new Set(supportedFormats);
+  const filteredFormats = requestedFormats.filter((format) => supportedSet.has(format));
+  return filteredFormats.length > 0 ? filteredFormats : requestedFormats;
 }
 
 async function applyScanFocus(track: MediaStreamTrack) {
@@ -544,7 +559,7 @@ function App() {
         await video.play();
 
         const detector = new BarcodeDetectorApi({
-          formats: ["qr_code", "code_128", "code_39", "code_93", "codabar", "ean_13", "ean_8", "itf", "upc_a", "upc_e"]
+          formats: await getSupportedScanFormats(BarcodeDetectorApi)
         });
 
         const tick = async () => {
@@ -1682,7 +1697,7 @@ function App() {
     }
 
     const bookingNewBatchExpiry = normalizeExpiryMonth(bookingNewBatchExpiryDraft);
-    if (bookingNewBatchExpiry && !isValidExpiryMonth(bookingNewBatchExpiry)) {
+    if (!wantsExistingBatch && bookingNewBatchExpiry && !isValidExpiryMonth(bookingNewBatchExpiry)) {
       setActionError("Bitte Ablaufdatum als MM/JJ eingeben, z. B. 11/27.");
       return;
     }
